@@ -17,19 +17,54 @@ export default async function handler(req, res) {
 
   const { tier = 'beta' } = req.body || {};
 
-  // beta = €19/3mo (first 100), premium = €29/3mo (full price)
-  const priceId = tier === 'premium'
-    ? process.env.STRIPE_PREMIUM_PRICE_ID
-    : process.env.STRIPE_BETA_PRICE_ID;
-
-  if (!priceId) {
-    return res.status(500).json({
-      error: 'Price ID not configured',
-      details: `Missing env var STRIPE_${tier.toUpperCase()}_PRICE_ID`
-    });
-  }
-
   try {
+    // aimix = €7.99 one-time unlock for Stage 3 AI Mix review (Mix V2)
+    if (tier === 'aimix') {
+      const aimixPriceId = process.env.STRIPE_AIMIX_PRICE_ID;
+      const lineItem = aimixPriceId
+        ? { price: aimixPriceId, quantity: 1 }
+        : {
+            price_data: {
+              currency: 'eur',
+              unit_amount: 799,
+              product_data: {
+                name: 'LETTO · Otključaj AI Mix',
+                description: 'Jednokratan otključaj za AI Mix · pun pregled leta i hotela.'
+              }
+            },
+            quantity: 1
+          };
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [lineItem],
+        metadata: { tier, source: 'letto', origin: 'mix-stage3' },
+        payment_intent_data: {
+          metadata: { tier, source: 'letto' }
+        },
+        allow_promotion_codes: true,
+        success_url: `${SITE_URL}/results.html?unlock=aimix&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${SITE_URL}/results.html?cancelled=1`,
+        locale: 'auto',
+        billing_address_collection: 'auto',
+        customer_creation: 'always'
+      });
+
+      return res.status(200).json({ url: session.url, sessionId: session.id });
+    }
+
+    // beta = €19/3mo (first 100), premium = €29/3mo (full price)
+    const priceId = tier === 'premium'
+      ? process.env.STRIPE_PREMIUM_PRICE_ID
+      : process.env.STRIPE_BETA_PRICE_ID;
+
+    if (!priceId) {
+      return res.status(500).json({
+        error: 'Price ID not configured',
+        details: `Missing env var STRIPE_${tier.toUpperCase()}_PRICE_ID`
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       // NO customer_email — Stripe collects it. THIS is the fix.

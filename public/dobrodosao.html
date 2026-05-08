@@ -199,11 +199,19 @@
   // localStorage flag unlocks booking CTAs in /index.html modal.
   // Gating on session_id presence prevents direct-URL visitors from getting flag.
   try {
-    var sid = new URLSearchParams(window.location.search).get('session_id');
+    var qs = new URLSearchParams(window.location.search);
+    var sid = qs.get('session_id');
+    var unlock = qs.get('unlock');
     if (sid) {
-      localStorage.setItem('letto_premium', '1');
-      localStorage.setItem('letto_premium_session', sid);
-      localStorage.setItem('letto_premium_set_at', new Date().toISOString());
+      if (unlock === 'aimix') {
+        localStorage.setItem('letto_mix_unlocked', '1');
+        localStorage.setItem('letto_mix_unlocked_session', sid);
+        localStorage.setItem('letto_mix_unlocked_at', new Date().toISOString());
+      } else {
+        localStorage.setItem('letto_premium', '1');
+        localStorage.setItem('letto_premium_session', sid);
+        localStorage.setItem('letto_premium_set_at', new Date().toISOString());
+      }
     }
   } catch (e) {}
 </script>

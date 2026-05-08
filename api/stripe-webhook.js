@@ -217,7 +217,7 @@ export default async function handler(req, res) {
 
   try {
     switch (event.type) {
-      // Subscription activated
+      // Subscription activated OR one-time AI Mix unlock
       case 'checkout.session.completed': {
         const session = event.data.object;
 
@@ -232,8 +232,22 @@ export default async function handler(req, res) {
         const firstName = session.customer_details?.name?.split(' ')[0];
         const customerId = session.customer;
         const subscriptionId = session.subscription;
+        const tier = session.metadata?.tier;
 
         if (!email) break;
+
+        // One-time AI Mix unlock (€7.99) — flag user, no Telegram invite, no welcome email.
+        if (tier === 'aimix' || session.mode === 'payment') {
+          await db.collection('letto_subscribers').doc(email.toLowerCase()).set({
+            email: email.toLowerCase(),
+            stripeCustomerId: customerId,
+            aimixUnlocked: true,
+            aimixUnlockedAt: new Date().toISOString(),
+            aimixSessionId: session.id
+          }, { merge: true });
+          console.log(`[LETTO] AI Mix unlocked: ${email}`);
+          break;
+        }
 
         // Generate one-time Telegram invite
         const inviteLink = await generateTelegramInvite(email);

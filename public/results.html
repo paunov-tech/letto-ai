@@ -2382,6 +2382,17 @@
   body:not(.letto-premium) .premium-only { display: none !important; }
   body.letto-premium .paywall-gate { display: none !important; }
 
+  /* AI Mix gate (Stage 3) — toggled when body has letto-premium OR letto-mix-unlocked */
+  body.letto-premium .mix-final__paywall,
+  body.letto-mix-unlocked .mix-final__paywall { display: none !important; }
+  body:not(.letto-premium):not(.letto-mix-unlocked) .mix-final__inner {
+    filter: blur(12px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.5;
+    transform: scale(1.01);
+  }
+
   /* Modal blurb — Claude narrative below pricing */
   .modal-blurb {
     padding: 20px 28px 18px;
@@ -4144,7 +4155,47 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     </div>
 
     <!-- ───── STAGE 3 · MIX FINAL REVIEW (shown on Završi rezervaciju click) ───── -->
-    <div class="mix-final" id="mix-final" hidden aria-hidden="true">
+    <div class="mix-final" id="mix-final" hidden aria-hidden="true" style="position:relative;">
+      <div class="mix-final__paywall paywall-overlay" aria-live="polite">
+        <div class="paywall-card">
+          <div class="paywall-mark">
+            <svg viewBox="0 0 200 200"><use href="#compassRose"/></svg>
+          </div>
+          <div class="paywall-eyebrow" data-en>UNLOCK AI MIX</div>
+          <div class="paywall-eyebrow" data-sr>OTKLJUČAJ AI MIX</div>
+          <h3 class="paywall-title">
+            <span data-en>See <em>your</em> Mix · flight + stay together.</span>
+            <span data-sr>Vidi <em>svoj</em> Mix · let i smeštaj zajedno.</span>
+          </h3>
+          <p class="paywall-body">
+            <span data-en>One unlock reveals the full review: chosen <strong>flight</strong>, chosen <strong>hotel</strong>, totals, and direct booking links to each partner.</span>
+            <span data-sr>Jednim klikom otključavaš pun pregled: izabran <strong>let</strong>, izabran <strong>hotel</strong>, ukupna cena i direktni linkovi za rezervaciju kod svakog partnera.</span>
+          </p>
+          <div class="paywall-price">
+            <div style="display:flex; align-items:baseline; justify-content:center; gap:14px; flex-wrap:wrap;">
+              <div class="price-main" style="color: var(--burgundy);">€7.99</div>
+            </div>
+            <div class="price-period" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:6px;">
+              <span data-en><strong>One-time</strong> · this Mix</span>
+              <span data-sr><strong>Jednokratno</strong> · ovaj Mix</span>
+            </div>
+          </div>
+          <div class="paywall-math">
+            <span data-en>Cancel-free. Pay once, see the whole package, book directly with each partner.</span>
+            <span data-sr>Bez pretplate. Plati jednom, vidi pun paket, rezerviši direktno kod svakog partnera.</span>
+          </div>
+          <a href="#" class="paywall-cta" data-stripe="aimix">
+            <span data-en>Unlock AI Mix · €7.99 →</span>
+            <span data-sr>Otključaj AI Mix · €7.99 →</span>
+          </a>
+          <div class="paywall-assurance">
+            <span data-en>Secure checkout · Stripe</span><span data-sr>Sigurno plaćanje · Stripe</span>
+            <span class="dot">·</span>
+            <span>GDPR</span>
+          </div>
+        </div>
+      </div>
+
       <div class="mix-final__inner">
         <button type="button" class="mix-final__back" data-mix-back-to-grid>
           <span data-en>← Back to selection</span>
@@ -5916,8 +5967,21 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
 
   // Premium gate — body.letto-premium toggle for booking CTAs vs paywall
   try {
+    // Stripe success-URL handoff: ?unlock=aimix&session_id=... → set local flag, strip params.
+    var qs = new URLSearchParams(window.location.search);
+    if (qs.get('unlock') === 'aimix' && qs.get('session_id')) {
+      localStorage.setItem('letto_mix_unlocked', '1');
+      localStorage.setItem('letto_mix_unlocked_session', qs.get('session_id'));
+      localStorage.setItem('letto_mix_unlocked_at', new Date().toISOString());
+      qs.delete('unlock'); qs.delete('session_id');
+      var qsStr = qs.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qsStr ? '?' + qsStr : ''));
+    }
     if (localStorage.getItem('letto_premium') === '1') {
       document.body.classList.add('letto-premium');
+    }
+    if (localStorage.getItem('letto_mix_unlocked') === '1') {
+      document.body.classList.add('letto-mix-unlocked');
     }
   } catch(e) {}
 
