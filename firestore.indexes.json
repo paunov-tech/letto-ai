@@ -5,7 +5,15 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "pricing.savingsPercent", "order": "DESCENDING" }
+        { "fieldPath": "deal.flightDealRatio", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "letto_packages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "metadata.createdAt", "order": "DESCENDING" }
       ]
     }
   ],
