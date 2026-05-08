@@ -1,0 +1,22 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>probe</title></head>
+<body>
+<script>
+(function () {
+  // Prime Mix V2 state with fake flight + hotel selected
+  var now = Date.now();
+  var state = {
+    version: 2,
+    searchParams: { origin_iata:'BEG', destination_iata:'ATH', depart_date:'2026-06-01', return_date:'2026-06-08', adults:2, children:0 },
+    flight: { selected: { airline:'Air Serbia', origin:'BEG', dest:'ATH', depart:'2026-06-01', ret:'2026-06-08', price:189 }, bookingClicked: true, bookingClickedAt: now },
+    hotel:  { selected: { id:'demo-hotel-1', name:'Athens Plaza', stars:4, pricePerNight:78, priceTotal:546, currency:'EUR', nights:7 }, bookingClicked: false, deeplinkOpened: false },
+    email:  null,
+    meta:   { createdAt: now, updatedAt: now, expiresAt: now + 24*60*60*1000 }
+  };
+  localStorage.setItem('letto_mix_state_v2', JSON.stringify(state));
+  localStorage.removeItem('letto_premium_session');
+  localStorage.removeItem('letto_mix_session');
+  location.replace('/results.html?origin_iata=BEG&destination_iata=ATH&depart_date=2026-06-01&return_date=2026-06-08&adults=2');
+})();
+</script>
+</body></html>
