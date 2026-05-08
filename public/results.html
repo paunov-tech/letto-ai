@@ -5471,19 +5471,20 @@
         + '</span>';
     }
 
-    // Total chip (only when both selected — flight.priceNum × adults + hotel total)
+    // Total chip — same formula as Stage 3 review: flight.totalPrice (per-package,
+    // already covers travelers) + hotel.priceTotal (per-stay). Direct sum.
     var totalChip = '';
     if (flight && hotel) {
       var adults = (state.searchParams && state.searchParams.adults) || p.adults || 2;
-      var flightTotal = flight.priceNum ? Math.round(flight.priceNum * adults) : 0;
-      var hotelTotal = hotel.priceTotal || 0;
+      var flightTotal = Math.round(flight.totalPrice || flight.priceNum || 0);
+      var hotelTotal = Math.round(hotel.priceTotal || 0);
       var grandTotal = flightTotal + hotelTotal;
       if (grandTotal > 0) {
         totalChip = '<span class="mix-summary__total" aria-hidden="false">'
           + '<span class="mix-summary__total-eq" aria-hidden="true">=</span>'
           + '<strong>€' + grandTotal + '</strong>'
           + '<span class="mix-summary__total-note">'
-          +   '<span data-en> total · ' + adults + ' ' + (adults === 1 ? 'pax' : 'pax') + '</span>'
+          +   '<span data-en> total · ' + adults + ' pax</span>'
           +   '<span data-sr> ukupno · ' + adults + ' os.</span>'
           + '</span>'
           + '</span>';
@@ -5885,10 +5886,35 @@
     // 6. Stage 3 wiring (Faza 4)
     document.addEventListener('click', function (e) {
       if (!e.target || !e.target.closest) return;
-      // Open Stage 3
+      // Sticky bar "Finish booking →" CTA · gates on paywall:
+      //   locked   → open Stage 3 review (paywall card visible there)
+      //   unlocked → open the partner booking URL directly (skip review)
       if (e.target.closest('[data-mix-finish]')) {
         e.preventDefault();
+        var unlocked = document.body.classList.contains('letto-premium') ||
+                       document.body.classList.contains('letto-mix-unlocked');
+        var st = getState();
+        var bookUrl = st && st.flight && st.flight.selected && st.flight.selected.bookingUrl;
+        if (unlocked && bookUrl) {
+          // Mark booking-clicked + open partner in new tab
+          st.flight.bookingClicked = true;
+          st.flight.bookingClickedAt = Date.now();
+          setState(st);
+          var partner = st.flight.selected.bookingPartner || 'partner';
+          if (typeof showToast === 'function') {
+            showToast(lang() === 'en'
+              ? 'Opening ' + partner + ' · book directly there.'
+              : 'Otvaram ' + partner + ' · rezerviši direktno tamo.', 4000);
+          }
+          window.open(bookUrl, '_blank', 'noopener');
+          return;
+        }
+        // Locked path: scroll to & reveal Stage 3, paywall card sits on top
         showStage3();
+        var finalEl = $('mix-final');
+        if (finalEl) {
+          try { finalEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
+        }
         return;
       }
       // Back to grid
