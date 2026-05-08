@@ -1,4 +1,6 @@
 {
+  "buildCommand": "true",
+  "installCommand": "npm install --omit=dev",
   "outputDirectory": "public",
   "framework": null,
   "functions": {
