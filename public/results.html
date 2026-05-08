@@ -5248,6 +5248,13 @@
     }
     setState(state);
     paintFromState(state);
+
+    // Catalog-pivot: auto-open Stage 3 if both flight + hotel are now selected
+    var hasFlight = !!(state.flight && state.flight.selected);
+    var hasHotel  = !!(state.hotel  && state.hotel.selected);
+    if (hasFlight && hasHotel) {
+      try { showStage3(); } catch (e) { console.error('[mix-v2] showStage3 after selectHotel failed:', e); }
+    }
   }
 
   // ─────────────────────────────────────────────────────────
