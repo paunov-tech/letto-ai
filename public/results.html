@@ -2826,6 +2826,71 @@
     color: var(--muted);
     font-size: 17px;
   }
+  /* Fallback when TP widget script is blocked (ad blocker, network) */
+  .tp-fallback {
+    padding: 36px 28px;
+    text-align: center;
+    background: var(--paper-warm);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    margin: 12px 0;
+  }
+  .tp-fallback__icon {
+    width: 44px; height: 44px; margin: 0 auto 14px;
+    border-radius: 50%;
+    background: rgba(124, 30, 41, 0.08);
+    color: var(--burgundy);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+  }
+  .tp-fallback__title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    line-height: 1.2;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  .tp-fallback__body {
+    font-family: 'Instrument Serif', serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink-mid);
+    max-width: 460px;
+    margin: 0 auto 22px;
+  }
+  .tp-fallback__actions {
+    display: flex; flex-direction: column; gap: 10px;
+    align-items: center;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+  .tp-fallback__cta {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 10px;
+    padding: 14px 24px;
+    border-radius: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    width: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .tp-fallback__cta--primary {
+    background: var(--ink); color: var(--paper);
+  }
+  .tp-fallback__cta--primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(10,13,17,0.18); }
+  .tp-fallback__cta--secondary {
+    background: transparent; color: var(--ink); border: 1px solid var(--line);
+  }
+  .tp-fallback__cta--secondary:hover { background: var(--paper); }
+  .tp-fallback__hint {
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
   /* When opened in iframe (modal), suppress chrome for compact display */
   body.in-iframe nav.main,
   body.in-iframe .announcement-bar,
@@ -3695,7 +3760,13 @@
     .mix-pane { display: none; min-height: 0; }
     .mix-pane.is-active { display: flex; }
     .mix-pane--flights .results-widget { min-height: 700px; }
-    .mix-stages__sub { display: none; }
+    /* On mobile, hide all sub-label variants regardless of state — title + circle alone convey progress */
+    .mix-stages__sub,
+    .mix-stages__step.is-done .mix-stages__sub--done,
+    .mix-stages__step.is-active .mix-stages__sub--active,
+    .mix-stages__step:not(.is-done):not(.is-active) .mix-stages__sub--waiting {
+      display: none !important;
+    }
   }
   @media (max-width: 600px) {
     .mix-page { padding: 14px 0 36px; }
@@ -5654,6 +5725,64 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
       }, true);
 
       console.log('[mix-v2] TP scraper · MutationObserver attached to #tpwl-tickets');
+    })();
+
+    // 3.6 TP widget watchdog · render fallback if widget hasn't loaded after 8s.
+    // Triggers when ad blockers (uBlock, Brave shields) block tpembars/tpwgts,
+    // or any network failure prevents TP main.js from rendering tickets.
+    (function tpWatchdog() {
+      var mount = document.getElementById('tpwl-tickets');
+      if (!mount) return;
+      function looksEmpty(el) {
+        // Empty (TP didn't render anything) OR contains only the loader pseudo
+        if (!el) return true;
+        if (el.children.length === 0) return true;
+        // TP usually inserts substantial DOM — if we have <50 chars of text, treat as empty
+        var txt = (el.textContent || '').trim();
+        return txt.length < 30;
+      }
+      setTimeout(function () {
+        if (!looksEmpty(mount)) return;
+        var p = readUrlParams();
+        var l = lang();
+        var hotelHref = (typeof buildHotellookUrl === 'function') ? buildHotellookUrl(p) : '#';
+        var destCity = iataToCityEn(p.dest) || p.dest || '';
+        // External flight search fallback: Aviasales/TravelPayouts direct
+        var tpFlightUrl = 'https://www.aviasales.com/search/' +
+          (p.origin || 'BEG') +
+          (p.depart || '').replace(/-/g, '').slice(2) +
+          (p.dest || 'ATH') +
+          (p.ret || '').replace(/-/g, '').slice(2) +
+          (p.adults || 1) +
+          '?marker=722287';
+        mount.innerHTML =
+          '<div class="tp-fallback" role="alert">' +
+            '<div class="tp-fallback__icon" aria-hidden="true">!</div>' +
+            '<h3 class="tp-fallback__title">' +
+              '<span data-en>Flight search couldn\'t load</span>' +
+              '<span data-sr>Pretraga letova nije se učitala</span>' +
+            '</h3>' +
+            '<p class="tp-fallback__body">' +
+              '<span data-en>An ad blocker or network filter is most likely blocking the search widget. You can disable it for letto.live, search flights externally, or continue building your Mix with the hotel side first.</span>' +
+              '<span data-sr>Ad blocker ili mrežni filter najverovatnije blokira widget. Možeš ga ugasiti za letto.live, potražiti letove direktno, ili nastaviti tako što prvo izabereš hotel.</span>' +
+            '</p>' +
+            '<div class="tp-fallback__actions">' +
+              '<a href="' + tpFlightUrl + '" target="_blank" rel="noopener" class="tp-fallback__cta tp-fallback__cta--primary">' +
+                '<span data-en>Search flights externally →</span>' +
+                '<span data-sr>Otvori pretragu letova →</span>' +
+              '</a>' +
+              '<a href="' + hotelHref + '" target="_blank" rel="noopener" class="tp-fallback__cta tp-fallback__cta--secondary" data-mix-handoff="hotel">' +
+                '<span data-en>Browse hotels for ' + (destCity || 'destination') + ' →</span>' +
+                '<span data-sr>Pregled hotela za ' + (destCity || 'destinaciju') + ' →</span>' +
+              '</a>' +
+            '</div>' +
+            '<div class="tp-fallback__hint">' +
+              '<span data-en>Tip · pause uBlock/Brave shields and refresh, the widget loads in ~2s.</span>' +
+              '<span data-sr>Savet · ugasi uBlock/Brave shields i osveži stranicu, widget se učitava za ~2s.</span>' +
+            '</div>' +
+          '</div>';
+        console.warn('[mix-v2] TP widget did not render in 8s — fallback UI shown');
+      }, 8000);
     })();
 
     // 4. Hotel handoff click → mark deeplinkOpened (analytics for Phase 5)
