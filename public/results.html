@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Travelpayouts affiliate tracking · TP whitelabel bundle 522391 (booking marker is 722287) — rewrites partner links -->
-<script>(function(){var s=document.createElement('script');s.async=1;s.src='https://tpembars.com/NTIyMzkx.js?t=522391';document.head.appendChild(s);})();</script>
-
 <title>Letto · Rezultati pretrage</title>
 <meta name="description" content="Letto rezultati pretrage — letovi i hoteli u realnom vremenu.">
 
@@ -2806,90 +2803,165 @@
       radial-gradient(ellipse 60% 50% at 15% 10%, rgba(161, 116, 51, 0.05) 0%, transparent 60%),
       linear-gradient(180deg, var(--paper) 0%, var(--paper-warm) 100%);
   }
-  .results-widget {
-    min-height: 600px;
+  /* ── Catalog packages list (Mix V2 left pane) ── */
+  .mix-packages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 240px;
+  }
+  .mix-packages[aria-busy="true"] .pkg-card { opacity: 0.5; pointer-events: none; }
+  .pkg-skeleton {
+    height: 116px;
+    background: linear-gradient(90deg, var(--paper-warm) 0%, var(--paper) 50%, var(--paper-warm) 100%);
+    background-size: 200% 100%;
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    animation: pkg-shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes pkg-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .pkg-card {
     background: var(--paper);
     border: 1px solid var(--line-soft);
-    border-radius: 14px;
-    padding: 12px;
-    box-shadow:
-      0 1px 3px rgba(10, 13, 17, 0.04),
-      0 16px 40px -12px rgba(10, 13, 17, 0.10);
+    border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
   }
-  .results-widget:empty::before {
-    content: "Učitavam pretragu…";
-    display: block;
-    padding: 80px 0;
-    text-align: center;
+  .pkg-card:hover {
+    border-color: var(--gold);
+    box-shadow: 0 8px 24px -8px rgba(161, 116, 51, 0.25);
+    transform: translateY(-1px);
+  }
+  .pkg-card:focus-visible {
+    outline: 2px solid var(--gold-deep);
+    outline-offset: 2px;
+  }
+  .pkg-card.is-selected {
+    border-color: var(--burgundy);
+    background: linear-gradient(180deg, var(--paper) 0%, rgba(124, 30, 41, 0.03) 100%);
+    box-shadow: 0 0 0 1px var(--burgundy);
+  }
+  .pkg-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .pkg-card__route {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    color: var(--ink-mid);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .pkg-card__airline {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .pkg-card__sep { color: var(--muted); }
+  .pkg-card__iata {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--gold-deep);
+    letter-spacing: 0.05em;
+  }
+  .pkg-card__price {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pkg-card__price-num {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .pkg-card__deal-badge {
+    background: var(--burgundy);
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 7px;
+    border-radius: 4px;
+    letter-spacing: -0.01em;
+  }
+  .pkg-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .pkg-card__dates {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
-    color: var(--muted);
-    font-size: 17px;
+    font-size: 15px;
+    color: var(--ink);
   }
-  /* Fallback when TP widget script is blocked (ad blocker, network) */
-  .tp-fallback {
-    padding: 36px 28px;
+  .pkg-card__details {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .pkg-card__time { color: var(--ink); font-weight: 500; }
+  .pkg-card__cta {
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line-soft);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold-deep);
+    text-align: right;
+  }
+  .pkg-card.is-selected .pkg-card__cta { color: var(--burgundy); }
+  .pkg-card__check { color: var(--burgundy); }
+  .pkg-empty,
+  .pkg-error {
+    padding: 48px 28px;
     text-align: center;
     background: var(--paper-warm);
     border: 1px solid var(--line-soft);
     border-radius: 12px;
-    margin: 12px 0;
   }
-  .tp-fallback__icon {
-    width: 44px; height: 44px; margin: 0 auto 14px;
-    border-radius: 50%;
-    background: rgba(124, 30, 41, 0.08);
-    color: var(--burgundy);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 22px;
-  }
-  .tp-fallback__title {
+  .pkg-empty h3 {
     font-family: 'Fraunces', serif;
     font-size: 22px;
-    line-height: 1.2;
     margin: 0 0 8px;
-    color: var(--ink);
   }
-  .tp-fallback__body {
+  .pkg-empty p {
     font-family: 'Instrument Serif', serif;
     font-size: 16px;
-    line-height: 1.5;
     color: var(--ink-mid);
-    max-width: 460px;
-    margin: 0 auto 22px;
+    line-height: 1.5;
+    margin: 0 auto 16px;
+    max-width: 420px;
   }
-  .tp-fallback__actions {
-    display: flex; flex-direction: column; gap: 10px;
-    align-items: center;
-    max-width: 360px;
-    margin: 0 auto;
-  }
-  .tp-fallback__cta {
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: 10px;
-    padding: 14px 24px;
+  .pkg-empty__cta {
+    display: inline-block;
+    padding: 12px 22px;
+    background: var(--ink);
+    color: var(--paper);
     border-radius: 8px;
     font-family: 'IBM Plex Sans', sans-serif;
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
-    width: 100%;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
-  .tp-fallback__cta--primary {
-    background: var(--ink); color: var(--paper);
-  }
-  .tp-fallback__cta--primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(10,13,17,0.18); }
-  .tp-fallback__cta--secondary {
-    background: transparent; color: var(--ink); border: 1px solid var(--line);
-  }
-  .tp-fallback__cta--secondary:hover { background: var(--paper); }
-  .tp-fallback__hint {
-    margin-top: 14px;
-    font-size: 12px;
-    color: var(--muted);
-    font-family: 'IBM Plex Sans', sans-serif;
+  .pkg-empty__cta:hover { background: var(--ink-soft); }
+  .pkg-error p {
+    font-family: 'Instrument Serif', serif;
+    color: var(--burgundy);
+    margin: 0;
   }
   /* When opened in iframe (modal), suppress chrome for compact display */
   body.in-iframe nav.main,
@@ -2899,7 +2971,8 @@
   body.in-iframe { padding-bottom: 0; }
   @media (max-width: 768px) {
     .results-page { padding: 18px 0 36px; }
-    .results-widget { padding: 6px; min-height: 700px; }
+    .pkg-card { padding: 14px 16px; }
+    .pkg-card__price-num { font-size: 24px; }
   }
 
   /* ═════════════════════════════════════════════════════════ */
@@ -3123,12 +3196,8 @@
     color: var(--muted);
   }
 
-  /* TP widget container — keep prior look but no extra border (the pane wraps it) */
-  .mix-pane--flights .results-widget {
-    background: transparent;
-    border: 0;
-    padding: 0;
-    box-shadow: none;
+  /* Flight pane container — keep prior look but no extra border (the pane wraps it) */
+  .mix-pane--flights .mix-packages {
     min-height: 540px;
   }
 
@@ -3759,7 +3828,7 @@
     }
     .mix-pane { display: none; min-height: 0; }
     .mix-pane.is-active { display: flex; }
-    .mix-pane--flights .results-widget { min-height: 700px; }
+    .mix-pane--flights .mix-packages { min-height: 240px; }
     /* On mobile, hide all sub-label variants regardless of state — title + circle alone convey progress */
     .mix-stages__sub,
     .mix-stages__step.is-done .mix-stages__sub--done,
@@ -3810,44 +3879,6 @@
 }
 </script>
 
-<!-- ═════════════════════════════════════════════════════════ -->
-<!-- HOTFIX-7 · TP buy button capture · PRE-DEFINED IN HEAD     -->
-<!-- TP white-label main.js is type=module async=1, evaluates   -->
-<!-- early. It checks window.tpwlBuyButtonClick during init     -->
-<!-- and remembers "no callback" if undefined. We MUST define   -->
-<!-- this function before the TP entrypoint script runs, which  -->
-<!-- means in <head> at page-parse time.                        -->
-<!-- ═════════════════════════════════════════════════════════ -->
-<script>
-window.tpwlBuyButtonClick = function () {
-  try {
-    var s = JSON.parse(localStorage.getItem('letto_mix_state_v2') || '{}');
-    s.flight = s.flight || { selected: null };
-    s.flight.bookingClicked = true;
-    s.flight.bookingClickedAt = Date.now();
-    s.flight.location = window.location.href;
-    var args = Array.prototype.slice.call(arguments);
-    if (args.length > 0) s.flight.detail = args;
-    // Hotfix-9 · T1: pick up DOM-scraped ticket data (airline, price, times,
-    // stops, bookingUrl) captured by the MutationObserver in the body. This
-    // is the only reliable source of flight detail since TP rarely passes
-    // it via this callback.
-    if (window.__lettoTpLastTicket) {
-      s.flight.scraped = window.__lettoTpLastTicket;
-    }
-    var now = Date.now();
-    s.meta = s.meta || { createdAt: now };
-    s.meta.updatedAt = now;
-    s.meta.expiresAt = now + (24 * 60 * 60 * 1000);
-    s.version = 2;
-    localStorage.setItem('letto_mix_state_v2', JSON.stringify(s));
-    console.log('[mix-v2] HOTFIX-7 · TP buy clicked · state saved', { args: args, scraped: !!s.flight.scraped, location: window.location.href });
-  } catch (e) {
-    console.error('[mix-v2] HOTFIX-7 · capture failed:', e);
-  }
-};
-console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
-</script>
 </head>
 <body class="lang-en">
 
@@ -4182,7 +4213,7 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     <!-- ───── 60/40 GRID (desktop) · single-column tabbed (mobile) ───── -->
     <div class="mix-grid">
 
-      <!-- LEFT PANE · flights (TP white-label widget — unchanged) -->
+      <!-- LEFT PANE · flights (catalog packages — Letto-curated matches for the route) -->
       <section class="mix-pane mix-pane--flights is-active"
                data-mix-pane="flights"
                role="tabpanel"
@@ -4195,7 +4226,7 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
             <span class="mix-pane__meta"  id="mix-flights-meta">—</span>
           </h2>
         </header>
-        <div id="tpwl-tickets" class="results-widget"></div>
+        <div id="mix-packages" class="mix-packages" aria-live="polite" aria-busy="true"></div>
       </section>
 
       <!-- RIGHT PANE · hotels (Phase 1: empty/loading; populated in Phase 2) -->
@@ -4362,16 +4393,6 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     </div>
   </div>
 </section>
-
-<script nowprocket data-noptimize="1" data-cfasync="false" data-wpfc-render="false" seraph-accel-crit="1" data-no-defer="1">
-  (function () {
-    var script = document.createElement("script");
-    script.async = 1;
-    script.type = "module";
-    script.src = "https://tpwgts.com/wl_web/main.js?wl_id=16836";
-    document.head.appendChild(script);
-  })();
-</script>
 
 <!-- IATA → city map (also used by index.html search combo) -->
 <script src="/js/destinations.js"></script>
@@ -4637,6 +4658,20 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     loadedFor: '',
     loadedAt: 0
   };
+
+  // ─────────────────────────────────────────────────────────
+  // Catalog-pivot (2026-05-08) · package list state
+  // Replaces TP whitelabel iframe — Mix V2 now matches against the
+  // letto_packages catalog (engine-curated routes with rich flight data).
+  // ─────────────────────────────────────────────────────────
+  var packagesState = {
+    raw: [],
+    loadedFor: '',
+    loadedAt: 0
+  };
+  function packagesKey(p) {
+    return [(p.origin || ''), (p.dest || ''), (p.depart || ''), (p.ret || '')].join('|');
+  }
 
   function searchParamsKey(p) {
     return [p.dest, p.depart, p.ret, p.adults, p.children].join('|');
@@ -4936,6 +4971,195 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
         console.error('[mix-v2] loadHotels · fetch failed · ' + name + ': ' + msg + ' (after ' + elapsed + 'ms)');
         renderError();
       });
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Catalog packages: fetch, render, select
+  // ─────────────────────────────────────────────────────────
+  function loadPackages() {
+    var p = readUrlParams();
+    var mount = document.getElementById('mix-packages');
+    if (!mount) return;
+
+    var key = packagesKey(p);
+    if (packagesState.loadedFor === key && packagesState.raw.length > 0) {
+      paintPackages();
+      return;
+    }
+    mount.setAttribute('aria-busy', 'true');
+    mount.innerHTML = '<div class="pkg-skeleton"></div><div class="pkg-skeleton"></div><div class="pkg-skeleton"></div>';
+
+    var qs = new URLSearchParams();
+    if (p.origin)  qs.set('origin', p.origin);
+    if (p.dest)    qs.set('dest', p.dest);
+    if (p.depart)  qs.set('from', p.depart);
+    if (p.ret)     qs.set('to', p.ret);
+    if (p.adults)  qs.set('pax', String((p.adults || 0) + (p.children || 0)));
+    qs.set('limit', '20');
+    var url = '/api/packages?' + qs.toString();
+
+    var startedAt = Date.now();
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var arr = (data && Array.isArray(data.packages)) ? data.packages : [];
+        console.log('[mix-v2] loadPackages · ' + arr.length + ' matches in ' + (Date.now() - startedAt) + 'ms · mode=' + (data.mode || '?'));
+        packagesState.raw = arr;
+        packagesState.loadedFor = key;
+        packagesState.loadedAt = Date.now();
+        paintPackages();
+      })
+      .catch(function (e) {
+        console.error('[mix-v2] loadPackages failed:', e.message);
+        mount.setAttribute('aria-busy', 'false');
+        mount.innerHTML = '<div class="pkg-error">' +
+          '<p data-en>Couldn\'t load matching packages. Refresh and try again.</p>' +
+          '<p data-sr>Greška pri učitavanju paketa. Osveži pa probaj ponovo.</p>' +
+        '</div>';
+      });
+  }
+
+  function paintPackages() {
+    var mount = document.getElementById('mix-packages');
+    if (!mount) return;
+    mount.setAttribute('aria-busy', 'false');
+
+    var p = readUrlParams();
+    var l = lang();
+    var pax = (p.adults || 0) + (p.children || 0);
+    if (!pax) pax = 1;
+
+    if (!packagesState.raw.length) {
+      var destCity = iataToCityEn(p.dest) || p.dest || '';
+      mount.innerHTML = '<div class="pkg-empty">' +
+        '<h3 data-en>No matching packages</h3>' +
+        '<h3 data-sr>Nema paketa za ovu rutu</h3>' +
+        '<p data-en>Our engine hasn\'t curated a flight + hotel mix for ' + escapeHtml(destCity || 'this route') + ' on these dates yet. Check today\'s top deals or try different dates.</p>' +
+        '<p data-sr>Naš engine još uvek nije pripremio paket za ' + escapeHtml(destCity || 'ovu rutu') + ' u ovim datumima. Pogledaj današnje top deal-ove ili izaberi druge datume.</p>' +
+        '<a class="pkg-empty__cta" href="/#deals">' +
+          '<span data-en>See today\'s deals →</span>' +
+          '<span data-sr>Vidi današnje deal-ove →</span>' +
+        '</a>' +
+      '</div>';
+      return;
+    }
+
+    var state = getState();
+    var selectedId = state && state.flight && state.flight.selected && state.flight.selected.pkgId;
+
+    var html = '';
+    for (var i = 0; i < packagesState.raw.length; i++) {
+      var pkg = packagesState.raw[i];
+      var fl = pkg.flight || {};
+      var dest = pkg.destination || {};
+      var origin = pkg.origin || {};
+      var dates = pkg.dates || {};
+      var deal = pkg.deal || {};
+
+      var ratio = parseFloat(deal.flightDealRatio);
+      var pctBelow = (ratio > 0 && ratio < 1) ? Math.round((1 - ratio) * 100) : 0;
+      var dealBadge = pctBelow >= 20
+        ? '<span class="pkg-card__deal-badge">−' + pctBelow + '%</span>'
+        : '';
+
+      var stopsLabel = '';
+      var stopsNum = parseInt(fl.stops, 10);
+      if (stopsNum === 0) stopsLabel = (l === 'en') ? 'non-stop' : 'direktan';
+      else if (stopsNum === 1) stopsLabel = (l === 'en') ? '1 stop' : '1 presedanje';
+      else if (stopsNum > 1) stopsLabel = stopsNum + (l === 'en' ? ' stops' : ' presedanja');
+
+      var dateRange = fmtDateRange(dates.departure, dates.return, l);
+      var nights = dates.nights || 0;
+      var nightsLabel = nights ? (nights + ' ' + (l === 'en' ? (nights === 1 ? 'night' : 'nights') : 'noći')) : '';
+
+      var price = Math.round(fl.totalPrice || 0);
+      var isSelected = selectedId === pkg.id;
+
+      html += '<article class="pkg-card' + (isSelected ? ' is-selected' : '') + '" data-mix-pkg-id="' + escapeHtml(pkg.id) + '" tabindex="0" role="button" aria-pressed="' + isSelected + '">' +
+        '<div class="pkg-card__head">' +
+          '<div class="pkg-card__route">' +
+            '<span class="pkg-card__airline">' + escapeHtml(fl.airline || '?') + (fl.flightNumber ? ' ' + escapeHtml(fl.flightNumber) : '') + '</span>' +
+            '<span class="pkg-card__sep" aria-hidden="true">·</span>' +
+            '<span class="pkg-card__iata">' + escapeHtml((origin.code || '') + ' → ' + (dest.code || '')) + '</span>' +
+          '</div>' +
+          '<div class="pkg-card__price">' +
+            '<span class="pkg-card__price-num">€' + price + '</span>' +
+            dealBadge +
+          '</div>' +
+        '</div>' +
+        '<div class="pkg-card__body">' +
+          '<div class="pkg-card__dates">' + escapeHtml(dateRange) + (nightsLabel ? ' · ' + escapeHtml(nightsLabel) : '') + '</div>' +
+          '<div class="pkg-card__details">' +
+            (fl.departureTime ? '<span class="pkg-card__time">' + escapeHtml(fl.departureTime) + '</span> · ' : '') +
+            (fl.duration ? '<span>' + escapeHtml(fl.duration) + '</span> · ' : '') +
+            (stopsLabel ? '<span>' + stopsLabel + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="pkg-card__cta">' +
+          (isSelected
+            ? '<span class="pkg-card__check"><span data-en>Selected</span><span data-sr>Izabran</span> ✓</span>'
+            : '<span><span data-en>Choose this flight</span><span data-sr>Izaberi ovaj let</span> →</span>'
+          ) +
+        '</div>' +
+      '</article>';
+    }
+
+    mount.innerHTML = html;
+  }
+
+  // Click on a package card → set state.flight.selected with rich shape
+  function selectPackage(pkgId) {
+    if (!pkgId) return;
+    var pkg = packagesState.raw.find(function (x) { return x.id === pkgId; });
+    if (!pkg) {
+      console.warn('[mix-v2] selectPackage · package not in state · id=' + pkgId);
+      return;
+    }
+    var fl = pkg.flight || {};
+    var origin = pkg.origin || {};
+    var dest = pkg.destination || {};
+    var dates = pkg.dates || {};
+
+    var flight = {
+      airline:        fl.airline || '',
+      flightNumber:   fl.flightNumber || '',
+      departureTime:  fl.departureTime || '',
+      duration:       fl.duration || '',
+      stops:          fl.stops || 0,
+      origin:         origin.code || '',
+      dest:           dest.code || '',
+      depart:         dates.departure || '',
+      ret:            dates.return || '',
+      nights:         dates.nights || 0,
+      totalPrice:     fl.totalPrice || 0,
+      priceNum:       fl.totalPrice || 0,
+      currency:       (pkg.pricing && pkg.pricing.currency) || 'EUR',
+      bookingUrl:     fl.bookingUrl || '',
+      bookingPartner: fl.bookingPartner || '',
+      pkgId:          pkg.id,
+      capturedAt:     Date.now()
+    };
+
+    var state = getState();
+    if (!state) state = newState();
+    state.flight.selected = flight;
+    // bookingClicked stays false — paywall gates the actual booking
+    setState(state);
+    paintFromState(state);
+
+    // Auto-open Stage 3 if both flight + hotel are now set
+    var hasHotel = !!(state.hotel && state.hotel.selected);
+    if (hasHotel) {
+      try { showStage3(); } catch (e) { console.error('[mix-v2] showStage3 after selectPackage failed:', e); }
+    } else {
+      // Nudge user to pick a hotel — show toast / scroll on mobile
+      if (typeof showToast === 'function') {
+        showToast(lang() === 'en' ? 'Flight selected · now pick a hotel →' : 'Let izabran · sad izaberi hotel →');
+      }
+    }
   }
 
   function wireHotelFilters() {
@@ -5343,91 +5567,75 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     var children = (state.searchParams && state.searchParams.children) || p.children || 0;
     var pax = adults + children;
 
-    // Hotfix-9 (Honest UX · Pristup A): TP whitelabel widget never passes
-    // ticket detail to JS callbacks. T1 (2026-05-08): MutationObserver-based
-    // DOM scraper now captures flight detail from the rendered ticket card
-    // BEFORE the buy click — preferred source for airline/price/times.
-    // Priority: state.flight.selected (rich · rare) → state.flight.scraped
-    // (DOM-scraped · normal case) → URL-param fallback.
+    // Catalog-pivot (2026-05-08): state.flight.selected is now populated by
+    // selectPackage() from a curated catalog package — always rich (airline,
+    // flightNumber, departureTime, duration, stops, totalPrice, bookingUrl,
+    // bookingPartner). No more TP iframe scraping fallback.
     var fSel = state.flight && state.flight.selected;
-    var fScr = state.flight && state.flight.scraped;
-    var fBookClicked = !!(state.flight && state.flight.bookingClicked);
-    var f = fSel || fScr || (fBookClicked ? { __minimal: true, location: state.flight.location } : null);
     var h = state.hotel  && state.hotel.selected;
-    var bookingClickedOnly = fBookClicked && !fSel && !fScr;
 
     // Flight section
     var fDesc = $('final-flight-desc');
     var fPrice = $('final-flight-price');
     var fBtn = $('final-book-flight');
     var fItem = fBtn ? fBtn.closest('.mix-final__item') : null;
-    if (fDesc && f) {
-      var origin = (fSel && fSel.origin) || p.origin || '';
-      var dest   = (fSel && fSel.dest)   || p.dest   || '';
-      var depart = (fSel && fSel.depart) || p.depart || '';
-      var ret    = (fSel && fSel.ret)    || p.ret    || '';
-      var airlineName = (fSel && fSel.airline) || (fScr && fScr.airline) || '';
-      var timesStr = '';
-      if (fScr && Array.isArray(fScr.times) && fScr.times.length >= 2) {
-        // Outbound depart → arrive (first pair); if 4 entries, also show return pair
-        timesStr = fScr.times[0] + '–' + fScr.times[1];
-        if (fScr.times.length >= 4) timesStr += ' · ' + fScr.times[2] + '–' + fScr.times[3];
-      }
-      var stopsStr = (fScr && fScr.stops) ? fScr.stops : '';
+
+    // Strip any stale post-buy note from the previous TP-era flow
+    var fNote = fItem ? fItem.querySelector('.mix-final__post-buy-note') : null;
+    if (fNote && fNote.parentNode) fNote.parentNode.removeChild(fNote);
+
+    if (fDesc && fSel) {
+      var stopsStr = '';
+      var stopsNum = parseInt(fSel.stops, 10);
+      if (stopsNum === 0) stopsStr = (l === 'en') ? 'non-stop' : 'direktan';
+      else if (stopsNum === 1) stopsStr = (l === 'en') ? '1 stop' : '1 presedanje';
+      else if (stopsNum > 1) stopsStr = stopsNum + (l === 'en' ? ' stops' : ' presedanja');
+
+      var airlineLine = fSel.airline + (fSel.flightNumber ? ' ' + fSel.flightNumber : '');
       var fParts = [
-        airlineName || (l === 'en' ? 'Flight' : 'Let'),
-        origin + ' → ' + dest,
-        fmtDateRange(depart, ret, l),
-        timesStr,
+        airlineLine || (l === 'en' ? 'Flight' : 'Let'),
+        fSel.origin + ' → ' + fSel.dest,
+        fmtDateRange(fSel.depart || p.depart, fSel.ret || p.ret, l),
+        fSel.departureTime ? (fSel.departureTime + (fSel.duration ? ' · ' + fSel.duration : '')) : '',
         stopsStr,
         paxLabel(adults, children, l)
       ].filter(Boolean);
       fDesc.textContent = fParts.join(' · ');
+    } else if (fDesc) {
+      fDesc.textContent = (l === 'en' ? 'No flight selected — pick from the list' : 'Nije izabran let — izaberi iz liste');
     }
-    if (fPrice && f) {
-      var rawPrice = (fSel && (fSel.priceNum || fSel.price)) || (fScr && (fScr.priceNum || fScr.price));
-      var rawPriceNum = (fSel && fSel.priceNum) || (fScr && fScr.priceNum) || 0;
-      if (rawPriceNum > 0) {
-        var fPerson = rawPriceNum;
-        var fTotal  = fPerson * adults;
-        fPrice.textContent = '€' + fPerson + ' × ' + adults + ' = €' + fTotal;
-        fPrice.classList.remove('mix-final__item-price--soft');
-      } else if (rawPrice) {
-        fPrice.textContent = rawPrice;
-        fPrice.classList.remove('mix-final__item-price--soft');
-      } else {
-        // bookingClicked-only without scraped data — honest UX: don't fake price
-        fPrice.textContent = (l === 'en')
-          ? 'Booking started at partner'
-          : 'Rezervacija započeta kod partnera';
-        fPrice.classList.add('mix-final__item-price--soft');
-      }
+
+    if (fPrice && fSel && fSel.totalPrice > 0) {
+      // totalPrice from catalog is per-package (already covers travelers).
+      // We display per-pax × pax and total to match the hotel format.
+      var perPax = Math.round(fSel.totalPrice / Math.max(1, adults));
+      var fTotal = Math.round(fSel.totalPrice);
+      fPrice.textContent = '€' + perPax + ' × ' + adults + ' = €' + fTotal;
+      fPrice.classList.remove('mix-final__item-price--soft');
+    } else if (fPrice) {
+      fPrice.textContent = '—';
+      fPrice.classList.add('mix-final__item-price--soft');
     }
-    // CTA visibility: hide "Kupi let →" if user already clicked Buy at TP
-    // (partner tab is already open; a second "book flight" would loop).
-    var fNote = fItem ? fItem.querySelector('.mix-final__post-buy-note') : null;
+
+    // Flight CTA — paywall reveals partner link only when unlocked
     if (fBtn) {
-      if (bookingClickedOnly) {
-        fBtn.style.display = 'none';
-        // Inject a "post-buy" note in place of the button (idempotent — only once)
-        if (fItem && !fNote) {
-          var note = document.createElement('p');
-          note.className = 'mix-final__post-buy-note';
-          note.innerHTML =
-            '<span data-en>Opened in a new tab · check the partner tab</span>' +
-            '<span data-sr>Otvoreno u novom tabu · proveri partner</span>';
-          fBtn.parentNode.insertBefore(note, fBtn.nextSibling);
+      var unlocked = document.body.classList.contains('letto-premium') ||
+                     document.body.classList.contains('letto-mix-unlocked');
+      if (fSel && fSel.bookingUrl) {
+        fBtn.removeAttribute('disabled');
+        fBtn.setAttribute('data-mix-book-href', fSel.bookingUrl);
+        // Visual hint: locked state shows a lock icon · unlocked shows "Book → partner"
+        var fBtnEn = fBtn.querySelector('[data-en]');
+        var fBtnSr = fBtn.querySelector('[data-sr]');
+        if (unlocked) {
+          if (fBtnEn) fBtnEn.textContent = 'Open ' + (fSel.bookingPartner || 'partner') + ' →';
+          if (fBtnSr) fBtnSr.textContent = 'Otvori ' + (fSel.bookingPartner || 'partnera') + ' →';
+        } else {
+          if (fBtnEn) fBtnEn.textContent = '🔒 Unlock to book';
+          if (fBtnSr) fBtnSr.textContent = '🔒 Otključaj za rezervaciju';
         }
       } else {
-        fBtn.style.display = '';
-        if (fNote && fNote.parentNode) fNote.parentNode.removeChild(fNote);
-        var bookingHref = (fSel && fSel.bookingUrl) || '';
-        if (bookingHref) {
-          fBtn.removeAttribute('disabled');
-          fBtn.setAttribute('data-mix-book-href', bookingHref);
-        } else {
-          fBtn.setAttribute('disabled', 'disabled');
-        }
+        fBtn.setAttribute('disabled', 'disabled');
       }
     }
 
@@ -5452,31 +5660,20 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     if (hNameEn && h) hNameEn.textContent = h.name;
     if (hNameSr && h) hNameSr.textContent = h.name;
 
-    // Total — Hotfix-9 honest UX: "od €X" prefix when flight price unknown
+    // Total — catalog flight totalPrice (per-package, already covers travelers)
+    // + hotel priceTotal. Both are direct numbers; no scaling needed.
     var totalValue = $('final-total-value');
     var totalMeta  = $('final-total-meta');
-    var flightTotal = (fSel && fSel.priceNum) ? fSel.priceNum * adults : 0;
-    var hotelTotal  = h ? (h.priceTotal || 0) : 0;
+    var flightTotal = (fSel && fSel.totalPrice) ? Math.round(fSel.totalPrice) : 0;
+    var hotelTotal  = h ? Math.round(h.priceTotal || 0) : 0;
     var grand = flightTotal + hotelTotal;
-    var flightPriceUnknown = fBookClicked && !fSel;
     if (totalValue) {
-      if (grand <= 0) {
-        totalValue.textContent = '—';
-      } else if (flightPriceUnknown) {
-        // Hotel price known, flight price unknown → "od €138"
-        totalValue.textContent = (l === 'en' ? 'from €' : 'od €') + hotelTotal;
-      } else {
-        totalValue.textContent = '€' + grand;
-      }
+      totalValue.textContent = grand > 0 ? ('€' + grand) : '—';
     }
     if (totalMeta) {
-      var paxPart = (l === 'en')
+      totalMeta.textContent = (l === 'en')
         ? ('for ' + pax + (pax === 1 ? ' person' : ' people') + ' · ' + nights + (nights === 1 ? ' night' : ' nights'))
         : ('za ' + adults + ' osobe · ' + nights + ' noći');
-      var partnerNote = flightPriceUnknown
-        ? (l === 'en' ? ' · flight price as shown at partner' : ' · cena leta vidi kod partnera')
-        : '';
-      totalMeta.textContent = paxPart + partnerNote;
     }
   }
 
@@ -5501,16 +5698,24 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     state.flight = state.flight || {};
     var fSel = state.flight.selected;
     var l = lang();
-    // Hotfix-9 (G2): if user already clicked Buy at TP (bookingClicked but
-    // no rich selected detail), state.flight.location is OUR letto.live URL
-    // — opening it would loop the modal back to /results. Show a toast
-    // pointing them to the already-open partner tab instead.
-    if (state.flight.bookingClicked && !fSel) {
-      showToast(l === 'en'
-        ? 'Flight booking already started in another tab — check the partner tab.'
-        : 'Rezervacija leta je već otvorena u drugom tabu · proveri tab', 5000);
+
+    // Catalog-pivot: bookingUrl is in fSel directly (set by selectPackage).
+    // Paywall gates the navigation: only premium / aimix-unlocked users can
+    // open the partner link. Server-validated body class is the source of truth.
+    var unlocked = document.body.classList.contains('letto-premium') ||
+                   document.body.classList.contains('letto-mix-unlocked');
+    if (!unlocked) {
+      // Trigger Stripe AI Mix unlock (€7.99) — same as paywall card CTA
+      if (typeof window.lettoCheckout === 'function') {
+        window.lettoCheckout('aimix');
+      } else {
+        window.alert(l === 'en'
+          ? 'Unlock the Mix for €7.99 to open the partner booking link.'
+          : 'Otključaj Mix za €7.99 da otvoriš partnerski link za rezervaciju.');
+      }
       return;
     }
+
     var url = (fSel && fSel.bookingUrl) || '';
     if (!url) {
       window.alert(l === 'en' ? 'No flight booking URL captured. Re-pick the flight from the list.'
@@ -5521,9 +5726,9 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     state.flight.bookingClickedAt = Date.now();
     setState(state);
     showToast(l === 'en'
-      ? 'Mix saved 24h. Come back to finish if needed.'
-      : 'Mix je sačuvan 24h. Vrati se da završiš ako treba.', 5000);
-    setTimeout(function () { window.open(url, '_blank', 'noopener'); }, 1200);
+      ? 'Opening ' + (fSel.bookingPartner || 'partner') + ' · book directly there.'
+      : 'Otvaram ' + (fSel.bookingPartner || 'partnera') + ' · rezerviši direktno tamo.', 4000);
+    window.open(url, '_blank', 'noopener');
     var bothBooked = !!(state.flight.bookingClicked && state.hotel.bookingClicked);
     updateStages(true, hotelIsSet(state), bothBooked);
   }
@@ -5567,11 +5772,18 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
 
   // ── Event wiring (Phase 3) ──
   function wireFlightCapture() {
-    // Hotfix-7: window.tpwlBuyButtonClick is now defined INLINE IN <HEAD>
-    // (page-parse time) — see top of results.html. Re-defining it here was
-    // a race-loss because TP main.js is type=module async=1 and evaluates
-    // before init() runs. The head-level definition guarantees TP sees it.
-    // Reset clicks below.
+    // Catalog-pivot (2026-05-08): TP whitelabel iframe was dropped because it
+    // never fires window.tpwlBuyButtonClick back to the parent. Mix V2 now
+    // queries /api/packages?origin=&dest=&from=&to= and renders matched
+    // catalog packages directly. selectPackage() below sets state.flight.selected
+    // from the chosen package.
+    document.addEventListener('click', function (e) {
+      if (!e.target || !e.target.closest) return;
+      var card = e.target.closest('[data-mix-pkg-id]');
+      if (!card) return;
+      e.preventDefault();
+      selectPackage(card.getAttribute('data-mix-pkg-id'));
+    });
     document.addEventListener('click', function (e) {
       if (!e.target || !e.target.closest) return;
       // data-mix-restart → reset flight only (legacy "Promeni let" path)
@@ -5620,170 +5832,6 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
         return;
       }
     });
-
-    // 3.5 TP iframe DOM scraper · MutationObserver on #tpwl-tickets.
-    //
-    // The TP widget renders flight tickets into a parent-DOM mount. We don't
-    // get rich detail from window.tpwlBuyButtonClick (TP only signals "buy
-    // clicked"), so we observe the ticket DOM as it renders and capture
-    // {airline, price, times, bookingUrl} per card. On click we identify
-    // which card was clicked and stash the data in window.__lettoTpLastTicket
-    // so the head-level tpwlBuyButtonClick can read it and persist into
-    // state.flight.scraped before partner navigation.
-    (function wireTpScraper() {
-      var mount = document.getElementById('tpwl-tickets');
-      if (!mount) return;
-      window.__lettoTpScrapedByEl = window.__lettoTpScrapedByEl || new WeakMap();
-
-      function extractTicket(el) {
-        if (!el || el.nodeType !== 1) return null;
-        var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (text.length < 20) return null;
-        // Price (€XX, EUR XX, etc.) — first match
-        var pm = text.match(/(€|EUR|RSD|USD|\$)\s?([0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]+)?)/);
-        // Airline from <img alt> (TP uses logo imgs with alt = carrier name)
-        var img = el.querySelector('img[alt]');
-        var airline = (img && img.alt && img.alt.length < 60) ? img.alt.trim() : '';
-        // Times (HH:MM patterns) — first 4 (out depart, out arrive, ret depart, ret arrive)
-        var times = (text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g) || []).slice(0, 4);
-        // Stops · "direktan" / "direct" / "1 presedanje" / "non-stop"
-        var stopsMatch = text.match(/\b(direkt(?:no|an)?|non[- ]?stop|1 presed|1 stop|2 stop)\b/i);
-        var stops = stopsMatch ? stopsMatch[0].toLowerCase() : '';
-        // bookingUrl from any <a href> inside
-        var anchor = el.querySelector('a[href]');
-        var bookingUrl = (anchor && /^https?:/i.test(anchor.href)) ? anchor.href : '';
-        // Skip if we have NO useful info
-        if (!pm && !airline) return null;
-        return {
-          airline: airline,
-          price: pm ? pm[0] : '',
-          priceNum: pm ? parseFloat(pm[2].replace(/[\s.]/g, '').replace(',', '.')) : 0,
-          currency: pm ? (pm[1] === '€' ? 'EUR' : pm[1]) : 'EUR',
-          times: times,
-          stops: stops,
-          bookingUrl: bookingUrl,
-          scrapedAt: Date.now()
-        };
-      }
-
-      function scanNode(root) {
-        if (!root || root.nodeType !== 1) return;
-        // Heuristic: "ticket card" = element whose class contains "ticket" or "result-item",
-        // OR <li>/<article> with visible price text. Walk top-down, take first matching layer.
-        var candidates = root.querySelectorAll(
-          '[class*="ticket" i], [class*="result-item" i], [class*="result_item" i], li, article'
-        );
-        for (var i = 0; i < candidates.length; i++) {
-          var c = candidates[i];
-          if (window.__lettoTpScrapedByEl.has(c)) continue;
-          var t = extractTicket(c);
-          if (t) {
-            window.__lettoTpScrapedByEl.set(c, t);
-          }
-        }
-      }
-
-      // Initial pass + observe future changes
-      scanNode(mount);
-      var obs = new MutationObserver(function (muts) {
-        for (var i = 0; i < muts.length; i++) {
-          var m = muts[i];
-          for (var j = 0; j < m.addedNodes.length; j++) {
-            var n = m.addedNodes[j];
-            if (n && n.nodeType === 1) scanNode(n);
-          }
-        }
-      });
-      try { obs.observe(mount, { childList: true, subtree: true }); } catch (e) {}
-
-      // Capture-phase click listener — fires BEFORE TP's own handler (which
-      // ultimately calls window.tpwlBuyButtonClick). Walks up from the
-      // clicked element to find the enclosing ticket card and stash its data
-      // on window.__lettoTpLastTicket for the head-level handler to read.
-      mount.addEventListener('click', function (e) {
-        if (!e.target || !e.target.closest) return;
-        var card = e.target.closest(
-          '[class*="ticket" i], [class*="result-item" i], [class*="result_item" i], li, article'
-        );
-        // Walk up multiple ancestor candidates and pick the first that has scraped data
-        while (card && !window.__lettoTpScrapedByEl.has(card)) {
-          card = card.parentElement && card.parentElement.closest(
-            '[class*="ticket" i], [class*="result-item" i], [class*="result_item" i], li, article'
-          );
-        }
-        if (card && window.__lettoTpScrapedByEl.has(card)) {
-          window.__lettoTpLastTicket = window.__lettoTpScrapedByEl.get(card);
-          console.log('[mix-v2] TP scraper · captured ticket for click:', window.__lettoTpLastTicket);
-        } else {
-          // Last-ditch: try direct extract on whatever was clicked
-          var fallback = extractTicket(e.target.closest('article, li, div, section') || e.target.parentElement);
-          if (fallback) {
-            window.__lettoTpLastTicket = fallback;
-            console.log('[mix-v2] TP scraper · fallback ticket for click:', fallback);
-          }
-        }
-      }, true);
-
-      console.log('[mix-v2] TP scraper · MutationObserver attached to #tpwl-tickets');
-    })();
-
-    // 3.6 TP widget watchdog · render fallback if widget hasn't loaded after 8s.
-    // Triggers when ad blockers (uBlock, Brave shields) block tpembars/tpwgts,
-    // or any network failure prevents TP main.js from rendering tickets.
-    (function tpWatchdog() {
-      var mount = document.getElementById('tpwl-tickets');
-      if (!mount) return;
-      function looksEmpty(el) {
-        // Empty (TP didn't render anything) OR contains only the loader pseudo
-        if (!el) return true;
-        if (el.children.length === 0) return true;
-        // TP usually inserts substantial DOM — if we have <50 chars of text, treat as empty
-        var txt = (el.textContent || '').trim();
-        return txt.length < 30;
-      }
-      setTimeout(function () {
-        if (!looksEmpty(mount)) return;
-        var p = readUrlParams();
-        var l = lang();
-        var hotelHref = (typeof buildHotellookUrl === 'function') ? buildHotellookUrl(p) : '#';
-        var destCity = iataToCityEn(p.dest) || p.dest || '';
-        // External flight search fallback: Aviasales/TravelPayouts direct
-        var tpFlightUrl = 'https://www.aviasales.com/search/' +
-          (p.origin || 'BEG') +
-          (p.depart || '').replace(/-/g, '').slice(2) +
-          (p.dest || 'ATH') +
-          (p.ret || '').replace(/-/g, '').slice(2) +
-          (p.adults || 1) +
-          '?marker=722287';
-        mount.innerHTML =
-          '<div class="tp-fallback" role="alert">' +
-            '<div class="tp-fallback__icon" aria-hidden="true">!</div>' +
-            '<h3 class="tp-fallback__title">' +
-              '<span data-en>Flight search couldn\'t load</span>' +
-              '<span data-sr>Pretraga letova nije se učitala</span>' +
-            '</h3>' +
-            '<p class="tp-fallback__body">' +
-              '<span data-en>An ad blocker or network filter is most likely blocking the search widget. You can disable it for letto.live, search flights externally, or continue building your Mix with the hotel side first.</span>' +
-              '<span data-sr>Ad blocker ili mrežni filter najverovatnije blokira widget. Možeš ga ugasiti za letto.live, potražiti letove direktno, ili nastaviti tako što prvo izabereš hotel.</span>' +
-            '</p>' +
-            '<div class="tp-fallback__actions">' +
-              '<a href="' + tpFlightUrl + '" target="_blank" rel="noopener" class="tp-fallback__cta tp-fallback__cta--primary">' +
-                '<span data-en>Search flights externally →</span>' +
-                '<span data-sr>Otvori pretragu letova →</span>' +
-              '</a>' +
-              '<a href="' + hotelHref + '" target="_blank" rel="noopener" class="tp-fallback__cta tp-fallback__cta--secondary" data-mix-handoff="hotel">' +
-                '<span data-en>Browse hotels for ' + (destCity || 'destination') + ' →</span>' +
-                '<span data-sr>Pregled hotela za ' + (destCity || 'destinaciju') + ' →</span>' +
-              '</a>' +
-            '</div>' +
-            '<div class="tp-fallback__hint">' +
-              '<span data-en>Tip · pause uBlock/Brave shields and refresh, the widget loads in ~2s.</span>' +
-              '<span data-sr>Savet · ugasi uBlock/Brave shields i osveži stranicu, widget se učitava za ~2s.</span>' +
-            '</div>' +
-          '</div>';
-        console.warn('[mix-v2] TP widget did not render in 8s — fallback UI shown');
-      }, 8000);
-    })();
 
     // 4. Hotel handoff click → mark deeplinkOpened (analytics for Phase 5)
     document.addEventListener('click', function (e) {
@@ -5877,6 +5925,9 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
       loadHotels();
       console.log('[mix-v2] init · loadHotels invoked');
 
+      loadPackages();
+      console.log('[mix-v2] init · loadPackages invoked');
+
       wireFlightCapture();
 
       // Hotfix-5 · Part 3: detect tab returning from partner site (Buy click
@@ -5929,6 +5980,10 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     paintHotels: paintHotels,
     loadHotels: loadHotels,
     selectHotel: selectHotel,
+    loadPackages: loadPackages,
+    paintPackages: paintPackages,
+    selectPackage: selectPackage,
+    packagesState: packagesState,
     showStage3: showStage3,
     hideStage3: hideStage3,
     bookFlight: bookFlight,
