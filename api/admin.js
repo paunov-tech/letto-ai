@@ -173,6 +173,43 @@ export default async function handler(req, res) {
       });
     }
 
+    // SUBSCRIBERS — list letto_subscribers with paywall state for "what happened after the click" view
+    if (req.method === 'GET' && action === 'subscribers') {
+      const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+      // Fetch all + sort in-memory (avoids needing a composite index on multiple optional fields).
+      const snap = await db.collection('letto_subscribers').limit(limit).get();
+      const rows = snap.docs.map(d => {
+        const x = d.data();
+        const lastActivity = x.aimixUnlockedAt || x.premiumSince || x.lastPaidAt || x.createdAt || null;
+        return {
+          email: x.email || d.id,
+          tier: x.tier || 'free',
+          subscribed: x.subscribed === true,
+          aimixUnlocked: x.aimixUnlocked === true,
+          aimixUnlockedAt: x.aimixUnlockedAt || null,
+          premiumSince: x.premiumSince || null,
+          premiumEndedAt: x.premiumEndedAt || null,
+          stripeCustomerId: x.stripeCustomerId || null,
+          stripeSubscriptionId: x.stripeSubscriptionId || null,
+          telegramInviteLink: x.telegramInviteLink ? '<set>' : null,
+          source: x.source || null,
+          createdAt: x.createdAt || null,
+          lastActivity
+        };
+      });
+      // Sort by lastActivity DESC (most recent first)
+      rows.sort((a, b) => (b.lastActivity || '').localeCompare(a.lastActivity || ''));
+
+      const counts = {
+        total: rows.length,
+        premium: rows.filter(r => r.tier === 'premium' && r.subscribed).length,
+        aimixUnlocked: rows.filter(r => r.aimixUnlocked).length,
+        free: rows.filter(r => r.tier === 'free' && !r.aimixUnlocked).length,
+        cancelled: rows.filter(r => !!r.premiumEndedAt && r.tier === 'free').length
+      };
+      return res.status(200).json({ subscribers: rows, counts });
+    }
+
     return res.status(400).json({ error: 'Invalid action or method' });
   } catch (err) {
     console.error('Admin API error:', err);

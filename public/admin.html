@@ -180,6 +180,14 @@
     </div>
 
     <div id="packages" class="pkg-list"></div>
+
+    <h1 style="margin-top: 56px;">Pretplatnici · <em>posle paywall-a</em></h1>
+    <p style="color: var(--muted); margin-bottom: 14px; font-size: 13px;">
+      Šta se desilo posle klika na CTA. Stripe webhook upisuje u <code>letto_subscribers</code>.
+      Sortovano po poslednjoj aktivnosti (DESC).
+    </p>
+    <div class="stats" id="subs-stats" style="margin-bottom: 18px;"></div>
+    <div id="subscribers-table"></div>
   </div>
 </div>
 
@@ -228,7 +236,75 @@ function enterApp() {
 }
 
 async function loadAll() {
-  await Promise.all([loadStats(), loadPackages()]);
+  await Promise.all([loadStats(), loadPackages(), loadSubscribers()]);
+}
+
+function fmtTs(ts) {
+  if (!ts) return '—';
+  try {
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    var now = Date.now();
+    var diffMs = now - d.getTime();
+    if (diffMs < 60_000) return 'just now';
+    if (diffMs < 3600_000) return Math.floor(diffMs / 60_000) + ' min ago';
+    if (diffMs < 86400_000) return Math.floor(diffMs / 3600_000) + ' h ago';
+    if (diffMs < 7 * 86400_000) return Math.floor(diffMs / 86400_000) + ' d ago';
+    return d.toISOString().slice(0, 10);
+  } catch (e) { return ts; }
+}
+
+function tierBadge(s) {
+  var t = s.tier || 'free';
+  var aimix = s.aimixUnlocked;
+  if (t === 'premium' && s.subscribed) return '<span class="badge badge-status-premium">premium</span>';
+  if (aimix) return '<span class="badge" style="background:#7C1E29;color:#fff;">aimix · €7.99</span>';
+  if (s.premiumEndedAt) return '<span class="badge" style="background:#444;color:#aaa;">cancelled</span>';
+  return '<span class="badge" style="background:#222;color:#888;">free</span>';
+}
+
+async function loadSubscribers() {
+  try {
+    var resp = await fetch('/api/admin?action=subscribers&limit=200', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!resp.ok) {
+      document.getElementById('subscribers-table').innerHTML = '<p style="color:var(--accent)">Greška: ' + resp.status + '</p>';
+      return;
+    }
+    var data = await resp.json();
+    var c = data.counts || {};
+    document.getElementById('subs-stats').innerHTML =
+      '<div class="stat"><div class="stat-num">' + (c.total || 0) + '</div><div class="stat-label">Ukupno</div></div>' +
+      '<div class="stat"><div class="stat-num">' + (c.premium || 0) + '</div><div class="stat-label">Premium aktivnih</div></div>' +
+      '<div class="stat"><div class="stat-num">' + (c.aimixUnlocked || 0) + '</div><div class="stat-label">AI Mix unlock-ovi</div></div>' +
+      '<div class="stat"><div class="stat-num">' + (c.cancelled || 0) + '</div><div class="stat-label">Otkazano</div></div>';
+
+    var rows = (data.subscribers || []).map(function (s) {
+      var sid = s.stripeCustomerId ? s.stripeCustomerId.slice(0, 18) + '…' : '—';
+      var src = s.source || s.aimixUnlocked && 'mix-stage3' || s.tier === 'premium' && 'subscribe' || '—';
+      return '<tr>' +
+        '<td>' + (s.email || '?') + '</td>' +
+        '<td>' + tierBadge(s) + '</td>' +
+        '<td class="mono" style="font-size:11px;">' + sid + '</td>' +
+        '<td>' + src + '</td>' +
+        '<td>' + fmtTs(s.createdAt) + '</td>' +
+        '<td>' + fmtTs(s.lastActivity) + '</td>' +
+        '</tr>';
+    }).join('');
+
+    document.getElementById('subscribers-table').innerHTML =
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;">' +
+        '<thead><tr style="background:rgba(255,255,255,0.03);">' +
+          '<th style="text-align:left;padding:12px 14px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);">Email</th>' +
+          '<th style="text-align:left;padding:12px 14px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);">Tier</th>' +
+          '<th style="text-align:left;padding:12px 14px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);">Stripe customer</th>' +
+          '<th style="text-align:left;padding:12px 14px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);">Source</th>' +
+          '<th style="text-align:left;padding:12px 14px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);">Created</th>' +
+          '<th style="text-align:left;padding:12px 14px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);">Last activity</th>' +
+        '</tr></thead><tbody>' + (rows || '<tr><td colspan="6" style="padding:24px;color:var(--muted);text-align:center;">Nema pretplatnika</td></tr>') + '</tbody></table>' +
+        '<style>#subscribers-table td{padding:10px 14px;border-top:1px solid var(--border);}</style>';
+  } catch (e) {
+    document.getElementById('subscribers-table').innerHTML = '<p style="color:var(--accent)">Greška: ' + e.message + '</p>';
+  }
 }
 
 async function loadStats() {
