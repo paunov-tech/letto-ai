@@ -1,0 +1,48 @@
+{
+  "name": "00-LETTO-ERROR-HANDLER",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 320],
+      "id": "trigger-error"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://letto.live/api/notify-admin",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.NOTIFY_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event\": \"engine_error\",\n  \"workflow\": \"{{$json.execution?.workflowName || $json.workflow?.name || 'unknown'}}\",\n  \"detail\": {\n    \"executionId\": \"{{$json.execution?.id}}\",\n    \"node\": \"{{$json.execution?.lastNodeExecuted}}\",\n    \"errorMessage\": \"{{$json.execution?.error?.message || $json.error?.message || 'unknown'}}\",\n    \"errorStack\": \"{{($json.execution?.error?.stack || '').slice(0, 500)}}\",\n    \"mode\": \"{{$json.execution?.mode}}\",\n    \"startedAt\": \"{{$json.execution?.startedAt}}\"\n  }\n}",
+        "options": { "timeout": 10000 }
+      },
+      "name": "Notify · /api/notify-admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 320],
+      "id": "notify-admin",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [{ "node": "Notify · /api/notify-admin", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
