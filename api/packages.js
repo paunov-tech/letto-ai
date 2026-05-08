@@ -72,25 +72,36 @@ export default async function handler(req, res) {
     let packages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     if (isSearch) {
-      // Date window: keep packages whose departure is within ±21 days of `from`,
-      // OR whose return is within ±21 days of `to`. Catalog is sparse so we
-      // prefer "close enough" over zero-results. If no date provided, no filter.
-      if (from) {
-        const fromMin = shiftDateISO(from, -21);
-        const fromMax = shiftDateISO(from, 21);
-        packages = packages.filter(p => {
-          const dep = p?.dates?.departure;
-          if (!dep || !fromMin || !fromMax) return true;
-          return dep >= fromMin && dep <= fromMax;
-        });
-      }
+      // Catalog is sparse — instead of strict date filtering (which often
+      // returns 0 results for niche routes), rank by date proximity to the
+      // requested `from` and tier the response: packages within ±21 days are
+      // marked dateMatch:'tight', within ±60d 'loose', beyond that 'far'.
+      // Frontend shows all but headlines the tight matches first.
+      const fromTs = from ? new Date(from + 'T00:00:00Z').getTime() : null;
+      packages.forEach(p => {
+        const dep = p?.dates?.departure;
+        if (!dep || !fromTs) {
+          p._dateDeltaDays = null;
+          p._dateMatch = 'unknown';
+          return;
+        }
+        const depTs = new Date(dep + 'T00:00:00Z').getTime();
+        const days = Math.round(Math.abs(depTs - fromTs) / 86400000);
+        p._dateDeltaDays = days;
+        p._dateMatch = days <= 21 ? 'tight' : (days <= 60 ? 'loose' : 'far');
+      });
 
-      // Sort by deal quality (lower flightDealRatio = bigger discount), then by departure date asc
+      // Sort: date proximity first (NULL = last), then deal quality
       packages.sort((a, b) => {
+        const da = a._dateDeltaDays;
+        const db = b._dateDeltaDays;
+        if (da == null && db == null) {} // tie
+        else if (da == null) return 1;
+        else if (db == null) return -1;
+        else if (da !== db) return da - db;
         const ra = (a.deal && a.deal.flightDealRatio) || 1;
         const rb = (b.deal && b.deal.flightDealRatio) || 1;
-        if (ra !== rb) return ra - rb;
-        return (a.dates?.departure || '').localeCompare(b.dates?.departure || '');
+        return ra - rb;
       });
 
       packages = packages.slice(0, limit);

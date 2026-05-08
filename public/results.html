@@ -2913,6 +2913,19 @@
     letter-spacing: 0.02em;
   }
   .pkg-card__time { color: var(--ink); font-weight: 500; }
+  .pkg-card__match-hint {
+    margin-left: 8px;
+    padding: 2px 7px;
+    background: rgba(161, 116, 51, 0.1);
+    color: var(--gold-deep);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 500;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+  }
   .pkg-card__cta {
     margin-top: 4px;
     padding-top: 12px;
@@ -5078,6 +5091,14 @@
       var price = Math.round(fl.totalPrice || 0);
       var isSelected = selectedId === pkg.id;
 
+      // Date-match hint: when search date is far from package departure, show "± Nd" label
+      var matchHint = '';
+      if (pkg._dateMatch === 'loose' || pkg._dateMatch === 'far') {
+        matchHint = '<span class="pkg-card__match-hint">' +
+          (l === 'en' ? '±' + pkg._dateDeltaDays + 'd from your dates' : '±' + pkg._dateDeltaDays + 'd od tvojih datuma') +
+          '</span>';
+      }
+
       html += '<article class="pkg-card' + (isSelected ? ' is-selected' : '') + '" data-mix-pkg-id="' + escapeHtml(pkg.id) + '" tabindex="0" role="button" aria-pressed="' + isSelected + '">' +
         '<div class="pkg-card__head">' +
           '<div class="pkg-card__route">' +
@@ -5091,7 +5112,7 @@
           '</div>' +
         '</div>' +
         '<div class="pkg-card__body">' +
-          '<div class="pkg-card__dates">' + escapeHtml(dateRange) + (nightsLabel ? ' · ' + escapeHtml(nightsLabel) : '') + '</div>' +
+          '<div class="pkg-card__dates">' + escapeHtml(dateRange) + (nightsLabel ? ' · ' + escapeHtml(nightsLabel) : '') + matchHint + '</div>' +
           '<div class="pkg-card__details">' +
             (fl.departureTime ? '<span class="pkg-card__time">' + escapeHtml(fl.departureTime) + '</span> · ' : '') +
             (fl.duration ? '<span>' + escapeHtml(fl.duration) + '</span> · ' : '') +
