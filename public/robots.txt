@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /metrics.html
+Disallow: /api/
+
+Sitemap: https://letto.live/sitemap.xml

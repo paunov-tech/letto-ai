@@ -1,0 +1,306 @@
+{
+  "name": "LETTO — Workflow 05 — Mix Search V0.1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mix-search",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// IATA → city name lookup for Hotellook (which expects city names, not codes).\nconst IATA_TO_CITY = {\n  ATH: 'Athens', IST: 'Istanbul', BCN: 'Barcelona', LIS: 'Lisbon',\n  LHR: 'London', CDG: 'Paris', FCO: 'Rome', MAD: 'Madrid', DXB: 'Dubai',\n  AMS: 'Amsterdam', BUD: 'Budapest', VIE: 'Vienna', PRG: 'Prague',\n  BER: 'Berlin', MUC: 'Munich', AYT: 'Antalya', PMI: 'Palma',\n  MLA: 'Valletta', SKG: 'Thessaloniki', SOF: 'Sofia', ZAG: 'Zagreb',\n  TIV: 'Tivat', SJJ: 'Sarajevo', SKP: 'Skopje', INI: 'Niš', BEG: 'Belgrade'\n};\n\nconst body = $input.first().json.body || $input.first().json;\nconst from = String(body.from || '').toUpperCase();\nconst to = String(body.to || '').toUpperCase();\nconst depart = String(body.depart || '');\nconst ret = String(body.return || '');\nconst pax = parseInt(body.pax, 10) || 2;\nconst currency = String(body.currency || 'EUR').toUpperCase();\nconst nights = Math.max(1, Math.ceil((new Date(ret) - new Date(depart)) / 86400000));\nconst city = IATA_TO_CITY[to] || to;\nconst cacheKey = `${from}-${to}-${depart.replace(/-/g,'')}-${ret.replace(/-/g,'')}-${pax}`;\n\nreturn [{ json: { from, to, depart, return: ret, pax, currency, nights, city, cacheKey } }];"
+      },
+      "id": "normalize-input",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/mix_cache/{{ $json.cacheKey }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {
+          "ignoreHttpStatusErrors": true,
+          "timeout": 4000
+        }
+      },
+      "id": "cache-get",
+      "name": "Cache Get (Firestore)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 300],
+      "notes": "Configure Google service account credential with Firestore datastore.user role."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cache-valid",
+              "leftValue": "={{ $json.fields && new Date($json.fields.expires_at.timestampValue) > new Date() ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cache-hit-if",
+      "name": "Cache Hit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cache hit — unpack and respond\nconst raw = $input.first().json.fields.result.stringValue;\nconst payload = JSON.parse(raw);\nreturn [{ json: { ...payload, cache_hit: true } }];"
+      },
+      "id": "cache-hit-unpack",
+      "name": "Unpack Cache",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 180]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.travelpayouts.com/v2/prices/latest",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "origin", "value": "={{ $('Normalize Input').first().json.from }}" },
+            { "name": "destination", "value": "={{ $('Normalize Input').first().json.to }}" },
+            { "name": "depart_date", "value": "={{ $('Normalize Input').first().json.depart }}" },
+            { "name": "return_date", "value": "={{ $('Normalize Input').first().json.return }}" },
+            { "name": "currency", "value": "EUR" },
+            { "name": "limit", "value": "30" },
+            { "name": "token", "value": "={{ $env.TP_TOKEN }}" }
+          ]
+        },
+        "options": { "timeout": 8000 }
+      },
+      "id": "flight-search",
+      "name": "Travelpayouts Flights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "const flights = $input.first().json.data || [];\nconst input = $('Normalize Input').first().json;\nreturn flights.slice(0, 20).map((f, i) => ({\n  json: {\n    id: `fl_${i}_${f.airline}_${f.flight_number}`,\n    type: 'flight',\n    carrier: f.airline,\n    carrier_name: f.airline_name || f.airline,\n    flight_number: f.flight_number,\n    depart_at: f.depart_date,\n    return_at: f.return_date,\n    depart_time: f.depart_time || null,\n    return_time: f.return_time || null,\n    duration_outbound: f.duration_to || null,\n    duration_return: f.duration_back || null,\n    stops_outbound: f.transfers || 0,\n    stops_return: f.return_transfers || 0,\n    price_per_pax: f.value,\n    price_total: f.value * input.pax,\n    currency: 'EUR',\n    affiliate_url: `https://www.aviasales.com/search/${input.from}${input.depart.replace(/-/g,'').slice(2,8)}${input.to}${input.return.replace(/-/g,'').slice(2,8)}${input.pax}?marker=${$env.TP_MARKER}`,\n    source: 'travelpayouts'\n  }\n}));"
+      },
+      "id": "flight-normalize",
+      "name": "Flight Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 380]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://engine.hotellook.com/api/v2/cache.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "location", "value": "={{ $('Normalize Input').first().json.city }}" },
+            { "name": "checkIn", "value": "={{ $('Normalize Input').first().json.depart }}" },
+            { "name": "checkOut", "value": "={{ $('Normalize Input').first().json.return }}" },
+            { "name": "adults", "value": "={{ $('Normalize Input').first().json.pax }}" },
+            { "name": "currency", "value": "EUR" },
+            { "name": "limit", "value": "30" },
+            { "name": "token", "value": "={{ $env.TP_TOKEN }}" }
+          ]
+        },
+        "options": { "timeout": 8000 }
+      },
+      "id": "hotel-search",
+      "name": "Hotellook Hotels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "const hotels = $input.first().json || [];\nconst input = $('Normalize Input').first().json;\nreturn hotels.slice(0, 20).map((h) => ({\n  json: {\n    id: `ht_${h.hotelId}`,\n    type: 'hotel',\n    name: h.hotelName,\n    stars: h.stars || null,\n    rating: h.rating || null,\n    location: (h.location && h.location.name) || null,\n    distance_to_center_km: h.distance || null,\n    price_per_night: h.priceFrom,\n    price_total: h.priceFrom * input.nights,\n    currency: 'EUR',\n    affiliate_url: `https://search.hotellook.com/?destination=${encodeURIComponent((h.location && h.location.name) || input.city)}&checkIn=${input.depart}&checkOut=${input.return}&adults=${input.pax}&hotelId=${h.hotelId}&marker=${$env.TP_MARKER}`,\n    source: 'hotellook'\n  }\n}));"
+      },
+      "id": "hotel-normalize",
+      "name": "Hotel Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 540]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "Merge Flights+Hotels",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1440, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate, score, sort, build recommended pair\nconst flights = $('Flight Normalize').all().map(i => i.json);\nconst hotels = $('Hotel Normalize').all().map(i => i.json);\nconst input = $('Normalize Input').first().json;\n\nconst TIER1_CARRIERS = ['JU', 'LH', 'OS', 'TK', 'AF', 'BA', 'IB', 'AY', 'KL'];\nconst TIER2_CARRIERS = ['W6', 'FR', 'U2', 'PC', 'VY'];\n\nlet flightsScored = [];\nif (flights.length) {\n  const minFlightPrice = Math.min(...flights.map(f => f.price_total));\n  flightsScored = flights.map(f => {\n    const price_score = 50 * (minFlightPrice / f.price_total);\n    const stops_score = 30 * (1 / (1 + (f.stops_outbound + f.stops_return)));\n    let carrier_score = 10;\n    if (TIER1_CARRIERS.includes(f.carrier)) carrier_score = 20;\n    else if (TIER2_CARRIERS.includes(f.carrier)) carrier_score = 15;\n    return { ...f, quality_score: Math.round(price_score + stops_score + carrier_score) };\n  }).sort((a,b) => b.quality_score - a.quality_score).slice(0, 5);\n}\n\nlet hotelsScored = [];\nif (hotels.length) {\n  const minHotelPrice = Math.min(...hotels.map(h => h.price_total));\n  hotelsScored = hotels.map(h => {\n    const price_score = 40 * (minHotelPrice / h.price_total);\n    const rating_score = 40 * ((h.rating || 6) / 10);\n    const stars_score = 20 * ((h.stars || 3) / 5);\n    return { ...h, quality_score: Math.round(price_score + rating_score + stars_score) };\n  }).sort((a,b) => b.quality_score - a.quality_score).slice(0, 5);\n}\n\nconst rf = flightsScored[0];\nconst rh = hotelsScored[0];\nconst recommended = rf && rh ? {\n  flight_id: rf.id,\n  hotel_id: rh.id,\n  total_price: rf.price_total + rh.price_total,\n  combined_quality_score: Math.round((rf.quality_score + rh.quality_score) / 2),\n  currency: 'EUR'\n} : null;\n\nconst city = input.city;\nconst cityMeta = { name: city, sr: city };\n\nreturn [{ json: {\n  query: { from: input.from, to: input.to, depart: input.depart, return: input.return, pax: input.pax },\n  city: cityMeta,\n  nights: input.nights,\n  flights: flightsScored,\n  hotels: hotelsScored,\n  recommended,\n  summary: null,\n  cache_hit: false\n} }];"
+      },
+      "id": "score-rank",
+      "name": "Quality Score & Rank",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1660, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 200,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"Korisnik traži putovanje {{ $json.query.from }}→{{ $json.city.name }} {{ $json.query.depart }} do {{ $json.query.return }}, {{ $json.query.pax }} putnika.\\n\\nPreporučena kombinacija:\\n- Let: {{ $json.recommended ? ($json.flights.find(f => f.id === $json.recommended.flight_id) || {}).carrier_name : 'N/A' }} sa {{ $json.recommended ? (($json.flights.find(f => f.id === $json.recommended.flight_id) || {}).stops_outbound || 0) + (($json.flights.find(f => f.id === $json.recommended.flight_id) || {}).stops_return || 0) : 0 }} presedanja\\n- Hotel: {{ $json.recommended ? ($json.hotels.find(h => h.id === $json.recommended.hotel_id) || {}).name : 'N/A' }}, {{ $json.recommended ? ($json.hotels.find(h => h.id === $json.recommended.hotel_id) || {}).stars || '?' : '?' }}★, rating {{ $json.recommended ? ($json.hotels.find(h => h.id === $json.recommended.hotel_id) || {}).rating || '?' : '?' }}/10\\n\\nNapiši 1-2 rečenice na srpskom (latinica) zašto je ova kombinacija dobra. NE pominji cene, brojeve ili konkretne iznose. Fokus: balans pouzdanosti, lokacije, kvaliteta. Maksimum 30 reči. Ton: poveren, ne reklamiran.\"\n  }]\n}",
+        "options": {
+          "timeout": 3000,
+          "ignoreHttpStatusErrors": true
+        }
+      },
+      "id": "claude-summary",
+      "name": "Claude Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1880, 460],
+      "continueOnFail": true,
+      "notes": "3s timeout. Failure → summary: null (frontend handles)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract summary or null on failure; merge with score-rank result\nconst stage5d = $('Quality Score & Rank').first().json;\nlet summary = null;\ntry {\n  const r = $input.first().json;\n  summary = (r && r.content && r.content[0] && r.content[0].text) ? String(r.content[0].text).trim() : null;\n} catch (e) { summary = null; }\nreturn [{ json: { ...stage5d, summary } }];"
+      },
+      "id": "summary-merge",
+      "name": "Attach Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 460]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/mix_cache/{{ $('Normalize Input').first().json.cacheKey }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"cache_key\": { \"stringValue\": \"{{ $('Normalize Input').first().json.cacheKey }}\" },\n    \"created_at\": { \"timestampValue\": \"{{ new Date().toISOString() }}\" },\n    \"expires_at\": { \"timestampValue\": \"{{ new Date(Date.now() + 24*3600*1000).toISOString() }}\" },\n    \"result\": { \"stringValue\": {{ JSON.stringify(JSON.stringify($json)) }} },\n    \"hit_count\": { \"integerValue\": \"0\" }\n  }\n}",
+        "options": {
+          "ignoreHttpStatusErrors": true,
+          "timeout": 4000
+        }
+      },
+      "id": "cache-set",
+      "name": "Cache Set (Firestore)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2320, 460],
+      "continueOnFail": true,
+      "notes": "Fire-and-forget cache write; failure should not block response."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2540, 380]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Normalize Input", "type": "main", "index": 0 }]]
+    },
+    "Normalize Input": {
+      "main": [[{ "node": "Cache Get (Firestore)", "type": "main", "index": 0 }]]
+    },
+    "Cache Get (Firestore)": {
+      "main": [[{ "node": "Cache Hit?", "type": "main", "index": 0 }]]
+    },
+    "Cache Hit?": {
+      "main": [
+        [{ "node": "Unpack Cache", "type": "main", "index": 0 }],
+        [
+          { "node": "Travelpayouts Flights", "type": "main", "index": 0 },
+          { "node": "Hotellook Hotels", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Unpack Cache": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    },
+    "Travelpayouts Flights": {
+      "main": [[{ "node": "Flight Normalize", "type": "main", "index": 0 }]]
+    },
+    "Flight Normalize": {
+      "main": [[{ "node": "Merge Flights+Hotels", "type": "main", "index": 0 }]]
+    },
+    "Hotellook Hotels": {
+      "main": [[{ "node": "Hotel Normalize", "type": "main", "index": 0 }]]
+    },
+    "Hotel Normalize": {
+      "main": [[{ "node": "Merge Flights+Hotels", "type": "main", "index": 1 }]]
+    },
+    "Merge Flights+Hotels": {
+      "main": [[{ "node": "Quality Score & Rank", "type": "main", "index": 0 }]]
+    },
+    "Quality Score & Rank": {
+      "main": [[{ "node": "Claude Summary", "type": "main", "index": 0 }]]
+    },
+    "Claude Summary": {
+      "main": [[{ "node": "Attach Summary", "type": "main", "index": 0 }]]
+    },
+    "Attach Summary": {
+      "main": [[
+        { "node": "Cache Set (Firestore)", "type": "main", "index": 0 },
+        { "node": "Respond", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true
+  },
+  "versionId": "v0.1",
+  "meta": {
+    "instanceId": "letto-mix-v01"
+  },
+  "tags": [
+    { "name": "letto" },
+    { "name": "mix-v01" }
+  ]
+}

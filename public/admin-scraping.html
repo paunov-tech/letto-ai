@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LETTO Scraping Monitor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root {
+    --bg: #0C0E10;
+    --panel: #1F2226;
+    --border: #3A3F47;
+    --text: #FAF2DE;
+    --muted: #726A58;
+    --gold: #B8863B;
+    --gold-light: #E4C37A;
+    --green: #16803D;
+    --burgundy: #7C1E29;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 8px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; font-family: monospace; }
+  .auth-box { background: var(--panel); padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid var(--border); }
+  .auth-box input { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; font-family: monospace; width: 360px; max-width: 100%; }
+  .auth-box button { background: var(--gold); color: var(--bg); border: none; padding: 8px 16px; border-radius: 4px; font-weight: 500; margin-left: 8px; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat { background: var(--panel); padding: 18px; border-radius: 8px; border: 1px solid var(--border); }
+  .stat .label { font-size: 11px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat .value { font-size: 28px; font-weight: 600; color: var(--gold-light); font-family: monospace; }
+  .stat .sublabel { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  th { text-align: left; padding: 12px 16px; background: rgba(184, 134, 59, 0.1); color: var(--gold-light); font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; }
+  td { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  td.mono { font-family: monospace; font-size: 12px; color: var(--muted); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+  .badge.ok { background: rgba(22, 128, 61, 0.2); color: #4ade80; }
+  .badge.err { background: rgba(124, 30, 41, 0.3); color: #fda4af; }
+  .badge.warn { background: rgba(184, 134, 59, 0.2); color: var(--gold-light); }
+  .err-box { background: rgba(124, 30, 41, 0.15); border: 1px solid var(--burgundy); color: #fda4af; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
+  .section-title { font-size: 14px; font-weight: 500; color: var(--gold-light); margin: 24px 0 12px; letter-spacing: 0.05em; text-transform: uppercase; }
+  pre { background: var(--bg); padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto; border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>LETTO Scraping Monitor</h1>
+  <div class="sub" id="lastUpdated">— not yet loaded —</div>
+
+  <div class="auth-box" id="authBox">
+    <strong>ADMIN_TOKEN required:</strong>
+    <input type="password" id="tokenInput" placeholder="paste ADMIN_TOKEN" autocomplete="off">
+    <button onclick="loadStatus()">Load</button>
+  </div>
+
+  <div id="errMsg"></div>
+  <div id="content" style="display:none;">
+    <div class="grid" id="statsGrid"></div>
+
+    <div class="section-title">Per-source inventory</div>
+    <table>
+      <thead><tr><th>Source</th><th>Inventory count</th><th>Last successful run</th><th>Status</th></tr></thead>
+      <tbody id="sourcesTbody"></tbody>
+    </table>
+
+    <div class="section-title">Recent runs (last 5)</div>
+    <table>
+      <thead><tr><th>Ran at</th><th>Duration</th><th>Counts</th><th>Errors</th></tr></thead>
+      <tbody id="runsTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function getToken() { return localStorage.getItem('letto_admin_token') || document.getElementById('tokenInput').value; }
+function setToken(t) { localStorage.setItem('letto_admin_token', t); }
+
+async function loadStatus() {
+  const token = getToken();
+  if (!token) { showErr('Provide ADMIN_TOKEN.'); return; }
+  setToken(token);
+  document.getElementById('errMsg').innerHTML = '';
+  try {
+    const r = await fetch('/api/scrape-status', { headers: { Authorization: 'Bearer ' + token } });
+    if (r.status === 401) { showErr('Unauthorized — wrong token.'); return; }
+    if (!r.ok) { showErr('HTTP ' + r.status); return; }
+    const d = await r.json();
+    render(d);
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('lastUpdated').textContent = 'last updated: ' + new Date().toISOString();
+  } catch (e) { showErr(e.message); }
+}
+
+function showErr(m) { document.getElementById('errMsg').innerHTML = '<div class="err-box">' + escapeHtml(m) + '</div>'; }
+function escapeHtml(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function render(d) {
+  // Stats grid
+  const total = d.totalInventory || 0;
+  const sources = Object.keys(d.bySource || {}).length;
+  const errors = d.errors1h || 0;
+  const lastRun = (d.recentRuns && d.recentRuns[0]) ? d.recentRuns[0].ranAt : 'never';
+  document.getElementById('statsGrid').innerHTML = [
+    statCard('Total inventory', total, 'rows in letto_scrape_inventory'),
+    statCard('Active sources', sources, ''),
+    statCard('Errors (last hour)', errors, errors > 0 ? 'check failures' : 'clean'),
+    statCard('Last cron run', lastRun.slice ? lastRun.slice(0, 19).replace('T', ' ') : lastRun, '')
+  ].join('');
+
+  // Sources table
+  const expected = ['wizzair', 'ryanair', 'pegasus', 'kontiki', 'bigblue'];
+  const rows = expected.map(src => {
+    const cnt = (d.bySource || {})[src] || 0;
+    const last = (d.lastSuccessBySrc || {})[src] || '';
+    const status = cnt > 0
+      ? '<span class="badge ok">healthy</span>'
+      : (last ? '<span class="badge warn">stale</span>' : '<span class="badge err">never ran</span>');
+    return '<tr><td><strong>' + src + '</strong></td><td class="mono">' + cnt + '</td><td class="mono">' + (last ? last.slice(0, 19).replace('T', ' ') : '—') + '</td><td>' + status + '</td></tr>';
+  });
+  document.getElementById('sourcesTbody').innerHTML = rows.join('');
+
+  // Recent runs table
+  const runs = (d.recentRuns || []).map(r => {
+    const dur = r.durationMs ? Math.round(r.durationMs / 1000) + 's' : '—';
+    const counts = r.counts ? Object.entries(r.counts).map(([k, v]) => k + '=' + v).join(' · ') : '—';
+    const errs = (r.errors && r.errors.length) ? '<span class="badge err">' + r.errors.length + '</span>' : '<span class="badge ok">0</span>';
+    return '<tr><td class="mono">' + (r.ranAt || '').slice(0, 19).replace('T', ' ') + '</td><td>' + dur + '</td><td class="mono">' + counts + '</td><td>' + errs + '</td></tr>';
+  });
+  document.getElementById('runsTbody').innerHTML = runs.join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);">no runs yet</td></tr>';
+}
+
+function statCard(label, value, sublabel) {
+  return '<div class="stat"><div class="label">' + escapeHtml(label) + '</div><div class="value">' + escapeHtml(value) + '</div><div class="sublabel">' + escapeHtml(sublabel) + '</div></div>';
+}
+
+// Auto-load if token saved
+if (getToken()) { document.getElementById('tokenInput').value = getToken(); loadStatus(); }
+</script>
+</body>
+</html>

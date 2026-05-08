@@ -1,0 +1,137 @@
+{
+  "name": "04-LETTO-TELEGRAM-DAILY",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 10 * * *" }] }
+      },
+      "id": "trigger-premium",
+      "name": "Trigger · 10:00 Premium",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 16 * * *" }] }
+      },
+      "id": "trigger-public",
+      "name": "Trigger · 16:00 Public",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Identify which trigger fired and build query parameters.\n// Premium publishes ahead of public by 6h.\nconst now = new Date();\nconst hour = now.getUTCHours();\nconst tier = (hour >= 8 && hour < 14) ? 'premium' : 'public';\nconst statusFilter = tier === 'premium' ? 'published_premium' : 'published_public';\nconst chatId = tier === 'premium' ? $env.TELEGRAM_PREMIUM_CHANNEL_ID : $env.TELEGRAM_PUBLIC_CHANNEL_ID;\nreturn [{ json: { tier, statusFilter, chatId, runAt: now.toISOString() } }];"
+      },
+      "id": "tier-resolver",
+      "name": "Tier resolver",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents:runQuery",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"letto_packages\" }],\n    \"where\": { \"fieldFilter\": { \"field\": { \"fieldPath\": \"status\" }, \"op\": \"EQUAL\", \"value\": { \"stringValue\": \"{{$json.statusFilter}}\" } } },\n    \"orderBy\": [{ \"field\": { \"fieldPath\": \"pricing.savingsPercent\" }, \"direction\": \"DESCENDING\" }],\n    \"limit\": 3\n  }\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-top",
+      "name": "Top 3 for tier",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Telegram HTML message — one combined post with top 3 packages.\nconst rows = $input.all();\nconst meta = $('Tier resolver').first().json;\nconst transports = { flight: '✈️', bus: '🚌' };\nconst lines = [];\nlines.push(meta.tier === 'premium' ? '<b>💎 LETTO Premium · Today</b>' : '<b>🧭 LETTO · Daily picks</b>');\nlines.push('');\nlet count = 0;\nfor (const r of rows) {\n  if (!r.json?.document) continue;\n  const f = r.json.document.fields;\n  const city = f.destination?.mapValue?.fields?.city?.stringValue || '?';\n  const country = f.destination?.mapValue?.fields?.country?.stringValue || '';\n  const transport = f.transport?.stringValue || 'flight';\n  const total = parseInt(f.pricing?.mapValue?.fields?.total?.integerValue || '0');\n  const agency = parseInt(f.pricing?.mapValue?.fields?.agencyReference?.integerValue || '0');\n  const pct = parseInt(f.pricing?.mapValue?.fields?.savingsPercent?.integerValue || '0');\n  const ico = transports[transport] || '✈️';\n  lines.push(`${ico} <b>${city}</b>, ${country}`);\n  lines.push(`   €${total}  ·  ${pct}% ispod proseka  ·  agencija €${agency}`);\n  count++;\n  if (count >= 3) break;\n  lines.push('');\n}\nlines.push('');\nlines.push(meta.tier === 'premium' ? '<i>Pun paket detalj već na sajtu: letto.live</i>' : '<a href=\"https://letto.live/#pricing\">Unlock full details · €19/3mo</a>');\nconst text = lines.join('\\n');\nreturn [{ json: { ...meta, text, packageCount: count } }];"
+      },
+      "id": "compose-message",
+      "name": "Compose message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [
+            { "id": "has-pkg", "leftValue": "={{$json.packageCount}}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-has-content",
+      "name": "If has packages",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 320]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{$env.TELEGRAM_BOT_TOKEN}}/sendMessage",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{$json.chatId}}\",\n  \"text\": {{ JSON.stringify($json.text) }},\n  \"parse_mode\": \"HTML\",\n  \"disable_web_page_preview\": true\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "telegram-send",
+      "name": "Telegram send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 240]
+    },
+    {
+      "parameters": {
+        "url": "https://letto.live/api/notify-admin",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.NOTIFY_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"event\": \"telegram_skipped_empty\", \"workflow\": \"04-TELEGRAM-DAILY\", \"detail\": { \"tier\": \"{{$json.tier}}\", \"reason\": \"no published packages found\" }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "notify-empty",
+      "name": "Notify · empty queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400]
+    }
+  ],
+  "connections": {
+    "Trigger · 10:00 Premium": { "main": [[{ "node": "Tier resolver", "type": "main", "index": 0 }]] },
+    "Trigger · 16:00 Public": { "main": [[{ "node": "Tier resolver", "type": "main", "index": 0 }]] },
+    "Tier resolver": { "main": [[{ "node": "Top 3 for tier", "type": "main", "index": 0 }]] },
+    "Top 3 for tier": { "main": [[{ "node": "Compose message", "type": "main", "index": 0 }]] },
+    "Compose message": { "main": [[{ "node": "If has packages", "type": "main", "index": 0 }]] },
+    "If has packages": { "main": [
+      [{ "node": "Telegram send", "type": "main", "index": 0 }],
+      [{ "node": "Notify · empty queue", "type": "main", "index": 0 }]
+    ] }
+  },
+  "settings": { "executionOrder": "v1", "saveDataErrorExecution": "all" },
+  "tags": ["letto", "engine", "telegram"]
+}

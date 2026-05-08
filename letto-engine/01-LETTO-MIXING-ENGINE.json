@@ -1,0 +1,861 @@
+{
+  "name": "01-LETTO-MIXING-ENGINE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "trigger-cron",
+      "name": "Trigger · every 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const routes = [\n  ['BEG','IST','TR','Istanbul','city','-755070'],\n  ['BEG','FCO','IT','Rome','cultural','-126693'],\n  ['BEG','CDG','FR','Paris','romantic','-1456928'],\n  ['BEG','BCN','ES','Barcelona','architecture','-372490'],\n  ['BEG','DXB','AE','Dubai','luxury','-782831'],\n  ['BEG','ATH','GR','Athens','cultural','-814876'],\n  ['BEG','AMS','NL','Amsterdam','city','-2140479'],\n  ['BEG','VIE','AT','Vienna','city','-1995499'],\n  ['BEG','BUD','HU','Budapest','city','-850553'],\n  ['BEG','PRG','CZ','Prague','city','-553173'],\n  ['BEG','SKG','GR','Thessaloniki','beach','-829252'],\n  ['BEG','PMI','ES','Palma','beach','-395224'],\n  ['BEG','MLA','MT','Valletta','beach','-19310'],\n  ['BEG','AYT','TR','Antalya','beach','-735347'],\n  ['BEG','SPU','HR','Split','beach','-96492'],\n  ['BEG','TIV','ME','Tivat','beach','-98296'],\n  ['ZAG','BCN','ES','Barcelona','architecture','-372490'],\n  ['ZAG','FCO','IT','Rome','cultural','-126693'],\n  ['SJJ','IST','TR','Istanbul','city','-755070'],\n  ['SKP','IST','TR','Istanbul','city','-755070'],\n  ['INI','IST','TR','Istanbul','city','-755070'],\n  ['BEG','TLV','IL','Tel Aviv','cultural','-781545'],\n  ['BEG','LHR','GB','London','city','-2601889'],\n  ['BEG','LIS','PT','Lisbon','city','-2167973'],\n  ['BEG','HKT','TH','Phuket','beach','-3253342']\n];\nconst now = new Date();\nconst probeDeparture = new Date(now.getTime() + 60*86400000).toISOString().slice(0,10);\nconst probeReturn = new Date(now.getTime() + 65*86400000).toISOString().slice(0,10);\nreturn routes.map(([origin, dest, country, city, category, destId], idx) => ({ json: { _idx: idx, origin, dest, country, city, category, destId, probeDeparture, probeReturn } }));"
+      },
+      "id": "stage-a-routes",
+      "name": "Stage A · Routes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.travelpayouts.com/aviasales/v3/prices_for_dates",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "origin",
+              "value": "={{$json.origin}}"
+            },
+            {
+              "name": "destination",
+              "value": "={{$json.dest}}"
+            },
+            {
+              "name": "currency",
+              "value": "EUR"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            },
+            {
+              "name": "sorting",
+              "value": "price"
+            },
+            {
+              "name": "one_way",
+              "value": "false"
+            },
+            {
+              "name": "token",
+              "value": "={{$env.TRAVELPAYOUTS_TOKEN}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1000
+            }
+          }
+        }
+      },
+      "id": "stage-b-flights",
+      "name": "Stage B · Travelpayouts flights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        320
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://booking-com15.p.rapidapi.com/api/v1/hotels/searchHotels",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "dest_id",
+              "value": "={{$('Stage A · Routes').item.json.destId}}"
+            },
+            {
+              "name": "search_type",
+              "value": "CITY"
+            },
+            {
+              "name": "arrival_date",
+              "value": "={{$('Stage A · Routes').item.json.probeDeparture}}"
+            },
+            {
+              "name": "departure_date",
+              "value": "={{$('Stage A · Routes').item.json.probeReturn}}"
+            },
+            {
+              "name": "adults",
+              "value": "1"
+            },
+            {
+              "name": "room_qty",
+              "value": "1"
+            },
+            {
+              "name": "page_number",
+              "value": "1"
+            },
+            {
+              "name": "currency_code",
+              "value": "EUR"
+            },
+            {
+              "name": "languagecode",
+              "value": "en-us"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "sort_by",
+              "value": "class_descending"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-host",
+              "value": "booking-com15.p.rapidapi.com"
+            },
+            {
+              "name": "x-rapidapi-key",
+              "value": "={{$env.RAPIDAPI_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1000
+            }
+          }
+        }
+      },
+      "id": "stage-b-hotels",
+      "name": "Stage B · Booking.com hotels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        320
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage C v4 — Mix flight + hotel responses.\n// Flight source: Travelpayouts only (CJ inventory has no flight-level metadata).\n// CJ inventory = URL provider only: match by (origin, destination, partnerName↔airline).\n// Median comparison: read letto_route_baselines, require flight ≤ 70% of medianFlightPrice.\n// No fabrications: no agencyReference, no savings, no synthetic discounts, no slug-based hotel URLs.\n\nconst route = $('Stage A · Routes').itemMatching($itemIndex).json;\nconst flightResp = $('Stage B · Travelpayouts flights').itemMatching($itemIndex).json;\nconst baselineResp = $('Stage B.5 · Read route baseline').itemMatching($itemIndex).json;\nconst cjResp = $('Stage B.6 · CJ inventory lookup').itemMatching($itemIndex).json;\nconst hotelResp = $json;\n\n// ===== FLIGHT (Travelpayouts) =====\nconst tpFlights = (flightResp?.data || []).filter(f => f.price && f.price < 800);\nif (!tpFlights.length) {\n  return { _skip: true, _reason: 'no_flights', route: route.origin + '→' + route.dest };\n}\nconst tp = tpFlights.sort((a, b) => a.price - b.price)[0];\n\n// ===== MEDIAN BASELINE =====\nconst baselineFields = baselineResp?.fields;\nif (!baselineFields?.medianFlightPrice) {\n  return { _skip: true, _reason: 'no_baseline', route: route.origin + '→' + route.dest };\n}\nconst medianFlightPrice = parseInt(baselineFields.medianFlightPrice.integerValue, 10);\nconst flightDealRatio = tp.price / medianFlightPrice;\nif (flightDealRatio > 0.70) {\n  return { _skip: true, _reason: 'not_a_deal', ratio: Math.round(flightDealRatio * 100) / 100, price: tp.price, median: medianFlightPrice, route: route.origin + '→' + route.dest };\n}\n\n// ===== HOTEL CANDIDATES =====\nconst rawHotels = hotelResp?.data?.hotels || [];\n\n// Compute actual nights from flight dates (use STAY duration query, not probe)\nconst depDate = new Date(tp.departure_at);\nconst retDate = new Date(tp.return_at || tp.departure_at);\nlet nights = Math.max(3, Math.min(10, Math.round((retDate - depDate) / 86400000)));\nif (!nights || isNaN(nights)) nights = 5;\n\nconst hotels = rawHotels\n  .map(h => {\n    const p = h.property || h;\n    const grossPrice = p.priceBreakdown?.grossPrice?.value || 0;\n    const taxes = p.priceBreakdown?.excludedPrice?.value || 0;\n    return {\n      id: p.id,\n      name: p.name,\n      stars: p.accuratePropertyClass || p.propertyClass || 0,\n      reviewScore: p.reviewScore || 0,\n      reviewCount: p.reviewCount || 0,\n      grossPrice,\n      taxes,\n      totalWithTaxes: grossPrice + taxes,\n      photo: p.photoUrls?.[0] || ''\n    };\n  })\n  .filter(h => h.id && h.totalWithTaxes && h.stars >= 3 && h.reviewScore >= 7.5);\n\nif (!hotels.length) {\n  return { _skip: true, _reason: 'no_hotels_qualify', route: route.origin + '→' + route.dest };\n}\n\nconst hotel = hotels.sort((a, b) => (a.totalWithTaxes / a.stars) - (b.totalWithTaxes / b.stars))[0];\n\n// ===== CJ MATCH (URL provider only) =====\nlet cjMatch = null;\nif (Array.isArray(cjResp)) {\n  const found = cjResp.find(r => r?.document?.fields);\n  if (found) {\n    const f = found.document.fields;\n    cjMatch = {\n      partnerName: f.partnerName?.stringValue || null,\n      affiliateLink: f.affiliateLink?.stringValue || null,\n      directLink: f.directLink?.stringValue || null,\n      salePriceAmount: f.salePriceAmount?.integerValue ? parseInt(f.salePriceAmount.integerValue, 10) : null,\n      partnerId: f.partnerId?.stringValue || null\n    };\n  }\n}\n\n// Airline code → partnerName match table (extend as routes grow)\nconst AIRLINE_PARTNER = { 'JU': 'Air Serbia' };\nconst tpAirlineCode = tp.airline || '';\nconst tpPartnerExpected = AIRLINE_PARTNER[tpAirlineCode] || null;\nconst cjUrlMatches = cjMatch && cjMatch.affiliateLink && tpPartnerExpected && cjMatch.partnerName === tpPartnerExpected;\n\nconst flightBookingUrl = cjUrlMatches ? cjMatch.affiliateLink : ('https://www.aviasales.com' + (tp.link || ''));\nconst flightBookingPartner = cjUrlMatches ? (cjMatch.partnerName.toLowerCase().replace(/\\s+/g, '') + '.com (via CJ)') : 'aviasales.com';\nconst flightSource = cjUrlMatches ? 'travelpayouts+cj' : 'travelpayouts';\n\n// ===== TOTALS =====\nconst total = tp.price + hotel.totalWithTaxes;\n\n// ===== ID =====\nconst dateKey = depDate.toISOString().slice(0, 10).replace(/-/g, '');\nconst id = `pkg_${route.origin.toLowerCase()}_${route.dest.toLowerCase()}_${dateKey}_${nights}n`;\n\n// ===== OUTPUT (carry _hotelId to Stage C.5 for getHotelDetails URL resolution) =====\nreturn {\n    _hotelId: hotel.id,\n    _arrivalDate: depDate.toISOString().slice(0, 10),\n    _departureDate: retDate.toISOString().slice(0, 10),\n    id,\n    destination: { code: route.dest, city: route.city, country: route.country },\n    origin: { code: route.origin, city: route.origin === 'BEG' ? 'Belgrade' : route.origin },\n    dates: { departure: depDate.toISOString().slice(0, 10), return: retDate.toISOString().slice(0, 10), nights },\n    transport: 'flight',\n    category: route.category,\n    flight: {\n      airline: tp.airline || 'Unknown',\n      flightNumber: tp.flight_number || null,\n      departureTime: tp.departure_at?.slice(11, 16) || null,\n      duration: tp.duration ? `${Math.floor(tp.duration / 60)}h${tp.duration % 60}m` : null,\n      stops: tp.transfers ?? 0,\n      destinationAirport: tp.destination_airport || null,\n      totalPrice: tp.price,\n      bookingUrl: flightBookingUrl,\n      bookingPartner: flightBookingPartner,\n      source: flightSource\n    },\n    hotel: {\n      name: hotel.name || 'TBD',\n      rating: hotel.stars || 4,\n      reviewScore: hotel.reviewScore || 0,\n      reviewCount: hotel.reviewCount || 0,\n      totalPrice: hotel.grossPrice,\n      taxesAndFees: hotel.taxes,\n      totalWithTaxes: hotel.totalWithTaxes,\n      nights,\n      bookingUrl: null,\n      bookingPartner: 'booking.com',\n      photo: hotel.photo\n    },\n    pricing: { total, currency: 'EUR' },\n    deal: {\n      flightMedian: medianFlightPrice,\n      flightDealRatio: Math.round(flightDealRatio * 100) / 100,\n      flightSavingsVsMedian: medianFlightPrice - tp.price\n    },\n    status: 'pending_review',\n    copy: {\n      en: { meta: `${route.country} · ${route.category}`, month: depDate.toLocaleString('en-US', { month: 'long', year: 'numeric' }), outbound: `${route.origin === 'BEG' ? 'Belgrade' : route.origin} → ${route.city} · ${tp.transfers ? tp.transfers + ' stop' : 'direct'}`, stay: `${nights}-night ${hotel.stars || 4}★ hotel`, returnLeg: `${route.city} → ${route.origin === 'BEG' ? 'Belgrade' : route.origin}` },\n      sr: { meta: `${route.country} · ${route.category}`, month: depDate.toLocaleString('sr-Latn', { month: 'long', year: 'numeric' }), outbound: `${route.origin} → ${route.city}`, stay: `${nights} noći hotel`, returnLeg: `${route.city} → ${route.origin}` }\n    },\n    metadata: {\n      routeSaleStartingFrom: cjMatch?.salePriceAmount || null,\n      cjPartnerName: cjMatch?.partnerName || null\n    }\n  };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "stage-c-mix",
+      "name": "Stage C · Mix + filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-check",
+              "leftValue": "={{$json._skip}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filter-skipped",
+      "name": "If package built",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage D.0 — Build clean Claude prompt, carry full package forward as `pkg`.\nconst pkg = $json;\nconst summary = {\n  city: pkg.destination?.city,\n  country: pkg.destination?.country,\n  origin: pkg.origin?.code,\n  nights: pkg.dates?.nights,\n  transport: pkg.transport,\n  category: pkg.category,\n  total_eur: pkg.pricing?.total,\n  flight_eur: pkg.flight?.totalPrice,\n  flight_median_eur: pkg.deal?.flightMedian,\n  flight_below_median_pct: pkg.deal?.flightDealRatio ? Math.round((1 - pkg.deal.flightDealRatio) * 100) : null,\n  hotel_stars: pkg.hotel?.rating,\n  hotel_review: pkg.hotel?.reviewScore,\n  hotel_total_eur: pkg.hotel?.totalWithTaxes\n};\nconst prompt = `Rate this travel package on a scale 1-10 for end-customer value (price quality, destination appeal, hotel quality, flight price vs 90-day median). Return STRICT JSON ONLY, no prose, no markdown fences:\\n{\"rating\": <number 1-10, integer or one-decimal>, \"reasoning\": \"<one sentence English>\", \"blurb_en\": \"<max 30 word marketing line, English>\", \"blurb_sr\": \"<max 30 word marketing line, Serbian Latin>\"}\\nPackage: ${JSON.stringify(summary)}`;\nreturn { _pkg: pkg, claudePrompt: prompt };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "stage-d-prep",
+      "name": "Stage D.0 · Prepare Claude prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5\",\n  \"max_tokens\": 400,\n  \"messages\": [{ \"role\": \"user\", \"content\": {{ JSON.stringify($json.claudePrompt) }} }]\n}",
+        "options": {
+          "timeout": 25000,
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 1500
+            }
+          }
+        }
+      },
+      "id": "stage-d-claude",
+      "name": "Stage D · Claude rating",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage D.1 — Parse Claude response, attach rating + blurbs onto carried pkg.\nconst pkg = $(\"Stage D.0 · Prepare Claude prompt\").itemMatching($itemIndex).json._pkg;\nconst resp = $json;\nconst text = resp?.content?.[0]?.text || \"\";\nlet rating = 0, reasoning = \"\", blurb_en = pkg.copy?.en?.meta || \"\", blurb_sr = pkg.copy?.sr?.meta || \"\";\ntry {\n  const cleaned = text.replace(/\\`\\`\\`json\\s*/g, \"\").replace(/\\`\\`\\`\\s*$/g, \"\").trim();\n  const m = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (m) {\n    const parsed = JSON.parse(m[0]);\n    rating = Number(parsed.rating) || 0;\n    reasoning = parsed.reasoning || \"\";\n    blurb_en = parsed.blurb_en || blurb_en;\n    blurb_sr = parsed.blurb_sr || blurb_sr;\n  } else {\n    reasoning = \"parse_no_match: \" + text.slice(0, 80);\n  }\n} catch (e) {\n  reasoning = \"parse_error: \" + e.message;\n}\nreturn {\n  ...pkg,\n  metadata: {\n    ...(pkg.metadata || {}),\n    source: \"mixing_engine_v4\",\n    createdAt: new Date().toISOString(),\n    claudeRating: rating,\n    claudeReasoning: reasoning,\n    mvpSeed: false\n  },\n  blurbs: { en: blurb_en, sr: blurb_sr }\n};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "stage-d-parse",
+      "name": "Stage D.1 · Parse Claude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage E.0 — Recursively serialize JS object to Firestore REST Document.fields format.\n// Handles: string, integer, double, boolean, null, ISO timestamp, array, nested object.\nfunction toFirestoreValue(v) {\n  if (v === null || v === undefined) return { nullValue: null };\n  if (typeof v === 'boolean') return { booleanValue: v };\n  if (typeof v === 'number') {\n    if (Number.isInteger(v)) return { integerValue: String(v) };\n    return { doubleValue: v };\n  }\n  if (typeof v === 'string') {\n    // ISO 8601 timestamp detection (very loose)\n    if (/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$/.test(v)) {\n      return { timestampValue: v };\n    }\n    return { stringValue: v };\n  }\n  if (Array.isArray(v)) {\n    return { arrayValue: { values: v.map(toFirestoreValue) } };\n  }\n  if (typeof v === 'object') {\n    const fields = {};\n    for (const k of Object.keys(v)) {\n      if (k.startsWith('_')) continue; // skip internal carry fields\n      fields[k] = toFirestoreValue(v[k]);\n    }\n    return { mapValue: { fields } };\n  }\n  return { stringValue: String(v) };\n}\n\nconst pkg = $json;\nconst fields = {};\nfor (const k of Object.keys(pkg)) {\n  if (k.startsWith('_')) continue;\n  fields[k] = toFirestoreValue(pkg[k]);\n}\nreturn { _id: pkg.id, firestoreBody: { fields } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "stage-e-prep",
+      "name": "Stage E.0 · Serialize for Firestore",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/letto_packages/{{$json._id}}?updateMask.fieldPaths=destination&updateMask.fieldPaths=origin&updateMask.fieldPaths=dates&updateMask.fieldPaths=transport&updateMask.fieldPaths=category&updateMask.fieldPaths=flight&updateMask.fieldPaths=hotel&updateMask.fieldPaths=pricing&updateMask.fieldPaths=deal&updateMask.fieldPaths=copy&updateMask.fieldPaths=blurbs&updateMask.fieldPaths=metadata&updateMask.fieldPaths=imageUrl&updateMask.fieldPaths=imageCredit",
+        "method": "PATCH",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.firestoreBody) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "stage-e-firestore",
+      "name": "Stage E · Save to Firestore",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        220
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://letto.live/api/notify-admin",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.NOTIFY_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"event\": \"package_published\", \"workflow\": \"01-MIXING-ENGINE\", \"detail\": { \"id\": {{ JSON.stringify($('Stage E.0 · Serialize for Firestore').item.json._id) }}, \"destination\": {{ JSON.stringify($('Stage D.1 · Parse Claude').item.json.destination?.city) }}, \"savings\": \"{{ $('Stage D.1 · Parse Claude').item.json.pricing?.savingsPercent }}%\", \"rating\": {{ $('Stage D.1 · Parse Claude').item.json.metadata?.claudeRating }} }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "notify-success",
+      "name": "Notify · package mined",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2660,
+        220
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/letto_route_baselines/{{$(\"Stage A · Routes\").itemMatching($itemIndex).json.origin}}_{{$(\"Stage A · Routes\").itemMatching($itemIndex).json.dest}}",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "Stage B.5 · Read route baseline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents:runQuery",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ structuredQuery: { from: [{ collectionId: 'letto_cj_inventory' }], where: { compositeFilter: { op: 'AND', filters: [ { fieldFilter: { field: { fieldPath: 'originCode' }, op: 'EQUAL', value: { stringValue: $('Stage A · Routes').itemMatching($itemIndex).json.origin } } }, { fieldFilter: { field: { fieldPath: 'destinationCode' }, op: 'EQUAL', value: { stringValue: $('Stage A · Routes').itemMatching($itemIndex).json.dest } } } ] } }, limit: 1 } }) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "Stage B.6 · CJ inventory lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://booking-com15.p.rapidapi.com/api/v1/hotels/getHotelDetails?hotel_id={{$json._hotelId}}&arrival_date={{$json._arrivalDate}}&departure_date={{$json._departureDate}}&adults=1&room_qty=1&currency_code=EUR&languagecode=en-us&units=metric",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-host",
+              "value": "booking-com15.p.rapidapi.com"
+            },
+            {
+              "name": "x-rapidapi-key",
+              "value": "={{$env.RAPIDAPI_KEY}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "Stage C.5 · Hotel details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage C.6 — Attach real Booking.com canonical URL from getHotelDetails to pkg.\nconst pkg = $('Stage C · Mix + filter').itemMatching($itemIndex).json;\nif (pkg._skip) {\n  return pkg;\n}\nconst details = $json;\nconst realUrl = details?.data?.url || null;\nreturn {\n    ...pkg,\n    hotel: {\n      ...pkg.hotel,\n      bookingUrl: realUrl\n    }\n  };",
+        "mode": "runOnceForEachItem"
+      },
+      "name": "Stage C.6 · Merge hotel URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Stage F.0 — Build Telegram approval DM body for one package.\n// Filter: skip if package already has a non-pending_review status (engine refresh case).\nconst stageE = $('Stage E · Save to Firestore').itemMatching($itemIndex).json;\nconst existingStatus = stageE?.fields?.status?.stringValue;\nif (existingStatus && existingStatus !== 'pending_review') {\n  return null;\n}\nconst pkg = $('Stage D.1 · Parse Claude').itemMatching($itemIndex).json;\nconst id = pkg.id;\nconst dest = pkg.destination || {};\nconst dates = pkg.dates || {};\nconst pricing = pkg.pricing || {};\nconst deal = pkg.deal || {};\nconst meta = pkg.metadata || {};\nconst blurbSr = pkg.blurbs?.sr || pkg.copy?.sr?.meta || '';\nconst total = pricing.total != null ? Math.round(Number(pricing.total)) : '?';\nconst transport = pkg.transport === 'bus' ? '🚌' : '✈️';\nconst nights = dates.nights || 0;\nconst pctBelow = (deal.flightDealRatio != null) ? Math.round((1 - Number(deal.flightDealRatio)) * 100) : null;\nconst dealLine = (pctBelow != null && deal.flightMedian)\n  ? `\\n📉 Let −${pctBelow}% ispod 90-dnevnog mediana (€${deal.flightMedian})`\n  : '';\nconst text = `🆕 <b>${id}</b>\\n${transport} <b>${dest.city || '?'}, ${dest.country || ''}</b>\\n📅 ${dates.departure || '?'} → ${dates.return || '?'} (${nights} ${nights === 1 ? 'noć' : 'noći'})\\n💰 <b>€${total}</b>${dealLine}\\n⭐ Rating: ${meta.claudeRating ?? '?'}/10 · source: <code>${meta.source || '?'}</code> · status: <code>${pkg.status || '?'}</code>\\n\\n${blurbSr}`;\nconst reply_markup = {\n  inline_keyboard: [\n    [\n      { text: '✅ Public', callback_data: `letto:approve_public:${id}` },\n      { text: '💎 Premium', callback_data: `letto:approve_premium:${id}` }\n    ],\n    [\n      { text: '❌ Reject', callback_data: `letto:reject:${id}` },\n      { text: '📝 Reject + razlog', callback_data: `letto:reject_reason:${id}` }\n    ]\n  ]\n};\nreturn {\n  tgBody: {\n    chat_id: $env.TELEGRAM_ADMIN_CHAT_ID,\n    text,\n    parse_mode: 'HTML',\n    disable_web_page_preview: true,\n    reply_markup\n  }\n};"
+      },
+      "name": "Stage F.0 · Compose approval DM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2660,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{$env.TELEGRAM_BOT_TOKEN}}/sendMessage",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.tgBody) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "Stage F · Send approval DM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/letto_destination_images/{{ $('Stage D.1 · Parse Claude').itemMatching($itemIndex).json.destination.city.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') }}",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "Stage D.2 · Read image library",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Stage D.3 — Deterministic image pick from destination library.\n// FNV-32 hash of pkg.id, modulo images.length. Same pkg.id → same image (idempotent).\n// On missing library or empty array → leave imageUrl unset (frontend falls back to gradient).\nconst pkg = $('Stage D.1 · Parse Claude').itemMatching($itemIndex).json;\nconst lib = $json;\n\nfunction hashSeed(s) {\n  let h = 2166136261;\n  const str = String(s || '');\n  for (let i = 0; i < str.length; i++) {\n    h ^= str.charCodeAt(i);\n    h = Math.imul(h, 16777619);\n  }\n  return Math.abs(h | 0);\n}\n\nconst arr = lib?.fields?.images?.arrayValue?.values || [];\nconst images = arr.map(v => {\n  const f = v.mapValue?.fields || {};\n  return {\n    url: f.url?.stringValue,\n    photographer: f.photographer?.stringValue || '',\n    photographerUrl: f.photographerUrl?.stringValue || '',\n    sourceUrl: f.sourceUrl?.stringValue || '',\n    alt: f.alt?.stringValue || '',\n    query: f.query?.stringValue || ''\n  };\n}).filter(i => i.url);\n\nif (images.length === 0) {\n  return { ...pkg };\n}\n\nconst idx = hashSeed(pkg.id) % images.length;\nconst chosen = images[idx];\nreturn {\n  ...pkg,\n  imageUrl: chosen.url,\n  imageCredit: {\n    photographer: chosen.photographer,\n    photographerUrl: chosen.photographerUrl,\n    source: 'pexels',\n    sourceUrl: chosen.sourceUrl,\n    alt: chosen.alt,\n    query: chosen.query,\n    pickIndex: idx\n  }\n};"
+      },
+      "name": "Stage D.3 · Attach image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "status-check",
+              "leftValue": "={{ $json.fields?.status?.stringValue || \"\" }}",
+              "rightValue": "pending_review",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "status-missing",
+              "leftValue": "={{ $json.fields?.status?.stringValue || \"\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "name": "If approval needed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Trigger · every 6h": {
+      "main": [
+        [
+          {
+            "node": "Stage A · Routes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage A · Routes": {
+      "main": [
+        [
+          {
+            "node": "Stage B · Travelpayouts flights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage B · Travelpayouts flights": {
+      "main": [
+        [
+          {
+            "node": "Stage B.5 · Read route baseline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage B · Booking.com hotels": {
+      "main": [
+        [
+          {
+            "node": "Stage C · Mix + filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage C · Mix + filter": {
+      "main": [
+        [
+          {
+            "node": "If package built",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If package built": {
+      "main": [
+        [
+          {
+            "node": "Stage C.5 · Hotel details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Stage D.0 · Prepare Claude prompt": {
+      "main": [
+        [
+          {
+            "node": "Stage D · Claude rating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage D · Claude rating": {
+      "main": [
+        [
+          {
+            "node": "Stage D.1 · Parse Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage D.1 · Parse Claude": {
+      "main": [
+        [
+          {
+            "node": "Stage D.2 · Read image library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage E.0 · Serialize for Firestore": {
+      "main": [
+        [
+          {
+            "node": "Stage E · Save to Firestore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage E · Save to Firestore": {
+      "main": [
+        [
+          {
+            "node": "If approval needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage B.5 · Read route baseline": {
+      "main": [
+        [
+          {
+            "node": "Stage B.6 · CJ inventory lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage B.6 · CJ inventory lookup": {
+      "main": [
+        [
+          {
+            "node": "Stage B · Booking.com hotels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage C.5 · Hotel details": {
+      "main": [
+        [
+          {
+            "node": "Stage C.6 · Merge hotel URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage C.6 · Merge hotel URL": {
+      "main": [
+        [
+          {
+            "node": "Stage D.0 · Prepare Claude prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage F.0 · Compose approval DM": {
+      "main": [
+        [
+          {
+            "node": "Stage F · Send approval DM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage F · Send approval DM": {
+      "main": [
+        [
+          {
+            "node": "Notify · package mined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage D.2 · Read image library": {
+      "main": [
+        [
+          {
+            "node": "Stage D.3 · Attach image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage D.3 · Attach image": {
+      "main": [
+        [
+          {
+            "node": "Stage E.0 · Serialize for Firestore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If approval needed": {
+      "main": [
+        [
+          {
+            "node": "Stage F.0 · Compose approval DM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify · package mined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "tags": [
+    "letto",
+    "engine",
+    "mining"
+  ]
+}

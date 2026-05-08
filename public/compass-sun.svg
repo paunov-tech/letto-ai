@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="overflow: visible;">
+  <defs>
+    <!-- Primary gold foil gradient: deep → light → deep -->
+    <linearGradient id="goldFoilPrimary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C5B22"/>
+      <stop offset="15%" stop-color="#A17433"/>
+      <stop offset="35%" stop-color="#D9A94A"/>
+      <stop offset="50%" stop-color="#F0D795"/>
+      <stop offset="65%" stop-color="#D9A94A"/>
+      <stop offset="85%" stop-color="#A17433"/>
+      <stop offset="100%" stop-color="#7C5B22"/>
+    </linearGradient>
+
+    <!-- Sun radial gradient for center -->
+    <radialGradient id="sunCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F5E4B3"/>
+      <stop offset="50%" stop-color="#D9A94A"/>
+      <stop offset="100%" stop-color="#7C5B22"/>
+    </radialGradient>
+
+    <!-- Deep etching for depth -->
+    <linearGradient id="goldDeep" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#A17433" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#5E4218" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Light highlight for triangle highlights -->
+    <linearGradient id="goldHighlight" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#F5E4B3"/>
+      <stop offset="100%" stop-color="#D9A94A"/>
+    </linearGradient>
+
+    <!-- Ocean blue for ornament accents -->
+    <linearGradient id="oceanDeep" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F2530"/>
+      <stop offset="100%" stop-color="#1B3A4B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ══════════════════════════════════════════════
+       OUTER DECORATIVE RINGS
+       ══════════════════════════════════════════════ -->
+  <g id="outer-rings">
+    <!-- Outermost hairline ring -->
+    <circle cx="100" cy="100" r="98" fill="none" stroke="url(#goldFoilPrimary)" stroke-width="0.5"/>
+    <!-- Primary ring -->
+    <circle cx="100" cy="100" r="94" fill="none" stroke="url(#goldFoilPrimary)" stroke-width="1.2"/>
+    <!-- Inner ring with tick marks -->
+    <circle cx="100" cy="100" r="86" fill="none" stroke="url(#goldFoilPrimary)" stroke-width="0.4" opacity="0.7"/>
+    <circle cx="100" cy="100" r="83" fill="none" stroke="url(#goldFoilPrimary)" stroke-width="0.4" opacity="0.5"/>
+  </g>
+
+  <!-- ══════════════════════════════════════════════
+       32 TICK MARKS on inner ring (every 11.25°)
+       ══════════════════════════════════════════════ -->
+  <g id="ticks" stroke="url(#goldFoilPrimary)" stroke-width="0.6" fill="none">
+    <!-- N S E W — main cardinals get longer ticks -->
+    <!-- Use rotation transforms for clean 22.5° increments -->
+    <g transform="translate(100 100)">
+      <!-- Every 22.5°: medium tick, every 45°: long, every 90°: longest -->
+      <!-- 0° (N) -->
+      <line x1="0" y1="-86" x2="0" y2="-78" stroke-width="1.2"/>
+      <!-- 11.25° -->
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(11.25)"/>
+      <!-- 22.5° -->
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(22.5)"/>
+      <!-- 33.75° -->
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(33.75)"/>
+      <!-- 45° (NE) -->
+      <line x1="0" y1="-86" x2="0" y2="-79" transform="rotate(45)" stroke-width="0.9"/>
+      <!-- 56.25° -->
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(56.25)"/>
+      <!-- 67.5° -->
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(67.5)"/>
+      <!-- 78.75° -->
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(78.75)"/>
+      <!-- 90° (E) -->
+      <line x1="0" y1="-86" x2="0" y2="-78" transform="rotate(90)" stroke-width="1.2"/>
+      <!-- 101.25° -->
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(101.25)"/>
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(112.5)"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(123.75)"/>
+      <line x1="0" y1="-86" x2="0" y2="-79" transform="rotate(135)" stroke-width="0.9"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(146.25)"/>
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(157.5)"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(168.75)"/>
+      <!-- 180° (S) -->
+      <line x1="0" y1="-86" x2="0" y2="-78" transform="rotate(180)" stroke-width="1.2"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(191.25)"/>
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(202.5)"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(213.75)"/>
+      <line x1="0" y1="-86" x2="0" y2="-79" transform="rotate(225)" stroke-width="0.9"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(236.25)"/>
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(247.5)"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(258.75)"/>
+      <!-- 270° (W) -->
+      <line x1="0" y1="-86" x2="0" y2="-78" transform="rotate(270)" stroke-width="1.2"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(281.25)"/>
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(292.5)"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(303.75)"/>
+      <line x1="0" y1="-86" x2="0" y2="-79" transform="rotate(315)" stroke-width="0.9"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(326.25)"/>
+      <line x1="0" y1="-86" x2="0" y2="-80" transform="rotate(337.5)"/>
+      <line x1="0" y1="-86" x2="0" y2="-83" transform="rotate(348.75)"/>
+    </g>
+  </g>
+
+  <!-- ══════════════════════════════════════════════
+       CARDINAL LETTERS (N, E, S, W)
+       ══════════════════════════════════════════════ -->
+  <g id="cardinals" font-family="Fraunces, serif" font-size="8" font-weight="500" fill="url(#goldFoilPrimary)" text-anchor="middle">
+    <text x="100" y="76">N</text>
+    <text x="124" y="102">E</text>
+    <text x="100" y="128">S</text>
+    <text x="76" y="102">W</text>
+  </g>
+
+  <!-- ══════════════════════════════════════════════
+       16-POINT COMPASS ROSE (star bursts)
+       ══════════════════════════════════════════════ -->
+  <g id="compass-rose" transform="translate(100 100)">
+
+    <!-- OUTER 4 CARDINAL POINTS (N-E-S-W) — longest, split-tone -->
+    <!-- North point: dark half (left) -->
+    <polygon points="0,-72 -4,0 0,-6" fill="url(#goldDeep)"/>
+    <!-- North point: light half (right) -->
+    <polygon points="0,-72 4,0 0,-6" fill="url(#goldHighlight)"/>
+
+    <!-- East point -->
+    <polygon points="72,0 0,-4 6,0" fill="url(#goldHighlight)"/>
+    <polygon points="72,0 0,4 6,0" fill="url(#goldDeep)"/>
+
+    <!-- South point -->
+    <polygon points="0,72 -4,0 0,6" fill="url(#goldHighlight)"/>
+    <polygon points="0,72 4,0 0,6" fill="url(#goldDeep)"/>
+
+    <!-- West point -->
+    <polygon points="-72,0 0,-4 -6,0" fill="url(#goldDeep)"/>
+    <polygon points="-72,0 0,4 -6,0" fill="url(#goldHighlight)"/>
+
+    <!-- INTER-CARDINAL (NE-SE-SW-NW) — medium length, rotated 45° -->
+    <g transform="rotate(45)">
+      <polygon points="0,-52 -3,0 0,-5" fill="url(#goldDeep)"/>
+      <polygon points="0,-52 3,0 0,-5" fill="url(#goldHighlight)"/>
+    </g>
+    <g transform="rotate(135)">
+      <polygon points="0,-52 -3,0 0,-5" fill="url(#goldDeep)"/>
+      <polygon points="0,-52 3,0 0,-5" fill="url(#goldHighlight)"/>
+    </g>
+    <g transform="rotate(225)">
+      <polygon points="0,-52 -3,0 0,-5" fill="url(#goldDeep)"/>
+      <polygon points="0,-52 3,0 0,-5" fill="url(#goldHighlight)"/>
+    </g>
+    <g transform="rotate(315)">
+      <polygon points="0,-52 -3,0 0,-5" fill="url(#goldDeep)"/>
+      <polygon points="0,-52 3,0 0,-5" fill="url(#goldHighlight)"/>
+    </g>
+
+    <!-- 8 ORDINAL POINTS (NNE, ENE, ESE, SSE, SSW, WSW, WNW, NNW) — short -->
+    <g opacity="0.8">
+      <g transform="rotate(22.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+      <g transform="rotate(67.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+      <g transform="rotate(112.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+      <g transform="rotate(157.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+      <g transform="rotate(202.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+      <g transform="rotate(247.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+      <g transform="rotate(292.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+      <g transform="rotate(337.5)">
+        <polygon points="0,-38 -2,0 0,-3" fill="url(#goldDeep)"/>
+        <polygon points="0,-38 2,0 0,-3" fill="url(#goldHighlight)"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- ══════════════════════════════════════════════
+       SUN BURST IN CENTER — 12 radiating rays
+       ══════════════════════════════════════════════ -->
+  <g id="sun-burst" transform="translate(100 100)" opacity="0.92">
+    <!-- 12 sun rays, short and delicate -->
+    <g stroke="url(#goldFoilPrimary)" stroke-width="0.8" stroke-linecap="round" fill="none">
+      <line x1="0" y1="-18" x2="0" y2="-24"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(30)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(60)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(90)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(120)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(150)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(180)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(210)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(240)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(270)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(300)"/>
+      <line x1="0" y1="-18" x2="0" y2="-24" transform="rotate(330)"/>
+    </g>
+  </g>
+
+  <!-- ══════════════════════════════════════════════
+       CENTRAL SUN DISK
+       ══════════════════════════════════════════════ -->
+  <g id="center-sun" transform="translate(100 100)">
+    <!-- Outer rim -->
+    <circle cx="0" cy="0" r="15" fill="url(#sunCore)" stroke="url(#goldFoilPrimary)" stroke-width="1"/>
+    <!-- Inner shadow ring for depth -->
+    <circle cx="0" cy="0" r="12" fill="none" stroke="url(#goldDeep)" stroke-width="0.4" opacity="0.5"/>
+    <!-- Central 8-point star -->
+    <g fill="url(#goldDeep)">
+      <polygon points="0,-9 1.5,-1.5 9,0 1.5,1.5 0,9 -1.5,1.5 -9,0 -1.5,-1.5"/>
+      <polygon points="0,-6 1,-1 6,0 1,1 0,6 -1,1 -6,0 -1,-1" fill="url(#goldHighlight)"/>
+    </g>
+  </g>
+</svg>

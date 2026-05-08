@@ -1,0 +1,129 @@
+{
+  "name": "03-LETTO-WEEKLY-NEWSLETTER",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "weeks", "weeksInterval": 1, "triggerAtDay": [1], "triggerAtHour": 9, "triggerAtMinute": 0 }
+          ]
+        }
+      },
+      "id": "trigger-monday",
+      "name": "Trigger · Monday 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents:runQuery",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"letto_packages\" }],\n    \"where\": { \"fieldFilter\": { \"field\": { \"fieldPath\": \"status\" }, \"op\": \"IN\", \"value\": { \"arrayValue\": { \"values\": [{ \"stringValue\": \"published_public\" }, { \"stringValue\": \"published_premium\" }] } } } },\n    \"orderBy\": [{ \"field\": { \"fieldPath\": \"pricing.savingsPercent\" }, \"direction\": \"DESCENDING\" }],\n    \"limit\": 3\n  }\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "top-packages",
+      "name": "Top 3 packages by savings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 280]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents:runQuery",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"letto_subscribers\" }],\n    \"where\": { \"fieldFilter\": { \"field\": { \"fieldPath\": \"subscribed\" }, \"op\": \"EQUAL\", \"value\": { \"booleanValue\": true } } },\n    \"limit\": 1000\n  }\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "subscribers",
+      "name": "Active subscribers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compose newsletter payload. Returns one item with array of subscriber emails + HTML body.\nconst pkgRows = $('Top 3 packages by savings').all();\nconst subRows = $('Active subscribers').all();\n\nconst pkgs = [];\nfor (const r of pkgRows) {\n  if (r.json?.document) {\n    const f = r.json.document.fields;\n    pkgs.push({\n      city: f.destination?.mapValue?.fields?.city?.stringValue || 'Unknown',\n      country: f.destination?.mapValue?.fields?.country?.stringValue || '',\n      total: parseInt(f.pricing?.mapValue?.fields?.total?.integerValue || '0'),\n      agency: parseInt(f.pricing?.mapValue?.fields?.agencyReference?.integerValue || '0'),\n      pct: parseInt(f.pricing?.mapValue?.fields?.savingsPercent?.integerValue || '0')\n    });\n  }\n}\n\nconst emails = [];\nfor (const r of subRows) {\n  if (r.json?.document) {\n    const e = r.json.document.fields?.email?.stringValue;\n    if (e) emails.push(e);\n  }\n}\n\nconst rowsHtml = pkgs.map(p => `\n  <tr><td style=\"padding:16px 0;border-bottom:1px solid #DCD1B3;\">\n    <div style=\"font-family:Georgia,serif;font-size:22px;color:#0A0D11;margin-bottom:6px;\">${p.city}, ${p.country}</div>\n    <div style=\"font-family:monospace;font-size:14px;color:#6E6453;\">€${p.total} <span style=\"color:#6B1A25;\">(${p.pct}% off · agencija €${p.agency})</span></div>\n  </td></tr>\n`).join('');\n\nconst html = `\n<!doctype html><html><body style=\"margin:0;background:#F5EFE0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:560px;margin:0 auto;padding:32px 24px;\">\n<tr><td style=\"text-align:center;padding-bottom:24px;\">\n<div style=\"font-family:Georgia,serif;font-style:italic;font-size:32px;color:#0A0D11;\">letto<span style=\"font-style:normal;font-size:11px;color:#A17433;letter-spacing:0.1em;\">.LIVE</span></div>\n</td></tr>\n<tr><td style=\"font-family:Georgia,serif;font-size:18px;line-height:1.5;color:#0A0D11;padding-bottom:16px;\">This week's <em style=\"color:#A17433;\">3 best</em> packages — already at &gt;30% below the median.</td></tr>\n<tr><td><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">${rowsHtml}</table></td></tr>\n<tr><td style=\"padding-top:24px;text-align:center;\">\n<a href=\"https://letto.live/#pricing\" style=\"display:inline-block;background:#A17433;color:#F5E9D0;padding:14px 28px;border-radius:999px;text-decoration:none;font-weight:500;\">Unlock full details — €19/3mo</a>\n</td></tr>\n<tr><td style=\"padding-top:32px;font-size:11px;color:#6E6453;text-align:center;line-height:1.5;\">LETTO.LIVE · SIAL Consulting · Slovenia<br><a href=\"https://letto.live\" style=\"color:#A17433;\">letto.live</a> · <a href=\"https://letto.live/#unsub\" style=\"color:#A17433;\">unsubscribe</a></td></tr>\n</table></body></html>\n`;\n\nreturn [{ json: { emails, html, packageCount: pkgs.length, subject: `LETTO weekly · 3 packages, top ${pkgs[0]?.pct || 0}% off` } }];"
+      },
+      "id": "compose",
+      "name": "Compose newsletter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 360]
+    },
+    {
+      "parameters": {
+        "url": "https://api.sendgrid.com/v3/mail/send",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.SENDGRID_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"personalizations\": [{ \"to\": {{ JSON.stringify($json.emails.slice(0, 950).map(e => ({ email: e }))) }} }],\n  \"from\": { \"email\": \"deals@letto.live\", \"name\": \"LETTO.LIVE\" },\n  \"subject\": {{ JSON.stringify($json.subject) }},\n  \"content\": [{ \"type\": \"text/html\", \"value\": {{ JSON.stringify($json.html) }} }],\n  \"tracking_settings\": { \"click_tracking\": { \"enable\": true }, \"open_tracking\": { \"enable\": true } }\n}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "sendgrid-send",
+      "name": "SendGrid send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 360]
+    },
+    {
+      "parameters": {
+        "url": "https://letto.live/api/notify-admin",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.NOTIFY_SECRET}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"event\": \"newsletter_sent\", \"workflow\": \"03-NEWSLETTER\", \"detail\": { \"recipients\": {{$('Compose newsletter').first().json.emails.length}}, \"packages\": {{$('Compose newsletter').first().json.packageCount}}, \"subject\": {{ JSON.stringify($('Compose newsletter').first().json.subject) }} }}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "notify-success",
+      "name": "Notify admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 360]
+    }
+  ],
+  "connections": {
+    "Trigger · Monday 09:00": { "main": [[
+      { "node": "Top 3 packages by savings", "type": "main", "index": 0 },
+      { "node": "Active subscribers", "type": "main", "index": 0 }
+    ]] },
+    "Top 3 packages by savings": { "main": [[{ "node": "Compose newsletter", "type": "main", "index": 0 }]] },
+    "Active subscribers": { "main": [[{ "node": "Compose newsletter", "type": "main", "index": 0 }]] },
+    "Compose newsletter": { "main": [[{ "node": "SendGrid send", "type": "main", "index": 0 }]] },
+    "SendGrid send": { "main": [[{ "node": "Notify admin", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "saveDataErrorExecution": "all" },
+  "tags": ["letto", "engine", "newsletter"]
+}

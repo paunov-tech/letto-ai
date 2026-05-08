@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LETTO Metrics — Engine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;1,400&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0C0E10;
+    --panel: #1F2226;
+    --border: #3A3F47;
+    --text: #FAF2DE;
+    --muted: #726A58;
+    --gold: #B8863B;
+    --gold-light: #E4C37A;
+    --green: #16803D;
+    --burgundy: #7C1E29;
+    --blue: #1B3A4B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  header {
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: rgba(12,14,16,0.96); z-index: 10;
+  }
+  .logo { font-family: 'Fraunces', serif; font-style: italic; font-size: 22px; font-weight: 500; }
+  .logo .ai { font-family: 'Inter'; font-style: normal; font-size: 10px; color: var(--gold); margin-left: 4px; letter-spacing: 0.1em; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 32px; margin-bottom: 8px; }
+  h1 em { color: var(--gold-light); font-style: italic; }
+  h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 22px; margin-bottom: 16px; color: var(--gold-light); }
+  .subtitle { color: var(--muted); margin-bottom: 28px; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px; margin-bottom: 32px;
+  }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 22px 24px;
+  }
+  .stat-num { font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 500; color: var(--gold-light); line-height: 1.1; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-top: 6px; }
+  .stat-sub { font-size: 12px; color: var(--text); opacity: 0.7; margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+  .stat.health-ok { border-color: rgba(22,128,61,0.5); }
+  .stat.health-warn { border-color: rgba(184,134,59,0.6); }
+  .stat.health-bad { border-color: rgba(124,30,41,0.7); }
+  .stat.health-bad .stat-num { color: #ff8888; }
+
+  .events {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 22px 24px;
+  }
+  .event-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .event-row:last-child { border-bottom: none; }
+  .event-name { color: var(--text); }
+  .event-count { color: var(--gold-light); }
+
+  .last-error {
+    background: var(--panel); border: 1px solid rgba(124,30,41,0.4); border-radius: 8px;
+    padding: 18px 22px; margin-top: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: #ff8888;
+  }
+  .last-error pre { white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; }
+  .ts { color: var(--muted); font-size: 11px; }
+
+  .login-gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .login-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 32px; width: 380px; max-width: 90vw; }
+  .login-box input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 6px; font-family: inherit; font-size: 14px; margin-bottom: 12px; }
+  .login-box input:focus { outline: 1px solid var(--gold); }
+  .login-box button { width: 100%; background: var(--gold); color: var(--bg); border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .error { color: #ff8888; font-size: 12px; margin-top: 10px; text-align: center; }
+
+  .refresh-info { color: var(--muted); font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-left: 12px; }
+  .nav-links a { color: var(--gold-light); text-decoration: none; font-size: 13px; margin-right: 16px; }
+  .nav-links a:hover { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<div id="gate" class="login-gate">
+  <div class="login-box">
+    <div class="logo" style="margin-bottom: 22px; text-align: center;">letto<span class="ai">.LIVE METRICS</span></div>
+    <input id="token-input" type="password" placeholder="Admin token" autofocus>
+    <button onclick="login()">Uloguj se</button>
+    <div id="login-error" class="error"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <div class="logo">letto<span class="ai">.LIVE METRICS</span><span class="refresh-info" id="refresh-info">·</span></div>
+    <div class="nav-links">
+      <a href="/admin.html">→ Admin panel</a>
+      <a href="#" onclick="logout(); return false;">Logout</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <h1>Engine <em>health</em></h1>
+    <p class="subtitle">Auto-refresh every 60s · window: last 24h</p>
+
+    <h2>Mining</h2>
+    <div class="grid" id="mining"></div>
+
+    <h2>Approval funnel</h2>
+    <div class="grid" id="approval"></div>
+
+    <h2>Events (24h)</h2>
+    <div class="events" id="events"></div>
+
+    <div id="last-error-box"></div>
+  </div>
+</div>
+
+<script>
+let TOKEN = localStorage.getItem('letto_admin_token');
+if (TOKEN) enterApp();
+
+async function login() {
+  const token = document.getElementById('token-input').value.trim();
+  if (!token) return;
+  const r = await fetch('/api/admin?action=engine-stats', { headers: { 'Authorization': 'Bearer ' + token } });
+  if (r.ok) {
+    TOKEN = token;
+    localStorage.setItem('letto_admin_token', TOKEN);
+    enterApp();
+  } else {
+    document.getElementById('login-error').textContent = 'Nevažeći token';
+  }
+}
+function logout() { localStorage.removeItem('letto_admin_token'); location.reload(); }
+
+function enterApp() {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  load();
+  setInterval(load, 60000);
+}
+
+function tile(num, label, sub, health) {
+  return `<div class="stat ${health ? 'health-' + health : ''}"><div class="stat-num">${num}</div><div class="stat-label">${label}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/admin?action=engine-stats', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+
+    const minedHealth = d.mining.packagesMined === 0 ? 'bad' : d.mining.packagesMined < 5 ? 'warn' : 'ok';
+    document.getElementById('mining').innerHTML = [
+      tile(d.mining.packagesMined, 'Packages mined', d.window, minedHealth),
+      tile(d.events.engine_error || 0, 'Engine errors', '24h', d.events.engine_error ? 'bad' : 'ok'),
+      tile(d.events.newsletter_sent || 0, 'Newsletter sends', 'weekly', 'ok'),
+      tile((d.events.telegram_skipped_empty || 0), 'Telegram skipped', 'no packages'),
+    ].join('');
+
+    document.getElementById('approval').innerHTML = [
+      tile(d.approval.pending, 'Pending review', 'awaiting admin', d.approval.pending > 50 ? 'warn' : 'ok'),
+      tile(d.approval.published, 'Published', 'live'),
+      tile(d.approval.rejected, 'Rejected', 'admin reject'),
+      tile(d.approval.approvalRate, 'Approval rate', 'cumulative')
+    ].join('');
+
+    const evRows = Object.entries(d.events).sort((a, b) => b[1] - a[1]);
+    document.getElementById('events').innerHTML = evRows.length === 0
+      ? '<div style="color:var(--muted);padding:8px 0;font-family:Fraunces,serif;font-style:italic;">No events recorded in last 24h. Either nothing happened, or n8n hasn\'t been activated yet.</div>'
+      : evRows.map(([k, v]) => `<div class="event-row"><span class="event-name">${k}</span><span class="event-count">${v}</span></div>`).join('');
+
+    const errBox = document.getElementById('last-error-box');
+    if (d.lastError) {
+      errBox.innerHTML = `
+        <h2 style="margin-top:24px;">Last engine error</h2>
+        <div class="last-error">
+          <div class="ts">${d.lastError.ts} · workflow: ${d.lastError.workflow}</div>
+          <pre>${JSON.stringify(d.lastError.detail, null, 2).slice(0, 1500)}</pre>
+        </div>`;
+    } else {
+      errBox.innerHTML = '';
+    }
+
+    document.getElementById('refresh-info').textContent = '· last refresh: ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('refresh-info').textContent = '· error: ' + e.message;
+  }
+}
+</script>
+
+</body>
+</html>

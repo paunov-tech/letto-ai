@@ -1,0 +1,16 @@
+{
+  "name": "letto-scrapers",
+  "version": "0.2.0",
+  "description": "LETTO multi-source travel scrapers via Smartproxy Web Scraping API",
+  "private": true,
+  "type": "module",
+  "main": "run-all.mjs",
+  "scripts": {
+    "start": "node run-all.mjs",
+    "test:wizz": "node -e \"import('./sources/wizzair.mjs').then(m=>m.scrapeWizzair({origin:'BEG',destination:'IST'})).then(r=>console.log(JSON.stringify(r,null,2)))\""
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "google-auth-library": "^9.0.0"
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "name": "LETTO — Deal Scanner Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 2h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "routes",
+              "name": "routes",
+              "value": "[{\"from\":\"BEG\",\"to\":\"IST\",\"name\":\"Istanbul\"},{\"from\":\"BEG\",\"to\":\"FCO\",\"name\":\"Rim\"},{\"from\":\"BEG\",\"to\":\"SKG\",\"name\":\"Halkidiki\"},{\"from\":\"BEG\",\"to\":\"BCN\",\"name\":\"Barcelona\"},{\"from\":\"BEG\",\"to\":\"CDG\",\"name\":\"Pariz\"},{\"from\":\"BEG\",\"to\":\"DXB\",\"name\":\"Dubai\"},{\"from\":\"BEG\",\"to\":\"BUD\",\"name\":\"Budimpesta\"},{\"from\":\"BEG\",\"to\":\"VIE\",\"name\":\"Bec\"},{\"from\":\"BEG\",\"to\":\"PRG\",\"name\":\"Prag\"},{\"from\":\"BEG\",\"to\":\"AMS\",\"name\":\"Amsterdam\"}]",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "routes-list",
+      "name": "Define routes",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "routes",
+        "options": {}
+      },
+      "id": "split-routes",
+      "name": "Split per route",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.tequila.kiwi.com/v2/search?fly_from={{ $json.from }}&fly_to={{ $json.to }}&date_from={{ $now.plus({days:14}).toFormat('dd/MM/yyyy') }}&date_to={{ $now.plus({days:90}).toFormat('dd/MM/yyyy') }}&adults=1&curr=EUR&sort=price&limit=5",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.KIWI_API_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "id": "kiwi-search",
+      "name": "Kiwi.com flight search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compute median price for this route from historical data in Firestore\n// (stub: in production, query Firestore for last 90 days)\n// For MVP, use static baseline from CSV\n\nconst MEDIANS = {\n  'BEG-IST': { may: 205, jun: 240, jul: 310, aug: 295, oct: 180 },\n  'BEG-FCO': { may: 140, jun: 180, jul: 220, aug: 210, oct: 144 },\n  'BEG-SKG': { may: 160, jun: 200, jul: 280, aug: 270, oct: 150 },\n  'BEG-BCN': { may: 180, jun: 220, jul: 260, aug: 250, oct: 180, sep: 223 },\n  'BEG-CDG': { may: 165, jun: 195, jul: 235, aug: 230, oct: 170, nov: 186 },\n  'BEG-DXB': { feb: 832, may: 650, nov: 620, dec: 780 },\n  'BEG-BUD': { may: 85, jun: 105, jul: 130 },\n  'BEG-VIE': { may: 95, jun: 120, jul: 145 },\n  'BEG-PRG': { may: 110, jun: 130, jul: 160 },\n  'BEG-AMS': { may: 170, jun: 195, jul: 230 }\n};\n\nconst MONTH_NAMES = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];\n\nconst routeKey = `${$input.first().json.from}-${$input.first().json.to}`;\nconst kiwiData = $input.last().json.data || [];\n\nif (!kiwiData.length) {\n  return [];\n}\n\n// Find cheapest flight in next 90 days\nconst cheapest = kiwiData.reduce((min, f) => f.price < min.price ? f : min, kiwiData[0]);\nconst depDate = new Date(cheapest.local_departure);\nconst monthIdx = depDate.getMonth();\nconst monthKey = MONTH_NAMES[monthIdx];\n\nconst median = MEDIANS[routeKey]?.[monthKey];\nif (!median) return [];\n\nconst discount = ((median - cheapest.price) / median) * 100;\n\n// Only flag if 30%+ below median\nif (discount < 30) return [];\n\nreturn [{\n  json: {\n    routeKey,\n    routeName: $input.first().json.name,\n    from: $input.first().json.from,\n    to: $input.first().json.to,\n    price: Math.round(cheapest.price),\n    medianPrice: median,\n    discount: Math.round(discount),\n    departureDate: cheapest.local_departure,\n    returnDate: cheapest.local_arrival,\n    airline: cheapest.airlines?.[0] || 'Multiple',\n    bookingLink: cheapest.deep_link,\n    flightDuration: cheapest.duration?.total,\n    month: monthKey,\n    year: depDate.getFullYear()\n  }\n}];"
+      },
+      "id": "deal-detector",
+      "name": "Deal detector (median check)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-sonnet-4-6",
+          "mode": "list"
+        },
+        "messages": {
+          "messageValues": [
+            {
+              "role": "user",
+              "content": "=Napiši kratak blurb (70-100 reči) za LETTO.LIVE Telegram/newsletter kanal u tonu ležernom-informativnom, na srpskom latinicom.\n\nDeal podaci:\n- Destinacija: {{ $json.routeName }}\n- Cena: {{ $json.price }}€ (povratna karta)\n- Prosečna cena za taj mesec: {{ $json.medianPrice }}€\n- Popust: {{ $json.discount }}% ispod proseka\n- Datum leta: {{ $json.departureDate }}\n- Aviokompanija: {{ $json.airline }}\n- Mesec: {{ $json.month }}\n\nPravila:\n- Započni sa emojiom (✈️, 🇹🇷, 🇮🇹, 🇬🇷 itd.)\n- Pomeni tačan grad, cenu, datum u prvoj rečenici\n- Dodaj jedan lokalni detalj (hrana, kultura, lokacija) koji zvuči kao savet prijatelja\n- Završi motivacionom rečenicom ('dok traje', 'ovo je retkost', itd.)\n- Tonski: ne preterano entuzijastan, pouzdan prijatelj koji zna tržište\n\nVrati SAMO blurb tekst, bez naslova, bez markdown-a."
+            }
+          ]
+        },
+        "options": {
+          "maxTokensToSample": 300,
+          "temperature": 0.7
+        }
+      },
+      "id": "claude-blurb",
+      "name": "Claude: write blurb",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge deal data with generated blurb\nconst deal = $('deal-detector').item.json;\nconst blurb = $input.first().json.text || $input.first().json.content || '';\n\nreturn [{\n  json: {\n    ...deal,\n    blurb: blurb.trim(),\n    createdAt: new Date().toISOString(),\n    status: 'pending_review', // requires human approval before publish\n    id: `deal_${Date.now()}_${deal.routeKey}`\n  }\n}];"
+      },
+      "id": "merge-blurb",
+      "name": "Merge deal + blurb",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "collection": "letto_deals",
+        "document": "={{ $json.id }}",
+        "dataPropertyName": "json"
+      },
+      "id": "firestore-write",
+      "name": "Write to Firestore",
+      "type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+      "typeVersion": 1,
+      "position": [1500, 300],
+      "notes": "Use Firestore node actual name in production"
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $env.MIROSLAV_TELEGRAM_ID }}" },
+            { "name": "text", "value": "=🆕 NOVI DEAL ZA PREGLED:\n\n{{ $json.blurb }}\n\n---\nRuta: {{ $json.from }} → {{ $json.to }}\nCena: {{ $json.price }}€ (-{{ $json.discount }}%)\nMedijan: {{ $json.medianPrice }}€\nDatum: {{ $json.departureDate }}\n\nAPPROVE: https://letto.live/admin/approve/{{ $json.id }}\nREJECT: https://letto.live/admin/reject/{{ $json.id }}" },
+            { "name": "parse_mode", "value": "HTML" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-miroslav",
+      "name": "Notify Miroslav for review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 300]
+    }
+  ],
+  "connections": {
+    "Every 2h": {
+      "main": [[{ "node": "Define routes", "type": "main", "index": 0 }]]
+    },
+    "Define routes": {
+      "main": [[{ "node": "Split per route", "type": "main", "index": 0 }]]
+    },
+    "Split per route": {
+      "main": [[{ "node": "Kiwi.com flight search", "type": "main", "index": 0 }]]
+    },
+    "Kiwi.com flight search": {
+      "main": [[{ "node": "Deal detector (median check)", "type": "main", "index": 0 }]]
+    },
+    "Deal detector (median check)": {
+      "main": [[{ "node": "Claude: write blurb", "type": "main", "index": 0 }]]
+    },
+    "Claude: write blurb": {
+      "main": [[{ "node": "Merge deal + blurb", "type": "main", "index": 0 }]]
+    },
+    "Merge deal + blurb": {
+      "main": [[{ "node": "Write to Firestore", "type": "main", "index": 0 }]]
+    },
+    "Write to Firestore": {
+      "main": [[{ "node": "Notify Miroslav for review", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "pinData": {},
+  "staticData": null,
+  "meta": {
+    "description": "LETTO.LIVE Deal Scanner — runs every 2h, scans Kiwi.com for 10 key routes, computes median-based discount, generates Serbian blurb via Claude, writes to Firestore (status=pending), notifies Miroslav for approval via Telegram."
+  },
+  "tags": [{ "name": "letto" }, { "name": "scanner" }]
+}

@@ -1,0 +1,133 @@
+{
+  "name": "02-LETTO-PRICE-VERIFIER",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+      },
+      "id": "trigger-cron",
+      "name": "Trigger · every 6h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents:runQuery",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"letto_packages\" }],\n    \"where\": { \"compositeFilter\": {\n      \"op\": \"AND\",\n      \"filters\": [\n        { \"fieldFilter\": { \"field\": { \"fieldPath\": \"status\" }, \"op\": \"IN\", \"value\": { \"arrayValue\": { \"values\": [{ \"stringValue\": \"published_public\" }, { \"stringValue\": \"published_premium\" }, { \"stringValue\": \"pending_review\" }] } } } }\n      ]\n    }},\n    \"limit\": 50\n  }\n}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-active",
+      "name": "Fetch active packages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten Firestore runQuery response → one item per package.\nconst rows = $input.all();\nconst out = [];\nfor (const row of rows) {\n  const data = row.json;\n  // runQuery returns array of {document: {...}}. n8n receives them as one big array.\n  if (data?.document) {\n    const fields = data.document.fields;\n    const doc = {};\n    for (const k in fields) {\n      const v = fields[k];\n      if (v.stringValue !== undefined) doc[k] = v.stringValue;\n      else if (v.integerValue !== undefined) doc[k] = parseInt(v.integerValue);\n      else if (v.mapValue) {\n        doc[k] = {};\n        for (const kk in v.mapValue.fields) {\n          const vv = v.mapValue.fields[kk];\n          if (vv.stringValue !== undefined) doc[k][kk] = vv.stringValue;\n          else if (vv.integerValue !== undefined) doc[k][kk] = parseInt(vv.integerValue);\n          else if (vv.timestampValue !== undefined) doc[k][kk] = vv.timestampValue;\n        }\n      }\n    }\n    doc._docPath = data.document.name;\n    out.push({ json: doc });\n  }\n}\nreturn out;"
+      },
+      "id": "parse-firestore",
+      "name": "Parse Firestore response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 320]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.travelpayouts.com/aviasales/v3/get_latest_prices",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "origin", "value": "={{$json.origin?.code}}" },
+            { "name": "destination", "value": "={{$json.destination?.code}}" },
+            { "name": "currency", "value": "EUR" },
+            { "name": "limit", "value": "1" },
+            { "name": "token", "value": "={{$env.TRAVELPAYOUTS_TOKEN}}" }
+          ]
+        },
+        "options": { "timeout": 12000 }
+      },
+      "id": "recheck-price",
+      "name": "Re-check current price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 320],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compare original total vs current market — if drifted >10% upward, mark expired.\nconst pkg = $('Parse Firestore response').itemMatching($itemIndex).json;\nconst recheck = $json;\nconst originalTotal = pkg.pricing?.total || 0;\nconst currentFlight = recheck?.data?.[0]?.value || recheck?.prices?.[0]?.value;\nlet action = 'keep';\nlet newStatus = pkg.status;\nlet note = null;\nif (currentFlight && originalTotal) {\n  // Flight is roughly 60% of total package; if flight component drifted >15%, flag whole package stale\n  const originalFlight = originalTotal * 0.6;\n  const drift = (currentFlight - originalFlight) / originalFlight;\n  if (drift > 0.15) { action = 'mark_expired'; newStatus = 'expired'; note = `Flight price up ${Math.round(drift*100)}% since publish`; }\n  else if (drift < -0.15) { note = `Flight price further down ${Math.round(-drift*100)}% — still good`; }\n}\nreturn [{ json: { ...pkg, _verifyAction: action, _newStatus: newStatus, _verifyNote: note } }];"
+      },
+      "id": "compare-price",
+      "name": "Compare price",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "expired-check",
+              "leftValue": "={{$json._verifyAction}}",
+              "rightValue": "mark_expired",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-expired",
+      "name": "If expired",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 320]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/{{$json._docPath}}?updateMask.fieldPaths=status&updateMask.fieldPaths=expiredAt",
+        "method": "PATCH",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"status\": { \"stringValue\": \"expired\" },\n    \"expiredAt\": { \"timestampValue\": \"{{ new Date().toISOString() }}\" }\n  }\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "mark-expired",
+      "name": "Mark expired in Firestore",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 220]
+    }
+  ],
+  "connections": {
+    "Trigger · every 6h": { "main": [[{ "node": "Fetch active packages", "type": "main", "index": 0 }]] },
+    "Fetch active packages": { "main": [[{ "node": "Parse Firestore response", "type": "main", "index": 0 }]] },
+    "Parse Firestore response": { "main": [[{ "node": "Re-check current price", "type": "main", "index": 0 }]] },
+    "Re-check current price": { "main": [[{ "node": "Compare price", "type": "main", "index": 0 }]] },
+    "Compare price": { "main": [[{ "node": "If expired", "type": "main", "index": 0 }]] },
+    "If expired": { "main": [[{ "node": "Mark expired in Firestore", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "saveDataErrorExecution": "all" },
+  "tags": ["letto", "engine", "verifier"]
+}

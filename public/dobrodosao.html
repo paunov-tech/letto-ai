@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="sr-Latn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dobrodošao u LETTO Premium 🧭</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;1,300;1,400&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #F7F1E3;
+    color: #0C0E10;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  body::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(184,134,59,0.12) 0%, transparent 50%),
+      radial-gradient(ellipse 70% 50% at 85% 80%, rgba(124,30,41,0.08) 0%, transparent 50%);
+    z-index: 0;
+  }
+  .container { max-width: 680px; width: 100%; text-align: center; position: relative; z-index: 1; }
+
+  .seal { margin: 0 auto 32px; animation: fade-in 1s ease 0.2s forwards; opacity: 0; }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(40px, 7vw, 72px);
+    line-height: 1;
+    font-weight: 300;
+    margin-bottom: 24px;
+    animation: fade-in 1s ease 0.5s forwards;
+    opacity: 0;
+    letter-spacing: -0.03em;
+  }
+  h1 em {
+    font-style: italic;
+    background: linear-gradient(135deg, #8A5F1F 0%, #B8863B 25%, #E4C37A 50%, #B8863B 75%, #8A5F1F 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: gold-shimmer 6s ease-in-out infinite;
+  }
+
+  .lead {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    color: #3A3F47;
+    line-height: 1.5;
+    max-width: 500px;
+    margin: 0 auto 48px;
+    animation: fade-in 1s ease 0.8s forwards;
+    opacity: 0;
+  }
+
+  .steps {
+    background: white;
+    border: 1px solid #D4C9AE;
+    border-radius: 8px;
+    padding: 40px 32px;
+    text-align: left;
+    margin-bottom: 32px;
+    animation: fade-in 1s ease 1.1s forwards;
+    opacity: 0;
+    box-shadow: 0 20px 60px rgba(12,14,16,0.06);
+  }
+
+  .step {
+    display: flex;
+    gap: 20px;
+    padding: 20px 0;
+    border-bottom: 1px solid #EFE5CE;
+  }
+  .step:last-child { border-bottom: none; }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8A5F1F 0%, #B8863B 25%, #E4C37A 50%, #B8863B 75%, #8A5F1F 100%);
+    background-size: 200% 200%;
+    animation: gold-shimmer 6s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 18px;
+    color: #0C0E10;
+  }
+  .step-body h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .step-body p { font-size: 15px; color: #3A3F47; line-height: 1.5; }
+  .step-body a { color: #8A5F1F; font-weight: 500; text-decoration: none; }
+  .step-body a:hover { text-decoration: underline; }
+
+  .tagline {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: #B8863B;
+    letter-spacing: 0.1em;
+    animation: fade-in 1s ease 1.5s forwards;
+    opacity: 0;
+  }
+
+  @keyframes fade-in { to { opacity: 1; } }
+  @keyframes gold-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .btn-home {
+    display: inline-block;
+    margin-top: 32px;
+    padding: 12px 28px;
+    background: transparent;
+    border: 1px solid #0C0E10;
+    border-radius: 999px;
+    color: #0C0E10;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    animation: fade-in 1s ease 1.8s forwards;
+    opacity: 0;
+  }
+  .btn-home:hover { background: #0C0E10; color: #F7F1E3; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="seal">
+    <img src="/compass-sun.svg" alt="LETTO Premium seal" width="110" height="110">
+  </div>
+
+  <h1>Dobrodošao u <em>Premium</em>.</h1>
+
+  <p class="lead">
+    Tvoja pretplata je aktivna. Sad ti pokazujemo svaki deal 6h pre javnog kanala.
+  </p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Pogledaj svoj email</h3>
+        <p>Poslali smo ti pojedinačan Telegram invite link za <strong>privatni Premium kanal</strong>. Link važi 7 dana, može se koristiti samo jedanput.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Pridruži se na Telegram</h3>
+        <p>Klikni link iz emaila → pridruži se kanalu <a href="https://t.me/letto_ai_premium">@letto_live_premium</a>. Prvi Premium deal treba da stigne u narednih 24h.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Isprobaj sve</h3>
+        <p>AI pretraga, personalizovani alerti, mesečni PDF planer — sve je sad otključano za tebe.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Treba ti pomoć?</h3>
+        <p>Napiši nam na <a href="mailto:info@letto.live">info@letto.live</a> ili pitaj bota komandom <code>/status</code>. Otkazati pretplatu možeš bilo kada kroz <a href="#">Stripe portal</a> (link u tvom email-u).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tagline">Ad meliora · volare</div>
+
+  <a href="/" class="btn-home">← nazad na letto.live</a>
+</div>
+
+<script>
+  // Set premium flag — Stripe redirected here after successful checkout (success_url has session_id)
+  // localStorage flag unlocks booking CTAs in /index.html modal.
+  // Gating on session_id presence prevents direct-URL visitors from getting flag.
+  try {
+    var sid = new URLSearchParams(window.location.search).get('session_id');
+    if (sid) {
+      localStorage.setItem('letto_premium', '1');
+      localStorage.setItem('letto_premium_session', sid);
+      localStorage.setItem('letto_premium_set_at', new Date().toISOString());
+    }
+  } catch (e) {}
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── PACKAGES (v7 schema, flight+hotel+return triples) ──
+    // Public reads OK only for published; writes via Admin SDK only
+    match /letto_packages/{id} {
+      allow read: if resource.data.status in ['published_public', 'published_premium'];
+      allow write: if false;
+    }
+
+    // ─── SUBSCRIBERS ────────────────────────────────────────
+    // No public access. Admin SDK writes through server-side /api/*.
+    // Client-side Firebase Auth not in use for v0.1 — all reads server-only.
+    match /letto_subscribers/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ─── ADMIN ──────────────────────────────────────────────
+    // For future custom-claim admin tools. Admin API routes use
+    // Admin SDK and bypass rules regardless.
+    match /letto_admin/{doc=**} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
+    }
+
+    // ─── TELEGRAM EVENTS (internal audit log) ───────────────
+    match /letto_telegram_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // ─── PRICE HISTORY (used by n8n scanner) ────────────────
+    match /letto_price_history/{docId} {
+      allow read, write: if false;
+    }
+
+    // ─── MIX CACHE (Workflow 05 — flight+hotel search cache) ──
+    // Backend (n8n + Admin SDK) writes; client reads not used in V0.1.
+    match /mix_cache/{cacheId} {
+      allow read, write: if false;
+    }
+
+    // ─── MIX SEARCHES (analytics, write-only from server) ───
+    // Admin SDK only — bypasses rules. Client never touches.
+    match /mix_searches/{searchId} {
+      allow read, write: if false;
+    }
+
+    // ─── DENY BY DEFAULT ────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

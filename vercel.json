@@ -1,0 +1,31 @@
+{
+  "buildCommand": "echo 'v7 is standalone HTML in public/; skipping Vite build'",
+  "outputDirectory": "public",
+  "framework": null,
+  "functions": {
+    "api/hotels-search.js": { "maxDuration": 25 }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/results", "destination": "/results.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ],
+  "crons": []
+}

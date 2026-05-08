@@ -1,0 +1,135 @@
+{
+  "name": "LETTO — Deal Publisher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "letto-approve-deal",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-approve",
+      "name": "Approve webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "letto-approve"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lookup deal by ID from Firestore\nconst dealId = $json.query.id || $json.body.id;\nif (!dealId) throw new Error('Missing deal ID');\n\nreturn [{ json: { dealId } }];"
+      },
+      "id": "extract-id",
+      "name": "Extract deal ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "collection": "letto_deals",
+        "document": "={{ $json.dealId }}"
+      },
+      "id": "firestore-read",
+      "name": "Read deal",
+      "type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $env.TELEGRAM_PREMIUM_CHANNEL_ID }}" },
+            { "name": "text", "value": "=<b>🦅 {{ $json.routeName }}</b>\n\n{{ $json.blurb }}\n\n━━━━━━━━━━━━━━\n📅 <b>Datum:</b> {{ $json.departureDate }}\n✈️ <b>Aviokompanija:</b> {{ $json.airline }}\n💰 <b>Cena:</b> {{ $json.price }}€ (popust {{ $json.discount }}%)\n📊 <b>Prosek:</b> {{ $json.medianPrice }}€\n\n<a href=\"{{ $json.bookingLink }}\">🔗 Rezerviši kod Kiwi →</a>\n\n<i>⚡ Premium pretplatnici vide ovo 6h pre svih ostalih.</i>" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "telegram-premium",
+      "name": "Post to Premium channel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "amount": 6,
+        "unit": "hours"
+      },
+      "id": "wait-6h",
+      "name": "Wait 6h",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "webhookId": "letto-wait"
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "chat_id", "value": "={{ $env.TELEGRAM_PUBLIC_CHANNEL_ID }}" },
+            { "name": "text", "value": "=<b>🦅 {{ $json.routeName }} — {{ $json.price }}€</b>\n\n{{ $json.blurb }}\n\n<i>Popust {{ $json.discount }}% ispod proseka · Mesec: {{ $json.month }}</i>\n\n<b>💎 Premium otključava:</b> tačne datume, aviokompaniju, link za rezervaciju.\n👉 <a href=\"https://letto.live/#cena\">letto.live/#cena</a>" },
+            { "name": "parse_mode", "value": "HTML" },
+            { "name": "disable_web_page_preview", "value": "true" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "telegram-public",
+      "name": "Post to Public channel (teaser)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "letto_deals",
+        "document": "={{ $('firestore-read').item.json.id }}",
+        "dataPropertyName": "status"
+      },
+      "id": "mark-published",
+      "name": "Mark as published",
+      "type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Approve webhook": {
+      "main": [[{ "node": "Extract deal ID", "type": "main", "index": 0 }]]
+    },
+    "Extract deal ID": {
+      "main": [[{ "node": "Read deal", "type": "main", "index": 0 }]]
+    },
+    "Read deal": {
+      "main": [[{ "node": "Post to Premium channel", "type": "main", "index": 0 }]]
+    },
+    "Post to Premium channel": {
+      "main": [[{ "node": "Wait 6h", "type": "main", "index": 0 }]]
+    },
+    "Wait 6h": {
+      "main": [[{ "node": "Post to Public channel (teaser)", "type": "main", "index": 0 }]]
+    },
+    "Post to Public channel (teaser)": {
+      "main": [[{ "node": "Mark as published", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "LETTO.LIVE Deal Publisher — triggered by Miroslav's /approve webhook. Posts to Premium Telegram immediately, waits 6h, then posts to public channel with teaser + paywall CTA."
+  },
+  "tags": [{ "name": "letto" }, { "name": "publisher" }]
+}
