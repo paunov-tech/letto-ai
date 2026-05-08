@@ -6056,21 +6056,34 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
   }
 
   // ─── GLOBAL STRIPE CHECKOUT HANDLER ──────────
-  // ANY element with data-stripe="beta" or data-stripe="premium" → direct Stripe checkout
-  // BUM KLIK → LOVA. No scrolling, no email upfront, no friction.
+  // Two paths:
+  //   1) PRIMARY (fast): POST /api/stripe-checkout, get Stripe URL, navigate.
+  //   2) FALLBACK (bulletproof): submit a form to /api/stripe-go which
+  //      creates the session server-side and replies 303 → Stripe. Used when
+  //      the fetch/JSON path fails (popup blockers, mobile Safari async-gesture
+  //      rules, network glitches, content blockers).
+  function lettoFormFallback(tier) {
+    console.log('[letto] checkout fallback · form POST to /api/stripe-go · tier=' + tier);
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/api/stripe-go';
+    var i = document.createElement('input');
+    i.type = 'hidden'; i.name = 'tier'; i.value = tier;
+    form.appendChild(i);
+    document.body.appendChild(form);
+    form.submit();
+  }
+
   async function lettoCheckout(tier) {
-    // Visual feedback — find clicked element if any, set loading state
-    const triggered = document.querySelector(`[data-stripe="${tier}"]`);
-    const originalText = triggered ? triggered.innerHTML : '';
+    console.log('[letto] checkout intent · tier=' + tier);
+    var triggered = document.querySelector('[data-stripe="' + tier + '"]');
+    var originalText = triggered ? triggered.innerHTML : '';
     if (triggered) {
       triggered.style.pointerEvents = 'none';
       triggered.style.opacity = '0.7';
-      // Replace text content but keep structure
-      const txtSpan = triggered.querySelector('[data-en]') || triggered;
-      const originalTxt = txtSpan.textContent;
+      var txtSpan = triggered.querySelector('[data-en]') || triggered;
       txtSpan.textContent = 'Opening Stripe...';
-      // Restore on error
-      window.__lettoRestoreCta = () => {
+      window.__lettoRestoreCta = function () {
         triggered.style.pointerEvents = '';
         triggered.style.opacity = '';
         triggered.innerHTML = originalText;
@@ -6078,25 +6091,32 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     }
 
     try {
-      const resp = await fetch('/api/stripe-checkout', {
+      var resp = await fetch('/api/stripe-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier })
+        body: JSON.stringify({ tier: tier })
       });
-      const data = await resp.json();
-      if (data.url) {
+      var data = await resp.json();
+      if (data && data.url) {
         window.location.href = data.url;
-        return; // navigation in progress
+        // Belt-and-suspenders: if the navigation is silently blocked
+        // (popup blockers / Safari async-gesture), retry via form POST
+        // after a short delay so the page actually leaves.
+        setTimeout(function () {
+          if (document.visibilityState !== 'hidden') lettoFormFallback(tier);
+        }, 1200);
+        return;
       }
-      console.error('Stripe checkout failed:', data.error);
-      alert('Plaćanje trenutno nije moguće. Probaj ponovo za par sekundi.');
+      console.warn('[letto] /api/stripe-checkout returned no url, falling back to form');
+      lettoFormFallback(tier);
+      return;
     } catch (err) {
-      console.error('Stripe checkout network error:', err);
-      alert('Mrežna greška. Probaj ponovo.');
+      console.warn('[letto] fetch path failed, falling back to form:', err.message);
+      lettoFormFallback(tier);
+      return;
     }
-    if (window.__lettoRestoreCta) window.__lettoRestoreCta();
   }
-  window.lettoCheckout = lettoCheckout; // expose globally
+  window.lettoCheckout = lettoCheckout;
 
   // Wire up ALL elements with data-stripe attribute
   document.querySelectorAll('[data-stripe]').forEach(el => {
