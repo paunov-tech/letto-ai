@@ -711,39 +711,6 @@
     color: var(--ink);
   }
 
-  /* Hero headline */
-  .hero-headline {
-    font-family: 'Fraunces', serif;
-    font-size: clamp(58px, 9vw, 132px);
-    line-height: 0.86;
-    letter-spacing: -0.052em;
-    font-weight: 400;
-    margin-bottom: 36px;
-    font-variation-settings: 'opsz' 144;
-  }
-  .hero-headline .line {
-    display: block;
-  }
-  .hero-headline .accent {
-    font-style: italic;
-    font-weight: 300;
-    font-variation-settings: 'opsz' 144;
-  }
-
-  .hero-lead {
-    font-family: 'Instrument Serif', serif;
-    font-size: 20px;
-    line-height: 1.55;
-    color: var(--ink-mid);
-    margin-bottom: 40px;
-    max-width: 520px;
-    letter-spacing: 0.005em;
-  }
-  .hero-lead em {
-    font-style: italic;
-    color: var(--burgundy);
-  }
-
   .hero-actions {
     display: flex;
     flex-wrap: wrap;
@@ -770,169 +737,6 @@
     font-family: 'JetBrains Mono', monospace;
     color: var(--ink);
     font-weight: 600;
-  }
-
-  /* ─── PROOF CARD (right column) ────────── */
-  .proof-card {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 44px 40px;
-    position: relative;
-    box-shadow: 0 24px 60px rgba(10, 13, 17, 0.06);
-  }
-  .proof-card::before {
-    content: '';
-    position: absolute;
-    inset: 6px;
-    border: 0.5px solid var(--gold);
-    border-radius: 4px;
-    opacity: 0.25;
-    pointer-events: none;
-  }
-  .proof-corners {
-    position: absolute;
-    inset: 14px;
-    pointer-events: none;
-  }
-  .corner {
-    position: absolute;
-    width: 24px;
-    height: 24px;
-    border: 1px solid var(--gold);
-    opacity: 0.6;
-  }
-  .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-  .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-  .corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-  .corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
-
-  .proof-header {
-    margin-bottom: 32px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .proof-header .eyebrow {
-    color: var(--gold-deep);
-    margin-bottom: 10px;
-  }
-  .proof-header h3 {
-    font-family: 'Fraunces', serif;
-    font-size: 28px;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-  }
-  .proof-header h3 em {
-    font-style: italic;
-    font-weight: 300;
-    color: var(--gold-deep);
-  }
-
-  .bar-row {
-    margin-bottom: 28px;
-  }
-  .bar-row:last-child { margin-bottom: 0; }
-
-  .bar-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-  .bar-head .label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    letter-spacing: 0.02em;
-  }
-  .bar-head .label strong {
-    color: var(--ink);
-    font-weight: 600;
-  }
-  .bar-head .price {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 500;
-    font-feature-settings: 'tnum' 1;
-  }
-
-  .price-median {
-    font-size: 36px;
-    color: var(--muted);
-  }
-  .price-deal {
-    font-size: 54px;
-    color: var(--burgundy);
-    font-weight: 600;
-  }
-
-  .discount-badge {
-    background: var(--burgundy);
-    color: white;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 500;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    margin-right: 12px;
-    letter-spacing: -0.02em;
-  }
-
-  .bar-track {
-    height: 10px;
-    background: var(--paper-warm);
-    border: 1px solid var(--line-soft);
-    border-radius: 99px;
-    overflow: hidden;
-    position: relative;
-  }
-  .bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    transform-origin: left;
-    transform: scaleX(0);
-    animation: fill-bar 2s cubic-bezier(0.25, 1, 0.5, 1) 0.5s forwards;
-  }
-  .bar-fill.discount {
-    animation: fill-bar-discount 2s cubic-bezier(0.25, 1, 0.5, 1) 0.5s forwards;
-  }
-  .bar-fill.median {
-    background: linear-gradient(90deg, var(--ink-mid), var(--muted));
-  }
-  .bar-fill.savings {
-    background: linear-gradient(90deg, var(--burgundy-warm), var(--burgundy));
-  }
-  @keyframes fill-bar { to { transform: scaleX(1); } }
-  @keyframes fill-bar-discount { to { transform: scaleX(0.58); } }
-
-  .count-up { opacity: 0; animation: fade-in 0.8s ease 1.8s forwards; }
-  @keyframes fade-in { to { opacity: 1; } }
-
-  .proof-footer {
-    margin-top: 32px;
-    padding-top: 24px;
-    border-top: 1px solid var(--line);
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-  }
-  .proof-footer .label {
-    font-size: 12px;
-    letter-spacing: 0.03em;
-    color: var(--muted);
-  }
-  .proof-footer .value {
-    font-family: 'Fraunces', serif;
-    font-size: 24px;
-    font-weight: 500;
-  }
-  .proof-footer .value em {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    font-size: 15px;
-    color: var(--muted);
-    margin-left: 8px;
-    font-weight: 400;
   }
 
   /* ─── MANIFESTO SECTION ───────────────── */
@@ -1063,184 +867,6 @@
     line-height: 1.5;
     color: var(--muted);
     max-width: 680px;
-  }
-
-  /* ─── HERO SEARCH BAR (3 segments) ────── */
-  .hero-search-wrap {
-    max-width: 1220px;
-    margin: 72px auto 0;
-    position: relative;
-    z-index: 5;
-  }
-
-  .hero-search {
-    background: var(--paper);
-    border: 1px solid rgba(203, 191, 157, 0.5);
-    border-radius: 14px;
-    padding: 8px;
-    display: grid;
-    grid-template-columns: 1.3fr 1px 1fr 1px 0.9fr auto;
-    align-items: center;
-    gap: 0;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 250, 230, 0.6),
-      0 1px 0 rgba(10, 13, 17, 0.02),
-      0 2px 4px rgba(10, 13, 17, 0.03),
-      0 12px 32px -8px rgba(10, 13, 17, 0.08),
-      0 24px 60px -16px rgba(161, 116, 51, 0.08);
-    position: relative;
-    transition: box-shadow 0.4s ease;
-  }
-  .hero-search:hover {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 250, 230, 0.7),
-      0 1px 0 rgba(10, 13, 17, 0.02),
-      0 2px 6px rgba(10, 13, 17, 0.04),
-      0 18px 40px -10px rgba(10, 13, 17, 0.12),
-      0 32px 80px -20px rgba(161, 116, 51, 0.12);
-  }
-  .hero-search::before {
-    content: '';
-    position: absolute;
-    inset: 3px;
-    border: 0.5px solid rgba(161, 116, 51, 0.18);
-    border-radius: 12px;
-    pointer-events: none;
-  }
-
-  .hero-search-field {
-    padding: 14px 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    position: relative;
-    border-radius: 10px;
-    transition: background 0.25s ease;
-    cursor: text;
-  }
-  .hero-search-field:hover,
-  .hero-search-field:focus-within {
-    background: var(--paper-warm);
-  }
-
-  .hero-search-input:focus { outline: none; }
-
-  .hero-search-label {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--gold-deep);
-    font-weight: 600;
-    pointer-events: none;
-  }
-
-  .hero-search-input {
-    background: transparent;
-    border: none;
-    outline: none;
-    font-family: 'Instrument Serif', serif;
-    font-size: 17px;
-    color: var(--ink);
-    padding: 2px 0;
-    width: 100%;
-    font-style: italic;
-  }
-  .hero-search-input::placeholder {
-    color: var(--muted);
-    opacity: 0.55;
-    font-style: italic;
-  }
-
-  .hero-search-sep {
-    width: 1px;
-    height: 44px;
-    background: linear-gradient(180deg, transparent, var(--line), transparent);
-    align-self: center;
-  }
-
-  .hero-search-submit {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--ink);
-    color: var(--paper);
-    border: none;
-    padding: 16px 26px;
-    border-radius: 10px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    align-self: stretch;
-  }
-  .hero-search-submit:hover {
-    background: var(--ink-soft);
-    transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(10, 13, 17, 0.2);
-  }
-  .hero-search-submit svg {
-    flex-shrink: 0;
-  }
-
-  .hero-search-chips {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin-top: 20px;
-    padding: 0 8px;
-  }
-  .hero-search-chips-label {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--muted);
-    font-weight: 500;
-    padding: 6px 0;
-    margin-right: 4px;
-  }
-  .chip {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    padding: 7px 14px;
-    border-radius: 99px;
-    font-size: 13px;
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    cursor: pointer;
-    transition: all 0.2s;
-    color: var(--ink-mid);
-  }
-  .chip:hover {
-    border-color: var(--ink);
-    color: var(--ink);
-    background: var(--paper-warm);
-  }
-
-  /* Mobile: stack search fields vertically */
-  @media (max-width: 900px) {
-    .hero-search {
-      grid-template-columns: 1fr;
-      padding: 6px;
-    }
-    .hero-search-sep {
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--line), transparent);
-    }
-    .hero-search-field {
-      padding: 12px 18px;
-    }
-    .hero-search-submit {
-      margin-top: 4px;
-      justify-content: center;
-      align-self: auto;
-    }
   }
 
   /* ─── DEAL/PACKAGE CARDS ───────────── */
@@ -4353,91 +3979,6 @@
     .letto-toast { bottom: 18px; font-size: 15px; padding: 12px 18px; }
   }
 
-  /* ── SPLIT-FLAP BOARD (Solari-style daily top deal) ───── */
-  .flap-wrap {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 36px;
-  }
-  .flap-caption {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 10px;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: var(--gold-deep);
-    font-weight: 600;
-  }
-  .flap-board {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px;
-    background: linear-gradient(180deg, #1a1d22 0%, #0a0d11 100%);
-    border-radius: 6px;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-      0 4px 12px rgba(10, 13, 17, 0.18);
-    border: 1px solid rgba(0, 0, 0, 0.4);
-  }
-  .flap-row {
-    display: flex;
-    gap: 2px;
-  }
-  .flap-cell {
-    position: relative;
-    width: 18px;
-    height: 26px;
-    background: linear-gradient(180deg, #14181d 0%, #0a0d11 49%, #08090c 50%, #0d1014 100%);
-    border-radius: 2px;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--gold-bright, #F0D795);
-    text-align: center;
-    line-height: 26px;
-    overflow: hidden;
-    letter-spacing: 0;
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
-  }
-  .flap-cell::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 1px;
-    background: rgba(0, 0, 0, 0.7);
-    pointer-events: none;
-  }
-  .flap-cell.is-blank {
-    color: rgba(240, 215, 149, 0.18);
-  }
-  .flap-cell.is-spinning {
-    color: var(--gold-light, #D9A94A);
-  }
-  .flap-cell.just-landed {
-    animation: flap-pop 0.18s ease-out;
-  }
-  @keyframes flap-pop {
-    0% { transform: translateY(-2px); }
-    100% { transform: translateY(0); }
-  }
-  .flap-row--price .flap-cell {
-    color: #F5E9D0;
-  }
-
-  @media (max-width: 600px) {
-    .flap-cell { width: 16px; height: 22px; font-size: 14px; line-height: 22px; }
-    .flap-board { padding: 6px; }
-    .flap-wrap { margin-bottom: 24px; }
-  }
-
   /* ── MOBILE POLISH PASS ───────────────────────────────── */
   @media (max-width: 768px) {
     /* Section padding compaction */
@@ -4989,12 +4530,32 @@
     if (saved === 'sr' || saved === 'en') setLang(saved);
   } catch(e) {}
 
-  // Premium gate — body.letto-premium toggle for booking CTAs vs paywall
-  try {
-    if (localStorage.getItem('letto_premium') === '1') {
-      document.body.classList.add('letto-premium');
+  // Premium gate — body.letto-premium toggled by SERVER-validated /api/me lookup.
+  // Untrusted localStorage flag is no longer authoritative.
+  (async function validateUnlock() {
+    try {
+      var sid = localStorage.getItem('letto_premium_session') || localStorage.getItem('letto_mix_session');
+      if (!sid) return;
+      var cacheKey = 'letto_me_' + sid;
+      var cached = sessionStorage.getItem(cacheKey);
+      var data = null;
+      if (cached) {
+        try { var c = JSON.parse(cached); if (c && c.expires > Date.now()) data = c.data; } catch (_) {}
+      }
+      if (!data) {
+        var resp = await fetch('/api/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sid })
+        });
+        data = await resp.json();
+        try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: data, expires: Date.now() + 60000 })); } catch (_) {}
+      }
+      if (data.premium) document.body.classList.add('letto-premium');
+    } catch (e) {
+      console.warn('[letto] /api/me validation failed (free state):', e.message);
     }
-  } catch(e) {}
+  })();
 
   // ─── LOGO DROPDOWN MENU ──────────────────
   const logoTrigger = document.getElementById('logoTrigger');
@@ -5820,123 +5381,6 @@
     });
   })();
 
-  // Split-flap top deal board (Solari-style)
-  (function () {
-    var board = document.getElementById('flap-board');
-    if (!board) return;
-    var rowDest = document.getElementById('flap-row-dest');
-    var rowPrice = document.getElementById('flap-row-price');
-    if (!rowDest || !rowPrice) return;
-
-    var DEST_LEN = parseInt(rowDest.getAttribute('data-cells'), 10) || 14;
-    var PRICE_LEN = parseInt(rowPrice.getAttribute('data-cells'), 10) || 6;
-    var ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    var DIGITS = '0123456789';
-    var SYMBOLS = ' -%€';
-
-    function buildRow(row, len, initialChar) {
-      row.innerHTML = '';
-      var cells = [];
-      for (var i = 0; i < len; i++) {
-        var c = document.createElement('span');
-        c.className = 'flap-cell';
-        c.textContent = initialChar || '';
-        if (!initialChar) c.classList.add('is-blank');
-        row.appendChild(c);
-        cells.push(c);
-      }
-      return cells;
-    }
-
-    var destCells = buildRow(rowDest, DEST_LEN, '');
-    var priceCells = buildRow(rowPrice, PRICE_LEN, '0');
-
-    function padCenter(text, len) {
-      text = String(text || '').toUpperCase();
-      if (text.length >= len) return text.slice(0, len);
-      var diff = len - text.length;
-      var left = Math.floor(diff / 2);
-      var right = diff - left;
-      return ' '.repeat(left) + text + ' '.repeat(right);
-    }
-    function padDestRow(city, pct) {
-      city = String(city || '').toUpperCase();
-      pct = String(pct || '');
-      var cityField = (city + '        ').slice(0, 9);
-      var pctField = ('     ' + pct).slice(-5);
-      return (cityField + pctField).slice(0, DEST_LEN);
-    }
-    function padPriceRow(price) {
-      var s = String(price || '0');
-      var digits = ('     ' + s).slice(-(PRICE_LEN - 1));
-      return digits + '€';
-    }
-
-    function spinTo(cells, finalText, opts) {
-      opts = opts || {};
-      var startDelay = opts.startDelay || 0;
-      var perCellSettle = opts.perCellSettle || 110;
-      var spinDurMin = opts.spinDurMin || 600;
-      var charset = opts.charset || (ALPHA + DIGITS + SYMBOLS);
-
-      cells.forEach(function (cell, i) {
-        var settleAt = startDelay + spinDurMin + i * perCellSettle;
-        var target = finalText.charAt(i) || ' ';
-        cell.classList.remove('is-blank');
-        cell.classList.add('is-spinning');
-
-        var spin = setInterval(function () {
-          cell.textContent = charset.charAt(Math.floor(Math.random() * charset.length));
-        }, 55);
-
-        setTimeout(function () {
-          clearInterval(spin);
-          cell.classList.remove('is-spinning');
-          cell.textContent = target;
-          if (target === ' ') cell.classList.add('is-blank');
-          cell.classList.add('just-landed');
-          setTimeout(function () { cell.classList.remove('just-landed'); }, 200);
-        }, settleAt);
-      });
-    }
-
-    function render(city, pct, price) {
-      var destText = padDestRow(city, pct);
-      var priceText = padPriceRow(price);
-
-      spinTo(destCells, destText, {
-        startDelay: 250,
-        perCellSettle: 90,
-        spinDurMin: 700,
-        charset: ALPHA + ' '
-      });
-
-      var priceStart = 250 + 700 + DEST_LEN * 90 + 200;
-      spinTo(priceCells, priceText, {
-        startDelay: priceStart,
-        perCellSettle: 110,
-        spinDurMin: 500,
-        charset: DIGITS + '€ '
-      });
-    }
-
-    function fallback() {
-      render('LISABON', '-40%', '1022');
-    }
-
-    fetch('/api/packages?limit=1')
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; })
-      .then(function (d) {
-        var p = d && d.packages && d.packages[0];
-        if (!p) return fallback();
-        var city = (p.destination && p.destination.city) || 'TBA';
-        var total = Math.round(parseFloat(p.pricing && p.pricing.total) || 0);
-        var ratio = parseFloat(p.deal && p.deal.flightDealRatio);
-        var pct = (ratio && ratio > 0 && ratio < 1) ? '-' + Math.round((1 - ratio) * 100) + '%' : '';
-        render(city, pct, total || '----');
-      });
-  })();
 
   // Deals carousel — peek scroll with arrow nav
   (function () {

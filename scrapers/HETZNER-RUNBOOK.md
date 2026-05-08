@@ -115,7 +115,7 @@ Expect ~3-5 min runtime (12 routes × 3 sources × ~5s/req + sleeps), JSON summa
 ```bash
 # Import via n8n UI:
 # 1. n8n → Workflows → Import from File
-# 2. Upload ~/letto-ai/letto-engine/06-LETTO-SCRAPE-REFRESH.json
+# 2. Upload ~/letto-ai/workflows/06-LETTO-SCRAPE-REFRESH.json
 # 3. Activate workflow
 
 # OR via n8n API (CC handles after smoke test):
@@ -123,7 +123,7 @@ N8N_API_KEY=...
 curl -X POST "http://204.168.153.192:5678/api/v1/workflows" \
   -H "X-N8N-API-KEY: $N8N_API_KEY" \
   -H "Content-Type: application/json" \
-  -d @~/letto-ai/letto-engine/06-LETTO-SCRAPE-REFRESH.json
+  -d @~/letto-ai/workflows/06-LETTO-SCRAPE-REFRESH.json
 
 # Activate
 WF06_ID=$(curl -s "http://204.168.153.192:5678/api/v1/workflows" -H "X-N8N-API-KEY: $N8N_API_KEY" | jq -r '.data[] | select(.name == "06-LETTO-SCRAPE-REFRESH") | .id')

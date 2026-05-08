@@ -12,7 +12,7 @@ Open terminal on your laptop. Run these 3 checks:
 
 ```bash
 # ① Workflow files present locally?
-ls ~/letto-ai/letto-engine/
+ls ~/letto-ai/workflows/
 # Expected: 01-LETTO-MIXING-ENGINE.json  02-LETTO-PRICE-VERIFIER.json
 #           03-LETTO-WEEKLY-NEWSLETTER.json  04-LETTO-TELEGRAM-DAILY.json
 
@@ -177,10 +177,10 @@ Open a **second terminal** on your laptop (keep SSH session open in first termin
 # In NEW terminal on laptop:
 cd ~/letto-ai
 
-scp letto-engine/01-LETTO-MIXING-ENGINE.json   root@204.168.153.192:/opt/n8n/workflows/
-scp letto-engine/02-LETTO-PRICE-VERIFIER.json  root@204.168.153.192:/opt/n8n/workflows/
-scp letto-engine/03-LETTO-WEEKLY-NEWSLETTER.json root@204.168.153.192:/opt/n8n/workflows/
-scp letto-engine/04-LETTO-TELEGRAM-DAILY.json  root@204.168.153.192:/opt/n8n/workflows/
+scp workflows/01-LETTO-MIXING-ENGINE.json   root@204.168.153.192:/opt/n8n/workflows/
+scp workflows/02-LETTO-PRICE-VERIFIER.json  root@204.168.153.192:/opt/n8n/workflows/
+scp workflows/03-LETTO-WEEKLY-NEWSLETTER.json root@204.168.153.192:/opt/n8n/workflows/
+scp workflows/04-LETTO-TELEGRAM-DAILY.json  root@204.168.153.192:/opt/n8n/workflows/
 ```
 
 Verify on Hetzner (back in first terminal):

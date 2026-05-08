@@ -1,5 +1,4 @@
 {
-  "buildCommand": "echo 'v7 is standalone HTML in public/; skipping Vite build'",
   "outputDirectory": "public",
   "framework": null,
   "functions": {

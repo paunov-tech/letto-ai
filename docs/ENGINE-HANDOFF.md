@@ -3,7 +3,7 @@
 **Sve šta je Claude mogao autonomno je urađeno. Ostaje 4 koraka koje moraš ti.**
 
 Lokalna stanja:
-- 4 n8n workflow JSONs spremni: `letto-engine/01-04-LETTO-*.json`
+- 4 n8n workflow JSONs spremni: `workflows/01-04-LETTO-*.json`
 - Vercel-side `/api/notify-admin` live (n8n alert receiver za Telegram DM)
 - Admin metrics dashboard live: https://letto.live/metrics.html (login sa istim ADMIN_TOKEN)
 - `NOTIFY_SECRET` + `TELEGRAM_ADMIN_CHAT_ID = 8225971504` već u Vercel env-u
@@ -59,7 +59,7 @@ vercel --prod   # confirm Yes
 
 # 4.4 SCP Hetzner env + workflow files
 scp ~/letto-ai/.secrets/hetzner-n8n.env root@204.168.153.192:/opt/n8n/.env
-scp ~/letto-ai/letto-engine/*.json root@204.168.153.192:/opt/n8n/workflows/
+scp ~/letto-ai/workflows/*.json root@204.168.153.192:/opt/n8n/workflows/
 
 # 4.5 Restart n8n on Hetzner
 ssh root@204.168.153.192 'cd /opt/n8n && docker compose restart n8n'

@@ -5965,25 +5965,58 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     if (saved === 'sr' || saved === 'en') setLang(saved);
   } catch(e) {}
 
-  // Premium gate — body.letto-premium toggle for booking CTAs vs paywall
+  // Premium gate — body class toggled by SERVER-validated /api/me lookup.
+  // Untrusted localStorage flags only act as a hint of which session_id to
+  // present; the server is the source of truth for unlock state.
   try {
-    // Stripe success-URL handoff: ?unlock=aimix&session_id=... → set local flag, strip params.
+    // 1) Stripe success-URL handoff: ?unlock=aimix&session_id=... → store sessionId, strip params.
     var qs = new URLSearchParams(window.location.search);
-    if (qs.get('unlock') === 'aimix' && qs.get('session_id')) {
-      localStorage.setItem('letto_mix_unlocked', '1');
-      localStorage.setItem('letto_mix_unlocked_session', qs.get('session_id'));
-      localStorage.setItem('letto_mix_unlocked_at', new Date().toISOString());
+    var qsSession = qs.get('session_id');
+    if (qsSession && qs.get('unlock') === 'aimix') {
+      localStorage.setItem('letto_mix_session', qsSession);
       qs.delete('unlock'); qs.delete('session_id');
       var qsStr = qs.toString();
       window.history.replaceState({}, '', window.location.pathname + (qsStr ? '?' + qsStr : ''));
-    }
-    if (localStorage.getItem('letto_premium') === '1') {
-      document.body.classList.add('letto-premium');
-    }
-    if (localStorage.getItem('letto_mix_unlocked') === '1') {
-      document.body.classList.add('letto-mix-unlocked');
+    } else if (qsSession) {
+      // Subscription checkout success
+      localStorage.setItem('letto_premium_session', qsSession);
+      qs.delete('session_id');
+      var qsStr2 = qs.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qsStr2 ? '?' + qsStr2 : ''));
     }
   } catch(e) {}
+
+  // 2) Server-side validation of unlock state via /api/me.
+  //    Cached for 60s in sessionStorage so refresh doesn't re-hit Stripe.
+  (async function validateUnlock() {
+    try {
+      var sid = localStorage.getItem('letto_mix_session') || localStorage.getItem('letto_premium_session');
+      if (!sid) return;
+
+      var cacheKey = 'letto_me_' + sid;
+      var cached = sessionStorage.getItem(cacheKey);
+      var data = null;
+      if (cached) {
+        try {
+          var c = JSON.parse(cached);
+          if (c && c.expires > Date.now()) data = c.data;
+        } catch (_) {}
+      }
+      if (!data) {
+        var resp = await fetch('/api/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sid })
+        });
+        data = await resp.json();
+        try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: data, expires: Date.now() + 60000 })); } catch (_) {}
+      }
+      if (data.premium) document.body.classList.add('letto-premium');
+      if (data.mixUnlocked) document.body.classList.add('letto-mix-unlocked');
+    } catch (e) {
+      console.warn('[letto] /api/me validation failed (free state):', e.message);
+    }
+  })();
 
   // ─── LOGO DROPDOWN MENU ──────────────────
   const logoTrigger = document.getElementById('logoTrigger');

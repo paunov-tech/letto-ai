@@ -198,19 +198,17 @@
   // Set premium flag — Stripe redirected here after successful checkout (success_url has session_id)
   // localStorage flag unlocks booking CTAs in /index.html modal.
   // Gating on session_id presence prevents direct-URL visitors from getting flag.
+  // Store the Stripe session_id only — actual unlock state is verified by
+  // /api/me on subsequent page loads (server reads Firestore via webhook).
   try {
     var qs = new URLSearchParams(window.location.search);
     var sid = qs.get('session_id');
     var unlock = qs.get('unlock');
     if (sid) {
       if (unlock === 'aimix') {
-        localStorage.setItem('letto_mix_unlocked', '1');
-        localStorage.setItem('letto_mix_unlocked_session', sid);
-        localStorage.setItem('letto_mix_unlocked_at', new Date().toISOString());
+        localStorage.setItem('letto_mix_session', sid);
       } else {
-        localStorage.setItem('letto_premium', '1');
         localStorage.setItem('letto_premium_session', sid);
-        localStorage.setItem('letto_premium_set_at', new Date().toISOString());
       }
     }
   } catch (e) {}
