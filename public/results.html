@@ -2948,8 +2948,14 @@
     letter-spacing: 0.18em;
     color: var(--muted);
     margin-top: 2px;
+    display: none;
   }
-  .mix-stages__step.is-active .mix-stages__sub { color: var(--gold-deep); }
+  /* Show one sub-label variant based on the step's state class */
+  .mix-stages__step.is-done .mix-stages__sub--done { display: inline; }
+  .mix-stages__step.is-active .mix-stages__sub--active { display: inline; color: var(--gold-deep); }
+  .mix-stages__step:not(.is-done):not(.is-active) .mix-stages__sub--waiting { display: inline; }
+  /* When a step is BOTH .is-done and .is-active (transition state), prefer .is-active */
+  .mix-stages__step.is-done.is-active .mix-stages__sub--done { display: none; }
 
   /* ── Mobile tabs (hidden ≥1024) ── */
   .mix-tabs {
@@ -3751,13 +3757,20 @@ window.tpwlBuyButtonClick = function () {
     s.flight.location = window.location.href;
     var args = Array.prototype.slice.call(arguments);
     if (args.length > 0) s.flight.detail = args;
+    // Hotfix-9 · T1: pick up DOM-scraped ticket data (airline, price, times,
+    // stops, bookingUrl) captured by the MutationObserver in the body. This
+    // is the only reliable source of flight detail since TP rarely passes
+    // it via this callback.
+    if (window.__lettoTpLastTicket) {
+      s.flight.scraped = window.__lettoTpLastTicket;
+    }
     var now = Date.now();
     s.meta = s.meta || { createdAt: now };
     s.meta.updatedAt = now;
     s.meta.expiresAt = now + (24 * 60 * 60 * 1000);
     s.version = 2;
     localStorage.setItem('letto_mix_state_v2', JSON.stringify(s));
-    console.log('[mix-v2] HOTFIX-7 · TP buy clicked · state saved', { args: args, location: window.location.href });
+    console.log('[mix-v2] HOTFIX-7 · TP buy clicked · state saved', { args: args, scraped: !!s.flight.scraped, location: window.location.href });
   } catch (e) {
     console.error('[mix-v2] HOTFIX-7 · capture failed:', e);
   }
@@ -4046,13 +4059,16 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     <h1 class="visually-hidden">Letto Mix · letovi i hoteli paralelno</h1>
 
     <!-- ───── STAGE INDICATOR (3 stages · click-back on completed) ───── -->
+    <!-- Each step has all 3 sub-label variants (done/active/waiting); CSS reveals one based on is-done/is-active classes. -->
     <ol class="mix-stages" id="mix-stages" aria-label="Mix progress">
       <li class="mix-stages__step is-done" data-stage="1">
         <button type="button" class="mix-stages__btn" data-mix-stage-back="1">
           <span class="mix-stages__dot" aria-hidden="true"></span>
           <span class="mix-stages__label">
             <span class="mix-stages__title"><span data-en>Search</span><span data-sr>Pretraga</span></span>
-            <span class="mix-stages__sub"><span data-en>complete</span><span data-sr>završeno</span></span>
+            <span class="mix-stages__sub mix-stages__sub--done"><span data-en>complete</span><span data-sr>završeno</span></span>
+            <span class="mix-stages__sub mix-stages__sub--active"><span data-en>in progress</span><span data-sr>u toku</span></span>
+            <span class="mix-stages__sub mix-stages__sub--waiting"><span data-en>waiting</span><span data-sr>čeka</span></span>
           </span>
         </button>
       </li>
@@ -4060,14 +4076,18 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
         <span class="mix-stages__dot" aria-hidden="true"></span>
         <span class="mix-stages__label">
           <span class="mix-stages__title">Mix</span>
-          <span class="mix-stages__sub"><span data-en>in progress</span><span data-sr>u toku</span></span>
+          <span class="mix-stages__sub mix-stages__sub--done"><span data-en>complete</span><span data-sr>završeno</span></span>
+          <span class="mix-stages__sub mix-stages__sub--active"><span data-en>in progress</span><span data-sr>u toku</span></span>
+          <span class="mix-stages__sub mix-stages__sub--waiting"><span data-en>waiting</span><span data-sr>čeka</span></span>
         </span>
       </li>
       <li class="mix-stages__step" data-stage="3">
         <span class="mix-stages__dot" aria-hidden="true"></span>
         <span class="mix-stages__label">
           <span class="mix-stages__title"><span data-en>Finish</span><span data-sr>Završi</span></span>
-          <span class="mix-stages__sub"><span data-en>waiting</span><span data-sr>čeka</span></span>
+          <span class="mix-stages__sub mix-stages__sub--done"><span data-en>complete</span><span data-sr>završeno</span></span>
+          <span class="mix-stages__sub mix-stages__sub--active"><span data-en>in progress</span><span data-sr>u toku</span></span>
+          <span class="mix-stages__sub mix-stages__sub--waiting"><span data-en>waiting</span><span data-sr>čeka</span></span>
         </span>
       </li>
     </ol>
@@ -5253,16 +5273,17 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
     var pax = adults + children;
 
     // Hotfix-9 (Honest UX · Pristup A): TP whitelabel widget never passes
-    // ticket detail to JS callbacks. We get either rich .selected (almost
-    // never) or just .bookingClicked=true (the normal case). When only
-    // bookingClicked, we render flight info from URL params and hide the
-    // "Kupi let →" CTA (user already clicked Buy at TP — partner tab is
-    // already open; pretending we can re-book is a loop). [Hotfix-9 marker]
+    // ticket detail to JS callbacks. T1 (2026-05-08): MutationObserver-based
+    // DOM scraper now captures flight detail from the rendered ticket card
+    // BEFORE the buy click — preferred source for airline/price/times.
+    // Priority: state.flight.selected (rich · rare) → state.flight.scraped
+    // (DOM-scraped · normal case) → URL-param fallback.
     var fSel = state.flight && state.flight.selected;
+    var fScr = state.flight && state.flight.scraped;
     var fBookClicked = !!(state.flight && state.flight.bookingClicked);
-    var f = fSel || (fBookClicked ? { __minimal: true, location: state.flight.location } : null);
+    var f = fSel || fScr || (fBookClicked ? { __minimal: true, location: state.flight.location } : null);
     var h = state.hotel  && state.hotel.selected;
-    var bookingClickedOnly = fBookClicked && !fSel;
+    var bookingClickedOnly = fBookClicked && !fSel && !fScr;
 
     // Flight section
     var fDesc = $('final-flight-desc');
@@ -5274,27 +5295,37 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
       var dest   = (fSel && fSel.dest)   || p.dest   || '';
       var depart = (fSel && fSel.depart) || p.depart || '';
       var ret    = (fSel && fSel.ret)    || p.ret    || '';
+      var airlineName = (fSel && fSel.airline) || (fScr && fScr.airline) || '';
+      var timesStr = '';
+      if (fScr && Array.isArray(fScr.times) && fScr.times.length >= 2) {
+        // Outbound depart → arrive (first pair); if 4 entries, also show return pair
+        timesStr = fScr.times[0] + '–' + fScr.times[1];
+        if (fScr.times.length >= 4) timesStr += ' · ' + fScr.times[2] + '–' + fScr.times[3];
+      }
+      var stopsStr = (fScr && fScr.stops) ? fScr.stops : '';
       var fParts = [
-        (fSel && fSel.airline) || (l === 'en' ? 'Flight' : 'Let') + ': ' + origin + ' → ' + dest,
-        // If we already have airline name, keep route as separate part;
-        // otherwise route is folded into the first part above.
-        (fSel && fSel.airline) ? (origin + ' → ' + dest) : null,
+        airlineName || (l === 'en' ? 'Flight' : 'Let'),
+        origin + ' → ' + dest,
         fmtDateRange(depart, ret, l),
+        timesStr,
+        stopsStr,
         paxLabel(adults, children, l)
       ].filter(Boolean);
       fDesc.textContent = fParts.join(' · ');
     }
     if (fPrice && f) {
-      if (fSel && fSel.priceNum) {
-        var fPerson = fSel.priceNum;
+      var rawPrice = (fSel && (fSel.priceNum || fSel.price)) || (fScr && (fScr.priceNum || fScr.price));
+      var rawPriceNum = (fSel && fSel.priceNum) || (fScr && fScr.priceNum) || 0;
+      if (rawPriceNum > 0) {
+        var fPerson = rawPriceNum;
         var fTotal  = fPerson * adults;
         fPrice.textContent = '€' + fPerson + ' × ' + adults + ' = €' + fTotal;
         fPrice.classList.remove('mix-final__item-price--soft');
-      } else if (fSel && fSel.price) {
-        fPrice.textContent = fSel.price;
+      } else if (rawPrice) {
+        fPrice.textContent = rawPrice;
         fPrice.classList.remove('mix-final__item-price--soft');
       } else {
-        // bookingClicked-only · honest UX: don't fake price
+        // bookingClicked-only without scraped data — honest UX: don't fake price
         fPrice.textContent = (l === 'en')
           ? 'Booking started at partner'
           : 'Rezervacija započeta kod partnera';
@@ -5518,6 +5549,112 @@ console.log('[mix-v2] HOTFIX-7 · tpwlBuyButtonClick PRE-DEFINED in head');
         return;
       }
     });
+
+    // 3.5 TP iframe DOM scraper · MutationObserver on #tpwl-tickets.
+    //
+    // The TP widget renders flight tickets into a parent-DOM mount. We don't
+    // get rich detail from window.tpwlBuyButtonClick (TP only signals "buy
+    // clicked"), so we observe the ticket DOM as it renders and capture
+    // {airline, price, times, bookingUrl} per card. On click we identify
+    // which card was clicked and stash the data in window.__lettoTpLastTicket
+    // so the head-level tpwlBuyButtonClick can read it and persist into
+    // state.flight.scraped before partner navigation.
+    (function wireTpScraper() {
+      var mount = document.getElementById('tpwl-tickets');
+      if (!mount) return;
+      window.__lettoTpScrapedByEl = window.__lettoTpScrapedByEl || new WeakMap();
+
+      function extractTicket(el) {
+        if (!el || el.nodeType !== 1) return null;
+        var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text.length < 20) return null;
+        // Price (€XX, EUR XX, etc.) — first match
+        var pm = text.match(/(€|EUR|RSD|USD|\$)\s?([0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]+)?)/);
+        // Airline from <img alt> (TP uses logo imgs with alt = carrier name)
+        var img = el.querySelector('img[alt]');
+        var airline = (img && img.alt && img.alt.length < 60) ? img.alt.trim() : '';
+        // Times (HH:MM patterns) — first 4 (out depart, out arrive, ret depart, ret arrive)
+        var times = (text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g) || []).slice(0, 4);
+        // Stops · "direktan" / "direct" / "1 presedanje" / "non-stop"
+        var stopsMatch = text.match(/\b(direkt(?:no|an)?|non[- ]?stop|1 presed|1 stop|2 stop)\b/i);
+        var stops = stopsMatch ? stopsMatch[0].toLowerCase() : '';
+        // bookingUrl from any <a href> inside
+        var anchor = el.querySelector('a[href]');
+        var bookingUrl = (anchor && /^https?:/i.test(anchor.href)) ? anchor.href : '';
+        // Skip if we have NO useful info
+        if (!pm && !airline) return null;
+        return {
+          airline: airline,
+          price: pm ? pm[0] : '',
+          priceNum: pm ? parseFloat(pm[2].replace(/[\s.]/g, '').replace(',', '.')) : 0,
+          currency: pm ? (pm[1] === '€' ? 'EUR' : pm[1]) : 'EUR',
+          times: times,
+          stops: stops,
+          bookingUrl: bookingUrl,
+          scrapedAt: Date.now()
+        };
+      }
+
+      function scanNode(root) {
+        if (!root || root.nodeType !== 1) return;
+        // Heuristic: "ticket card" = element whose class contains "ticket" or "result-item",
+        // OR <li>/<article> with visible price text. Walk top-down, take first matching layer.
+        var candidates = root.querySelectorAll(
+          '[class*="ticket" i], [class*="result-item" i], [class*="result_item" i], li, article'
+        );
+        for (var i = 0; i < candidates.length; i++) {
+          var c = candidates[i];
+          if (window.__lettoTpScrapedByEl.has(c)) continue;
+          var t = extractTicket(c);
+          if (t) {
+            window.__lettoTpScrapedByEl.set(c, t);
+          }
+        }
+      }
+
+      // Initial pass + observe future changes
+      scanNode(mount);
+      var obs = new MutationObserver(function (muts) {
+        for (var i = 0; i < muts.length; i++) {
+          var m = muts[i];
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var n = m.addedNodes[j];
+            if (n && n.nodeType === 1) scanNode(n);
+          }
+        }
+      });
+      try { obs.observe(mount, { childList: true, subtree: true }); } catch (e) {}
+
+      // Capture-phase click listener — fires BEFORE TP's own handler (which
+      // ultimately calls window.tpwlBuyButtonClick). Walks up from the
+      // clicked element to find the enclosing ticket card and stash its data
+      // on window.__lettoTpLastTicket for the head-level handler to read.
+      mount.addEventListener('click', function (e) {
+        if (!e.target || !e.target.closest) return;
+        var card = e.target.closest(
+          '[class*="ticket" i], [class*="result-item" i], [class*="result_item" i], li, article'
+        );
+        // Walk up multiple ancestor candidates and pick the first that has scraped data
+        while (card && !window.__lettoTpScrapedByEl.has(card)) {
+          card = card.parentElement && card.parentElement.closest(
+            '[class*="ticket" i], [class*="result-item" i], [class*="result_item" i], li, article'
+          );
+        }
+        if (card && window.__lettoTpScrapedByEl.has(card)) {
+          window.__lettoTpLastTicket = window.__lettoTpScrapedByEl.get(card);
+          console.log('[mix-v2] TP scraper · captured ticket for click:', window.__lettoTpLastTicket);
+        } else {
+          // Last-ditch: try direct extract on whatever was clicked
+          var fallback = extractTicket(e.target.closest('article, li, div, section') || e.target.parentElement);
+          if (fallback) {
+            window.__lettoTpLastTicket = fallback;
+            console.log('[mix-v2] TP scraper · fallback ticket for click:', fallback);
+          }
+        }
+      }, true);
+
+      console.log('[mix-v2] TP scraper · MutationObserver attached to #tpwl-tickets');
+    })();
 
     // 4. Hotel handoff click → mark deeplinkOpened (analytics for Phase 5)
     document.addEventListener('click', function (e) {
