@@ -6442,6 +6442,7 @@
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = '/api/stripe-go';
+    form.target = '_top';
     var i = document.createElement('input');
     i.type = 'hidden'; i.name = 'tier'; i.value = tier;
     form.appendChild(i);
@@ -6473,7 +6474,7 @@
       });
       var data = await resp.json();
       if (data && data.url) {
-        window.location.href = data.url;
+        (window.top || window).location.href = data.url;
         // Belt-and-suspenders: if the navigation is silently blocked
         // (popup blockers / Safari async-gesture), retry via form POST
         // after a short delay so the page actually leaves.
