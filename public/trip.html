@@ -253,7 +253,11 @@
     return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
   }
   function getId() {
-    // Both /trip/{id} (rewrite to /trip.html?id=X) and direct /trip.html?id=X
+    // Vercel rewrite /trip/:id -> /trip.html?id=:id keeps the BROWSER URL at
+    // /trip/{id} (the rewrite is server-side only). So we extract from
+    // pathname first; fall back to ?id= for direct /trip.html?id=X access.
+    var pathMatch = window.location.pathname.match(/\/trip\/([a-f0-9]{16})\b/i);
+    if (pathMatch) return pathMatch[1];
     var qs = new URLSearchParams(window.location.search);
     return qs.get('id') || '';
   }
