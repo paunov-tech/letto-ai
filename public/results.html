@@ -2803,6 +2803,56 @@
       radial-gradient(ellipse 60% 50% at 15% 10%, rgba(161, 116, 51, 0.05) 0%, transparent 60%),
       linear-gradient(180deg, var(--paper) 0%, var(--paper-warm) 100%);
   }
+  /* ── B · price tier chips (Budget / Value / Lux / All) ── */
+  .pkg-tiers {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 14px;
+    padding: 4px;
+    background: var(--paper-warm);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    flex-wrap: wrap;
+  }
+  .pkg-tiers__chip {
+    flex: 1 1 0;
+    min-width: 80px;
+    background: transparent;
+    border: 0;
+    padding: 9px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    transition: background 0.18s, color 0.18s;
+    line-height: 1.15;
+  }
+  .pkg-tiers__chip small {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .pkg-tiers__chip:hover { color: var(--ink); }
+  .pkg-tiers__chip.is-active {
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(10, 13, 17, 0.05);
+  }
+  .pkg-tiers__chip.is-active small { color: var(--gold-deep); }
+  .pkg-tiers__chip--all { flex: 0 1 auto; min-width: 60px; }
+  @media (max-width: 540px) {
+    .pkg-tiers__chip { padding: 8px 6px; font-size: 12px; }
+    .pkg-tiers__chip small { display: none; }
+  }
+
   /* ── Catalog packages list (Mix V2 left pane) ── */
   .mix-packages {
     display: flex;
@@ -4239,6 +4289,24 @@
             <span class="mix-pane__meta"  id="mix-flights-meta">—</span>
           </h2>
         </header>
+        <!-- B · price tier chips (Budget / Value / Lux) — default Value -->
+        <div class="pkg-tiers" role="tablist" aria-label="Price tier">
+          <button type="button" class="pkg-tiers__chip" data-pkg-tier="budget" role="tab">
+            <span data-en>Budget</span><span data-sr>Budžet</span>
+            <small data-en>&lt; €400</small><small data-sr>&lt; €400</small>
+          </button>
+          <button type="button" class="pkg-tiers__chip is-active" data-pkg-tier="value" role="tab" aria-selected="true">
+            <span data-en>Value</span><span data-sr>Vrednost</span>
+            <small>€400–800</small>
+          </button>
+          <button type="button" class="pkg-tiers__chip" data-pkg-tier="lux" role="tab">
+            <span data-en>Lux</span><span data-sr>Lux</span>
+            <small>&gt; €800</small>
+          </button>
+          <button type="button" class="pkg-tiers__chip pkg-tiers__chip--all" data-pkg-tier="" role="tab">
+            <span data-en>All</span><span data-sr>Sve</span>
+          </button>
+        </div>
         <div id="mix-packages" class="mix-packages" aria-live="polite" aria-busy="true"></div>
       </section>
 
@@ -4680,10 +4748,14 @@
   var packagesState = {
     raw: [],
     loadedFor: '',
-    loadedAt: 0
+    loadedAt: 0,
+    // B · price tier · default 'value' (Balkan Mix V2 sweet spot for hotels
+    // + flights). User can flip to 'budget' (primary Balkan target) or 'lux'
+    // via the chips above the package list.
+    priceTier: 'value'
   };
   function packagesKey(p) {
-    return [(p.origin || ''), (p.dest || ''), (p.depart || ''), (p.ret || '')].join('|');
+    return [(p.origin || ''), (p.dest || ''), (p.depart || ''), (p.ret || ''), packagesState.priceTier].join('|');
   }
 
   function searchParamsKey(p) {
@@ -5008,6 +5080,7 @@
     if (p.depart)  qs.set('from', p.depart);
     if (p.ret)     qs.set('to', p.ret);
     if (p.adults)  qs.set('pax', String((p.adults || 0) + (p.children || 0)));
+    if (packagesState.priceTier) qs.set('priceTier', packagesState.priceTier);
     qs.set('limit', '20');
     var url = '/api/packages?' + qs.toString();
 
@@ -5822,6 +5895,26 @@
       if (!card) return;
       e.preventDefault();
       selectPackage(card.getAttribute('data-mix-pkg-id'));
+    });
+    // B · price tier chips · click flips packagesState.priceTier and reloads
+    document.addEventListener('click', function (e) {
+      if (!e.target || !e.target.closest) return;
+      var chip = e.target.closest('[data-pkg-tier]');
+      if (!chip) return;
+      e.preventDefault();
+      var tier = chip.getAttribute('data-pkg-tier') || '';
+      if (packagesState.priceTier === (tier || null)) return; // no-op
+      packagesState.priceTier = tier || null;
+      packagesState.loadedFor = ''; // bust cache so loadPackages re-fetches
+      // Update chip active state visually
+      var allChips = document.querySelectorAll('[data-pkg-tier]');
+      for (var i = 0; i < allChips.length; i++) {
+        var t = allChips[i].getAttribute('data-pkg-tier') || '';
+        var active = (t === tier);
+        allChips[i].classList.toggle('is-active', active);
+        allChips[i].setAttribute('aria-selected', active ? 'true' : 'false');
+      }
+      loadPackages();
     });
     document.addEventListener('click', function (e) {
       if (!e.target || !e.target.closest) return;

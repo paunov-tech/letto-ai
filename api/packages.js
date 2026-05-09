@@ -51,12 +51,18 @@ export default async function handler(req, res) {
   const dest   = (req.query.dest   || '').toUpperCase().slice(0, 3) || null;
   const from   = req.query.from || null;  // YYYY-MM-DD
   const to     = req.query.to   || null;  // YYYY-MM-DD
-  const isSearch = !!(origin || dest || from || to);
+  // B · price tier filter (budget < €400 < value < €800 < lux). Independent
+  // of the older `tier` param which targets published_public vs premium.
+  const priceTier = ['budget', 'value', 'lux'].includes((req.query.priceTier || '').toLowerCase())
+    ? req.query.priceTier.toLowerCase()
+    : null;
+  const isSearch = !!(origin || dest || from || to || priceTier);
 
   try {
     let q = db.collection('letto_packages').where('status', '==', status);
     if (origin) q = q.where('origin.code', '==', origin);
     if (dest)   q = q.where('destination.code', '==', dest);
+    if (priceTier) q = q.where('tier', '==', priceTier);
 
     if (!isSearch) {
       // Listing mode — newest first.
@@ -112,7 +118,7 @@ export default async function handler(req, res) {
       count: packages.length,
       tier,
       mode: isSearch ? 'search' : 'listing',
-      filters: isSearch ? { origin, dest, from, to } : null
+      filters: isSearch ? { origin, dest, from, to, priceTier } : null
     });
   } catch (e) {
     console.error('[LETTO API] /packages error:', e.message);
