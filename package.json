@@ -10,6 +10,7 @@
   "dependencies": {
     "firebase-admin": "^13.8.0",
     "google-auth-library": "^9.0.0",
+    "pdfkit": "^0.18.0",
     "stripe": "^17.4.0"
   },
   "engines": {

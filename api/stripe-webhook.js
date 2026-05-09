@@ -5,6 +5,7 @@
 import Stripe from 'stripe';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import PDFDocument from 'pdfkit';
 
 // Init Firebase Admin
 if (!getApps().length) {
@@ -307,8 +308,13 @@ function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
         <div style="font-family:'Segoe UI',sans-serif;font-size:11px;color:rgba(245,239,224,0.6);text-align:center;margin-top:4px;">tripId · <span style="font-family:'JetBrains Mono',monospace;color:#D9A94A;">${safe(trip.tripId)}</span></div>
       </td></tr>
 
+      <!-- Attachment hint -->
+      <tr><td style="padding:14px 36px 0;text-align:center;font-family:'Segoe UI',sans-serif;font-size:12px;color:#6A604D;">
+        📎 PDF priložen · <em style="color:#A17433;">letto-mix-${safe(trip.tripId)}.pdf</em>
+      </td></tr>
+
       <!-- Footer -->
-      <tr><td style="padding:22px 36px;text-align:center;font-family:'Segoe UI',sans-serif;font-size:12px;color:#6A604D;line-height:1.6;">
+      <tr><td style="padding:18px 36px 22px;text-align:center;font-family:'Segoe UI',sans-serif;font-size:12px;color:#6A604D;line-height:1.6;">
         Pitanja? Pisi nam na <a href="mailto:podrska@letto.live" style="color:#A17433;text-decoration:none;">podrska@letto.live</a>.<br>
         SIAL Consulting d.o.o. · Brežice, Slovenija · <a href="https://letto.live" style="color:#A17433;text-decoration:none;">letto.live</a>
       </td></tr>
@@ -317,6 +323,129 @@ function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
   </td></tr>
 </table>
 </body></html>`;
+}
+
+// C-3: build a one-page PDF itinerary for the trip. Returns Buffer.
+// Uses pdfkit's built-in Helvetica/Times so we don't ship font files.
+// Cyrillic / Latin Serbian special chars (čšđž) work via WinAnsi encoding
+// of the standard fonts when present; falls back gracefully otherwise.
+function buildMixPdfBuffer(trip, originName, destName, dateRange) {
+  return new Promise((resolve, reject) => {
+    try {
+      const f = trip.flight || {};
+      const h = trip.hotel || {};
+      const doc = new PDFDocument({
+        size: 'A4',
+        margins: { top: 56, bottom: 56, left: 56, right: 56 },
+        info: {
+          Title: `Letto Mix · ${trip.tripId}`,
+          Author: 'LETTO.LIVE · SIAL Consulting',
+          Subject: `${originName} → ${destName} · ${dateRange}`,
+          Producer: 'Letto Mix v1'
+        }
+      });
+      const chunks = [];
+      doc.on('data', c => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const COL = { ink: '#1F2226', muted: '#6A604D', gold: '#A17433', goldBright: '#D9A94A', burgundy: '#7C1E29', line: '#E4D9BC', paper: '#FAF6EA' };
+      const W = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+      // pdfkit's bundled standard fonts (Helvetica) only support WinAnsi
+      // encoding, so we ASCII-ify the few special chars used elsewhere on
+      // the brand (arrows, stars). Brand-perfect typography needs a TTF
+      // bundle, which we can add later.
+      const ARR = '->';
+      const STAR = '*';
+
+      // Header band
+      doc.rect(0, 0, doc.page.width, 96).fill(COL.ink);
+      doc.fillColor(COL.goldBright).font('Helvetica-Bold').fontSize(10).text('LETTO MIX  ·  PAID', doc.page.margins.left, 32, { characterSpacing: 2.4 });
+      doc.fillColor('#FAF6EA').font('Helvetica').fontSize(22).text(`${originName} ${ARR} ${destName}`, doc.page.margins.left, 48);
+      doc.fillColor('#D9CFB4').fontSize(11).text(dateRange || '', doc.page.margins.left, 76);
+      doc.fillColor(COL.goldBright).font('Helvetica').fontSize(9).text(`tripId: ${trip.tripId}`, doc.page.margins.left, 76, { width: W, align: 'right' });
+
+      // Reset to body
+      doc.fillColor(COL.ink).font('Helvetica');
+      doc.y = 130;
+
+      // Section: Flight
+      doc.fillColor(COL.gold).font('Helvetica-Bold').fontSize(9).text('FLIGHT', { characterSpacing: 2.4 });
+      doc.moveDown(0.4);
+      doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(15).text([f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Flight');
+      const flightMetaParts = [
+        f.depart || '',
+        f.duration || '',
+        f.stops === 0 ? 'non-stop' : f.stops === 1 ? '1 stop' : f.stops > 1 ? `${f.stops} stops` : ''
+      ].filter(Boolean);
+      doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(flightMetaParts.join('  ·  '));
+      doc.moveDown(0.3);
+      doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(20).text(`€${Math.round(f.totalPrice || 0)}`, { continued: true });
+      doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(`   ${f.bookingPartner || 'partner'}`);
+      if (f.bookingUrl) {
+        doc.moveDown(0.3);
+        doc.fillColor(COL.gold).font('Helvetica').fontSize(9).text('Rezerviši: ' + f.bookingUrl, { link: f.bookingUrl, underline: true, lineBreak: true });
+      }
+
+      // Divider
+      doc.moveDown(0.8);
+      const dy = doc.y;
+      doc.strokeColor(COL.line).lineWidth(1).moveTo(doc.page.margins.left, dy).lineTo(doc.page.width - doc.page.margins.right, dy).stroke();
+      doc.moveDown(0.6);
+
+      // Section: Hotel
+      doc.fillColor(COL.gold).font('Helvetica-Bold').fontSize(9).text('STAY', { characterSpacing: 2.4 });
+      doc.moveDown(0.4);
+      const stars = (h.stars > 0 && h.stars <= 5) ? '  ' + STAR.repeat(h.stars) : '';
+      doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(15).text((h.name || 'Hotel') + stars);
+      const hotelMetaParts = [h.neighborhood || '', h.nights ? `${h.nights} noći` : ''].filter(Boolean);
+      doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(hotelMetaParts.join('  ·  '));
+      doc.moveDown(0.3);
+      doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(20).text(`€${Math.round(h.priceTotal || 0)}`, { continued: true });
+      if (h.pricePerNight) {
+        doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(`   €${Math.round(h.pricePerNight)} / noć`);
+      } else {
+        doc.text('');
+      }
+      if (h.bookingUrl) {
+        doc.moveDown(0.3);
+        doc.fillColor(COL.gold).font('Helvetica').fontSize(9).text('Rezerviši: ' + h.bookingUrl, { link: h.bookingUrl, underline: true, lineBreak: true });
+      }
+
+      // Total band
+      doc.moveDown(1.2);
+      const ty = doc.y;
+      doc.rect(doc.page.margins.left, ty, W, 70).fill(COL.ink);
+      doc.fillColor(COL.goldBright).font('Helvetica-Bold').fontSize(9).text('TOTAL', doc.page.margins.left, ty + 12, { width: W, align: 'center', characterSpacing: 2.4 });
+      doc.fillColor(COL.goldBright).font('Helvetica-Bold').fontSize(28).text(`€${Math.round(trip.grandTotal || 0)}`, doc.page.margins.left, ty + 26, { width: W, align: 'center' });
+      doc.y = ty + 90;
+
+      // Pax line
+      const pax = trip.pax || {};
+      const paxParts = [];
+      if (pax.adults) paxParts.push(`${pax.adults} ${pax.adults === 1 ? 'osoba' : 'osobe'}`);
+      if (pax.children) paxParts.push(`${pax.children} dec.`);
+      if (pax.infants) paxParts.push(`${pax.infants} beb.`);
+      doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(paxParts.join(' · '), { align: 'center' });
+
+      // Footer
+      doc.moveDown(2);
+      const fy = doc.y;
+      doc.strokeColor(COL.line).lineWidth(0.5).moveTo(doc.page.margins.left, fy).lineTo(doc.page.width - doc.page.margins.right, fy).stroke();
+      doc.moveDown(0.6);
+      doc.fillColor(COL.muted).font('Helvetica').fontSize(8.5);
+      doc.text(`Plaćeno preko Stripe · ${trip.paidAt ? new Date(trip.paidAt).toUTCString() : ''}`, { align: 'center' });
+      doc.moveDown(0.2);
+      doc.text('Pitanja: podrska@letto.live · letto.live · SIAL Consulting d.o.o., Brežice', { align: 'center' });
+      doc.moveDown(0.2);
+      doc.fillColor('#A89E80').fontSize(8).text(`tripId · ${trip.tripId}`, { align: 'center' });
+
+      doc.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
 }
 
 function buildMixEmailText(trip, originName, destName, dateRange) {
@@ -379,6 +508,19 @@ async function sendMixConfirmationEmail(trip) {
     ]
   };
   if (sender.replyTo) body.reply_to = sender.replyTo;
+
+  // C-3: PDF itinerary attachment. Failure to generate = log + still send
+  // the email without attachment, never block delivery.
+  try {
+    const pdfBuffer = await buildMixPdfBuffer(trip, origin, dest, dateRange);
+    body.attachments = [{
+      filename: `letto-mix-${trip.tripId}.pdf`,
+      content: pdfBuffer.toString('base64')
+    }];
+    console.log('[mix-email] PDF attached · ' + pdfBuffer.length + ' bytes · trip=' + trip.tripId);
+  } catch (e) {
+    console.error('[mix-email] PDF generation failed (sending without attachment):', e.message);
+  }
 
   try {
     const r = await fetch('https://api.resend.com/emails', {
