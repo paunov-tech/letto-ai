@@ -219,7 +219,25 @@ function pickReviewCount(prop) {
   return null;
 }
 
-function normalizeProperty(prop) {
+// Hotels.com Provider raw response includes `prop.link` — a relative path
+// like "/ho372972/sparta-team-hotel-hostel-athen-griechenland/" that maps
+// to the property's deep page on www.hotels.com. We turn that into a full
+// URL with check-in/out/pax query so the user lands on availability.
+function buildHotelsComUrl(link, checkIn, checkOut, adults) {
+  if (!link || typeof link !== 'string') return null;
+  // Defensive: only accept paths that look like Hotels.com property hashes
+  // ("/hoXXXXXXX/...") — anything else we don't trust.
+  if (!/^\/ho\d+\//i.test(link)) return null;
+  const base = 'https://www.hotels.com' + link;
+  const qs = new URLSearchParams();
+  if (checkIn)  qs.set('q-check-in',  checkIn);
+  if (checkOut) qs.set('q-check-out', checkOut);
+  qs.set('q-rooms', '1');
+  if (adults)   qs.set('q-room-0-adults', String(adults));
+  return base + (qs.toString() ? '?' + qs.toString() : '');
+}
+
+function normalizeProperty(prop, ctx) {
   if (!prop || !prop.id || !prop.name) return null;
   const guestRating = prop.guestRating ? parseDeNumber(prop.guestRating.rating) : null;
   const stars = (guestRating != null && guestRating > 0) ? Math.round(guestRating / 2) : null;
@@ -228,6 +246,7 @@ function normalizeProperty(prop) {
   const { total, perNight } = pickPrice(prop);
   const photo = pickPhoto(prop);
   const reviewCount = pickReviewCount(prop);
+  const bookingUrl = buildHotelsComUrl(prop.link, ctx?.checkIn, ctx?.checkOut, ctx?.adults);
 
   return {
     id: String(prop.id),
@@ -240,7 +259,9 @@ function normalizeProperty(prop) {
     pricePerNight: Math.round(perNight),
     priceTotal:    Math.round(total),
     currency: 'EUR',
-    distanceToCenter: null // populated by Faza 5
+    distanceToCenter: null, // populated by Faza 5
+    bookingUrl,
+    bookingPartner: bookingUrl ? 'hotels.com' : null
   };
 }
 
@@ -323,8 +344,9 @@ export default async function handler(req, res) {
   }
 
   const properties = propsResult.json && propsResult.json.data && propsResult.json.data.properties;
+  const propCtx = { checkIn, checkOut, adults };
   const hotelsAll = (Array.isArray(properties) ? properties : [])
-    .map(normalizeProperty)
+    .map(p => normalizeProperty(p, propCtx))
     .filter(Boolean);
 
   // Slice to requested limit (provider returns up to ~200)

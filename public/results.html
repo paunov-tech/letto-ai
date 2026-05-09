@@ -5243,6 +5243,12 @@
         priceTotal: hotel.priceTotal,
         currency: hotel.currency || 'EUR',
         nights: nights,
+        // A · hotel deeplink fix: persist property-level URL so paywall,
+        // email, PDF, /trip/{id} all hit the actual hotel page (not a city
+        // search). Hotels.com Provider returns prop.link → /api/hotels-search
+        // builds the full URL and passes it through.
+        bookingUrl: hotel.bookingUrl || null,
+        bookingPartner: hotel.bookingPartner || null,
         capturedAt: Date.now()
       };
     }
@@ -5767,7 +5773,11 @@
     var h = state && state.hotel && state.hotel.selected;
     if (!h) return;
     var p = readUrlParams();
-    var url = buildHotellookUrl(p);
+    // A · hotel deeplink fix: prefer the property-level URL when the API
+    // gave us one (Hotels.com /ho{id}/...). Fall back to generic Hotellook
+    // city search only if the deeplink is missing (older state, error path).
+    var url = h.bookingUrl || buildHotellookUrl(p);
+    var partner = h.bookingPartner || 'Hotellook';
     state.hotel.bookingClicked = true;
     state.hotel.bookingClickedAt = Date.now();
     state.hotel.deeplinkOpened = true;
@@ -5775,9 +5785,9 @@
     setState(state);
     var l = lang();
     showToast(l === 'en'
-      ? 'Booking opens. Find "' + h.name + '" in the listings.'
-      : 'Booking se otvara. Pronađi "' + h.name + '" u listi.', 5000);
-    setTimeout(function () { window.open(url, '_blank', 'noopener'); }, 1200);
+      ? 'Opening ' + partner + ' · "' + h.name + '"'
+      : 'Otvaram ' + partner + ' · "' + h.name + '"', 4500);
+    setTimeout(function () { window.open(url, '_blank', 'noopener'); }, 800);
     var bothBooked = !!(state.flight.bookingClicked && state.hotel.bookingClicked);
     updateStages(!!state.flight.selected, true, bothBooked);
   }
