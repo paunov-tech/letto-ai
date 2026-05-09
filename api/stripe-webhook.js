@@ -176,6 +176,209 @@ async function notifyAdminFallback({ email, inviteLink, reason }) {
   }).catch(() => {});
 }
 
+// ─── C-2 · Resend mix confirmation email ─────────────────────────────────
+// Discover verified sender once (cached in module scope), then send a Letto-
+// branded HTML email with flight + hotel summary and direct booking CTAs
+// after a successful Stripe checkout for the AI Mix tier.
+let __resendSenderCache = null;
+async function resolveResendSender(apiKey) {
+  if (__resendSenderCache) return __resendSenderCache;
+  try {
+    const r = await fetch('https://api.resend.com/domains', {
+      headers: { Authorization: `Bearer ${apiKey}` }
+    });
+    if (!r.ok) {
+      console.warn('[mix-email] domains lookup HTTP', r.status, '— defaulting to letto.live');
+      __resendSenderCache = { from: 'Letto Mix <mix@letto.live>', replyTo: null };
+      return __resendSenderCache;
+    }
+    const j = await r.json();
+    const domains = (j.data || []).filter(d => d.status === 'verified').map(d => d.name);
+    if (domains.includes('letto.live')) {
+      __resendSenderCache = { from: 'Letto Mix <mix@letto.live>', replyTo: null };
+    } else if (domains.includes('sial.com')) {
+      __resendSenderCache = { from: 'Letto Mix <mix@sial.com>', replyTo: 'noreply@letto.live' };
+    } else {
+      // No matching verified domain — log and fall back to letto.live (will fail
+      // gracefully at send time if not actually verified).
+      console.warn('[mix-email] no verified letto.live or sial.com — verified list:', domains.join(', ') || '(empty)');
+      __resendSenderCache = { from: 'Letto Mix <mix@letto.live>', replyTo: null };
+    }
+    return __resendSenderCache;
+  } catch (e) {
+    console.warn('[mix-email] domains lookup failed:', e.message);
+    __resendSenderCache = { from: 'Letto Mix <mix@letto.live>', replyTo: null };
+    return __resendSenderCache;
+  }
+}
+
+function fmtDateRangeForEmail(dep, ret) {
+  if (!dep || !ret) return '';
+  try {
+    const d1 = new Date(dep + 'T00:00:00Z');
+    const d2 = new Date(ret + 'T00:00:00Z');
+    const opt = { day: 'numeric', month: 'short', year: 'numeric' };
+    return d1.toLocaleDateString('sr-Latn', opt) + ' – ' + d2.toLocaleDateString('sr-Latn', opt);
+  } catch { return dep + ' – ' + ret; }
+}
+
+function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
+  const f = trip.flight || {};
+  const h = trip.hotel || {};
+  const stars = (h.stars > 0 && h.stars <= 5) ? '★'.repeat(h.stars) : '';
+  const flightLine = [f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Let';
+  const stopsLabel = f.stops === 0 ? 'direktan'
+    : f.stops === 1 ? '1 presedanje'
+    : f.stops > 1 ? f.stops + ' presedanja' : '';
+  const flightMeta = [f.depart, f.duration, stopsLabel].filter(Boolean).join(' · ');
+  const safe = (s) => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#F5EFE0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1F2226;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5EFE0;padding:24px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FAF6EA;border:1px solid #E4D9BC;border-radius:14px;overflow:hidden;">
+
+      <!-- Header -->
+      <tr><td style="padding:32px 36px 22px;text-align:center;border-bottom:1px solid #E4D9BC;">
+        <div style="font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:#A17433;font-weight:600;margin-bottom:8px;">Letto Mix · paid</div>
+        <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:28px;line-height:1.2;color:#1F2226;">${safe(originName)} → ${safe(destName)}</h1>
+        <p style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#5A4F3A;">${safe(dateRange)}</p>
+      </td></tr>
+
+      <!-- Flight card -->
+      <tr><td style="padding:24px 36px 8px;">
+        <div style="font-family:'Segoe UI',sans-serif;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:#A17433;font-weight:700;margin-bottom:6px;">✈ Flight</div>
+        <div style="font-family:'Segoe UI',sans-serif;font-size:18px;font-weight:600;color:#1F2226;">${safe(flightLine)}</div>
+        ${flightMeta ? `<div style="font-family:'Segoe UI',sans-serif;font-size:13px;color:#6A604D;margin-top:4px;">${safe(flightMeta)}</div>` : ''}
+        <div style="margin-top:10px;display:flex;align-items:baseline;gap:10px;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:#1F2226;">€${Math.round(f.totalPrice || 0)}</span>
+          <span style="font-family:'Segoe UI',sans-serif;font-size:11px;color:#A17433;">${safe(f.bookingPartner || 'partner')}</span>
+        </div>
+        ${f.bookingUrl ? `
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:14px;">
+          <tr><td style="background:#1F2226;border-radius:6px;">
+            <a href="${safe(f.bookingUrl)}" style="display:inline-block;padding:12px 22px;color:#F5EFE0;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:600;text-decoration:none;">Rezerviši let →</a>
+          </td></tr>
+        </table>` : ''}
+      </td></tr>
+
+      <!-- Hotel card -->
+      <tr><td style="padding:18px 36px 8px;border-top:1px solid #E4D9BC;">
+        <div style="font-family:'Segoe UI',sans-serif;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:#A17433;font-weight:700;margin-bottom:6px;">🏨 Stay</div>
+        <div style="font-family:'Segoe UI',sans-serif;font-size:18px;font-weight:600;color:#1F2226;">${safe(h.name || '?')}${stars ? ' <span style="color:#D9A94A;font-size:13px;">' + stars + '</span>' : ''}</div>
+        ${h.neighborhood ? `<div style="font-family:'Segoe UI',sans-serif;font-size:13px;color:#6A604D;margin-top:4px;">${safe(h.neighborhood)}</div>` : ''}
+        <div style="margin-top:10px;display:flex;align-items:baseline;gap:10px;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:#1F2226;">€${Math.round(h.priceTotal || 0)}</span>
+          ${h.nights ? `<span style="font-family:'Segoe UI',sans-serif;font-size:11px;color:#6A604D;">${h.nights} ${h.nights === 1 ? 'noć' : 'noći'}</span>` : ''}
+        </div>
+        ${h.bookingUrl ? `
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:14px;">
+          <tr><td style="background:transparent;border:1px solid #1F2226;border-radius:6px;">
+            <a href="${safe(h.bookingUrl)}" style="display:inline-block;padding:12px 22px;color:#1F2226;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:600;text-decoration:none;">Rezerviši hotel →</a>
+          </td></tr>
+        </table>` : ''}
+      </td></tr>
+
+      <!-- Total -->
+      <tr><td style="padding:22px 36px;border-top:1px solid #E4D9BC;background:#1F2226;color:#F5EFE0;">
+        <div style="font-family:'Segoe UI',sans-serif;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:#D9A94A;font-weight:700;text-align:center;margin-bottom:4px;">Total</div>
+        <div style="font-family:Georgia,'Times New Roman',serif;font-size:36px;font-weight:500;text-align:center;color:#D9A94A;">€${Math.round(trip.grandTotal || 0)}</div>
+        <div style="font-family:'Segoe UI',sans-serif;font-size:11px;color:rgba(245,239,224,0.6);text-align:center;margin-top:4px;">tripId · <span style="font-family:'JetBrains Mono',monospace;color:#D9A94A;">${safe(trip.tripId)}</span></div>
+      </td></tr>
+
+      <!-- Footer -->
+      <tr><td style="padding:22px 36px;text-align:center;font-family:'Segoe UI',sans-serif;font-size:12px;color:#6A604D;line-height:1.6;">
+        Pitanja? Pisi nam na <a href="mailto:podrska@letto.live" style="color:#A17433;text-decoration:none;">podrska@letto.live</a>.<br>
+        SIAL Consulting d.o.o. · Brežice, Slovenija · <a href="https://letto.live" style="color:#A17433;text-decoration:none;">letto.live</a>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+function buildMixEmailText(trip, originName, destName, dateRange) {
+  const f = trip.flight || {};
+  const h = trip.hotel || {};
+  const lines = [];
+  lines.push(`Letto Mix · ${originName} → ${destName}`);
+  lines.push(dateRange);
+  lines.push('');
+  lines.push('FLIGHT');
+  lines.push(`  ${[f.airline, f.flightNumber].filter(Boolean).join(' ')}`);
+  if (f.depart) lines.push(`  ${f.depart} · ${f.duration || ''}`);
+  lines.push(`  €${Math.round(f.totalPrice || 0)} · ${f.bookingPartner || 'partner'}`);
+  if (f.bookingUrl) lines.push(`  Rezerviši: ${f.bookingUrl}`);
+  lines.push('');
+  lines.push('HOTEL');
+  lines.push(`  ${h.name || ''} ${h.stars ? '★'.repeat(h.stars) : ''}`);
+  if (h.neighborhood) lines.push(`  ${h.neighborhood}`);
+  lines.push(`  €${Math.round(h.priceTotal || 0)} · ${h.nights || 0} noći`);
+  if (h.bookingUrl) lines.push(`  Rezerviši: ${h.bookingUrl}`);
+  lines.push('');
+  lines.push(`TOTAL: €${Math.round(trip.grandTotal || 0)}`);
+  lines.push(`tripId: ${trip.tripId}`);
+  lines.push('');
+  lines.push('Pitanja? podrska@letto.live · letto.live');
+  return lines.join('\n');
+}
+
+async function sendMixConfirmationEmail(trip) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.log('[mix-email] RESEND_API_KEY missing — skipping email send (trip=' + trip.tripId + ')');
+    return { ok: false, reason: 'no_api_key' };
+  }
+  if (!trip.userEmail) {
+    console.warn('[mix-email] no userEmail on trip', trip.tripId);
+    return { ok: false, reason: 'no_email' };
+  }
+
+  const sender = await resolveResendSender(apiKey);
+  const f = trip.flight || {};
+  const route = trip.route || {};
+  const origin = route.origin || '?';
+  const dest = route.dest || '?';
+  const dateRange = fmtDateRangeForEmail(f.depart, f.return);
+  const subj = `Tvoj Letto Mix · ${origin} → ${dest}${dateRange ? ' · ' + dateRange : ''}`;
+
+  const html = buildMixEmailHtml({ trip, originName: origin, destName: dest, dateRange });
+  const text = buildMixEmailText(trip, origin, dest, dateRange);
+
+  const body = {
+    from: sender.from,
+    to: [trip.userEmail],
+    subject: subj,
+    html,
+    text,
+    tags: [
+      { name: 'tripId', value: String(trip.tripId).slice(0, 64) },
+      { name: 'product', value: 'mix-aimix' }
+    ]
+  };
+  if (sender.replyTo) body.reply_to = sender.replyTo;
+
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error('[mix-email] Resend HTTP', r.status, JSON.stringify(j).slice(0, 300));
+      return { ok: false, status: r.status, body: j };
+    }
+    console.log('[mix-email] sent ·', trip.userEmail, '· id=' + (j.id || '?') + ' · trip=' + trip.tripId);
+    return { ok: true, id: j.id };
+  } catch (e) {
+    console.error('[mix-email] send failed:', e.message);
+    return { ok: false, reason: e.message };
+  }
+}
+
 async function generateTelegramInvite(customerEmail) {
   // Creates one-time invite link for premium channel
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -269,11 +472,16 @@ export default async function handler(req, res) {
                 const grandTotal = flightTotal + hotelTotal;
                 tripId = pendingMixId; // reuse short hex as the canonical trip ID
 
-                await db.collection('purchasedMixes').doc(tripId).set({
+                const tripDoc = {
                   tripId,
                   userEmail: lowerEmail,
                   stripeSessionId: session.id,
                   paidAt,
+                  // C-2: route fields denormalized for email subject + display
+                  route: {
+                    origin: (f.origin || sp.origin_iata || '').toUpperCase(),
+                    dest: (f.dest || sp.destination_iata || '').toUpperCase()
+                  },
                   flight: {
                     airline: f.airline || null,
                     flightNumber: f.flightNumber || null,
@@ -300,12 +508,18 @@ export default async function handler(req, res) {
                   currency: f.currency || h.currency || 'EUR',
                   status: 'paid',
                   pendingMixId
-                });
+                };
+                await db.collection('purchasedMixes').doc(tripId).set(tripDoc);
 
                 // cleanup pending doc
                 await db.collection('pendingMixes').doc(pendingMixId).delete().catch(() => {});
 
                 console.log(`[LETTO] purchasedMixes/${tripId} written · ${lowerEmail} · €${grandTotal}`);
+
+                // C-2: Resend confirmation email — graceful fallback if no API key
+                sendMixConfirmationEmail(tripDoc).catch(e => {
+                  console.error('[LETTO] mix email send failed:', e.message);
+                });
               } else {
                 console.warn(`[LETTO] pendingMixId=${pendingMixId} not found in pendingMixes — purchase recorded without snapshot`);
               }
