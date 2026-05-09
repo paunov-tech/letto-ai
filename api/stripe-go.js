@@ -9,11 +9,37 @@
 // Frontend uses this as a fallback when the fetch/JSON path fails.
 
 import Stripe from 'stripe';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { randomBytes } from 'node:crypto';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia'
 });
+
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId: 'letto-ai',
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    })
+  });
+}
+const db = getFirestore();
 const SITE_URL = process.env.VITE_SITE_URL || 'https://letto.live';
+
+// See api/stripe-checkout.js · same pattern: store snapshot in Firestore,
+// put short ID in Stripe metadata.
+async function persistPendingMix(mixSnapshot) {
+  const pendingMixId = randomBytes(8).toString('hex');
+  await db.collection('pendingMixes').doc(pendingMixId).set({
+    snapshot: mixSnapshot,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString()
+  });
+  return pendingMixId;
+}
 
 async function readForm(req) {
   // Accept both x-www-form-urlencoded and pre-parsed JSON bodies (Vercel parses some types).
@@ -39,6 +65,15 @@ export default async function handler(req, res) {
 
   const body = await readForm(req);
   const tier = (body.tier || 'beta').toString().trim();
+  // mixSnapshot may arrive as a JSON string (form-encoded) or already-parsed object.
+  let mixSnapshot = null;
+  if (body.mixSnapshot) {
+    if (typeof body.mixSnapshot === 'string') {
+      try { mixSnapshot = JSON.parse(body.mixSnapshot); } catch (_) { mixSnapshot = null; }
+    } else if (typeof body.mixSnapshot === 'object') {
+      mixSnapshot = body.mixSnapshot;
+    }
+  }
 
   try {
     let session;
@@ -57,11 +92,15 @@ export default async function handler(req, res) {
             },
             quantity: 1
           };
+      const metadata = { tier, source: 'letto', origin: 'mix-stage3-form' };
+      if (mixSnapshot) {
+        metadata.pendingMixId = await persistPendingMix(mixSnapshot);
+      }
       session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: [lineItem],
-        metadata: { tier, source: 'letto', origin: 'mix-stage3-form' },
-        payment_intent_data: { metadata: { tier, source: 'letto' } },
+        metadata,
+        payment_intent_data: { metadata: { ...metadata } },
         allow_promotion_codes: true,
         success_url: `${SITE_URL}/results.html?unlock=aimix&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${SITE_URL}/results.html?cancelled=1`,

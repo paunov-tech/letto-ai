@@ -236,16 +236,87 @@ export default async function handler(req, res) {
 
         if (!email) break;
 
-        // One-time AI Mix unlock (€7.99) — flag user, no Telegram invite, no welcome email.
+        // One-time AI Mix unlock (€7.99) — flag user + persist the bought trip
+        // as a purchasedMixes record (C-1 · Mix kao proizvod, faza 1).
         if (tier === 'aimix' || session.mode === 'payment') {
-          await db.collection('letto_subscribers').doc(email.toLowerCase()).set({
-            email: email.toLowerCase(),
+          const lowerEmail = email.toLowerCase();
+          const paidAt = new Date().toISOString();
+
+          await db.collection('letto_subscribers').doc(lowerEmail).set({
+            email: lowerEmail,
             stripeCustomerId: customerId,
             aimixUnlocked: true,
-            aimixUnlockedAt: new Date().toISOString(),
+            aimixUnlockedAt: paidAt,
             aimixSessionId: session.id
           }, { merge: true });
-          console.log(`[LETTO] AI Mix unlocked: ${email}`);
+
+          // Resolve pending mix snapshot → purchasedMixes record.
+          const pendingMixId = session.metadata?.pendingMixId;
+          let tripId = null;
+          if (pendingMixId) {
+            try {
+              const snap = await db.collection('pendingMixes').doc(pendingMixId).get();
+              if (snap.exists) {
+                const { snapshot } = snap.data();
+                const f = snapshot?.flight?.selected || {};
+                const h = snapshot?.hotel?.selected || {};
+                const sp = snapshot?.searchParams || {};
+                const adults = sp.adults || 1;
+                const children = sp.children || 0;
+                const infants = sp.infants || 0;
+                const flightTotal = Math.round(f.totalPrice || f.priceNum || 0);
+                const hotelTotal = Math.round(h.priceTotal || 0);
+                const grandTotal = flightTotal + hotelTotal;
+                tripId = pendingMixId; // reuse short hex as the canonical trip ID
+
+                await db.collection('purchasedMixes').doc(tripId).set({
+                  tripId,
+                  userEmail: lowerEmail,
+                  stripeSessionId: session.id,
+                  paidAt,
+                  flight: {
+                    airline: f.airline || null,
+                    flightNumber: f.flightNumber || null,
+                    depart: f.depart || sp.depart_date || null,
+                    return: f.ret || sp.return_date || null,
+                    duration: f.duration || null,
+                    stops: typeof f.stops === 'number' ? f.stops : null,
+                    totalPrice: flightTotal,
+                    bookingUrl: f.bookingUrl || null,
+                    bookingPartner: f.bookingPartner || null
+                  },
+                  hotel: {
+                    name: h.name || null,
+                    stars: h.stars || null,
+                    neighborhood: h.neighborhood || null,
+                    nights: h.nights || null,
+                    pricePerNight: h.pricePerNight || null,
+                    priceTotal: hotelTotal,
+                    bookingUrl: h.bookingUrl || null,
+                    hotellookId: h.id || null
+                  },
+                  pax: { adults, children, infants },
+                  grandTotal,
+                  currency: f.currency || h.currency || 'EUR',
+                  status: 'paid',
+                  pendingMixId
+                });
+
+                // cleanup pending doc
+                await db.collection('pendingMixes').doc(pendingMixId).delete().catch(() => {});
+
+                console.log(`[LETTO] purchasedMixes/${tripId} written · ${lowerEmail} · €${grandTotal}`);
+              } else {
+                console.warn(`[LETTO] pendingMixId=${pendingMixId} not found in pendingMixes — purchase recorded without snapshot`);
+              }
+            } catch (e) {
+              console.error('[LETTO] purchasedMixes write failed:', e.message);
+            }
+          } else {
+            console.log(`[LETTO] aimix paid without pendingMixId (legacy or external) · ${lowerEmail}`);
+          }
+
+          console.log(`[LETTO] AI Mix unlocked: ${lowerEmail}${tripId ? ' · trip=' + tripId : ''}`);
           break;
         }
 

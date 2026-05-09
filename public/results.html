@@ -6437,6 +6437,22 @@
   //      creates the session server-side and replies 303 → Stripe. Used when
   //      the fetch/JSON path fails (popup blockers, mobile Safari async-gesture
   //      rules, network glitches, content blockers).
+  // C-1: when the user is unlocking a Mix (tier=aimix), capture the current
+  // state.flight.selected + state.hotel.selected + searchParams snapshot so
+  // the webhook can persist a purchasedMixes Firestore record after payment.
+  function lettoMixSnapshot() {
+    try {
+      if (typeof getState !== 'function') return null;
+      var s = getState();
+      if (!s) return null;
+      return {
+        flight: { selected: s.flight && s.flight.selected || null },
+        hotel:  { selected: s.hotel  && s.hotel.selected  || null },
+        searchParams: s.searchParams || null
+      };
+    } catch (_) { return null; }
+  }
+
   function lettoFormFallback(tier) {
     console.log('[letto] checkout fallback · form POST to /api/stripe-go · tier=' + tier);
     var form = document.createElement('form');
@@ -6446,6 +6462,14 @@
     var i = document.createElement('input');
     i.type = 'hidden'; i.name = 'tier'; i.value = tier;
     form.appendChild(i);
+    if (tier === 'aimix') {
+      var snap = lettoMixSnapshot();
+      if (snap) {
+        var s = document.createElement('input');
+        s.type = 'hidden'; s.name = 'mixSnapshot'; s.value = JSON.stringify(snap);
+        form.appendChild(s);
+      }
+    }
     document.body.appendChild(form);
     form.submit();
   }
@@ -6466,11 +6490,17 @@
       };
     }
 
+    var payload = { tier: tier };
+    if (tier === 'aimix') {
+      var snap = lettoMixSnapshot();
+      if (snap) payload.mixSnapshot = snap;
+    }
+
     try {
       var resp = await fetch('/api/stripe-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: tier })
+        body: JSON.stringify(payload)
       });
       var data = await resp.json();
       if (data && data.url) {

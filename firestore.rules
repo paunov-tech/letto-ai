@@ -47,6 +47,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── PENDING MIXES (C-1 · Mix kao proizvod) ─────────────
+    // Snapshot of state.flight + state.hotel + searchParams written by
+    // /api/stripe-checkout before the user is redirected to Stripe; cleared
+    // by the webhook on payment success. Server-only.
+    match /pendingMixes/{pendingMixId} {
+      allow read, write: if false;
+    }
+
+    // ─── PURCHASED MIXES (C-1) ──────────────────────────────
+    // Authoritative record of paid-for trips. Created by the Stripe webhook
+    // after checkout.session.completed. Future C-2 emails the trip details
+    // to userEmail. Server-only (client reads through Admin-SDK /api/me-mix).
+    match /purchasedMixes/{tripId} {
+      allow read, write: if false;
+    }
+
     // ─── DENY BY DEFAULT ────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

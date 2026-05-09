@@ -1,21 +1,52 @@
 // api/stripe-checkout.js — Direct Stripe Checkout
 // NO email required. Stripe collects email on its own page.
-// User clicks ANY CTA → POST { tier } → Stripe URL → user pays → webhook fires → Firestore subscriber created from session.customer_email
+// User clicks ANY CTA → POST { tier, mixSnapshot? } → Stripe URL → user pays
+// → webhook fires → Firestore subscriber created from session.customer_email
+// + (for aimix tier) purchasedMixes record created from snapshot.
 
 import Stripe from 'stripe';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { randomBytes } from 'node:crypto';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia'
 });
 
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId: 'letto-ai',
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    })
+  });
+}
+const db = getFirestore();
+
 const SITE_URL = process.env.VITE_SITE_URL || 'https://letto.live';
+
+// Stripe metadata is limited to 50 keys × 500 chars per value, so we can't
+// stuff a full mix snapshot (bookingUrls alone exceed that). Instead we
+// persist the snapshot to Firestore pendingMixes/{pendingMixId} and put just
+// the short ID in metadata. Webhook reads ID → fetches snapshot → finalizes
+// purchasedMixes record.
+async function persistPendingMix(mixSnapshot) {
+  const pendingMixId = randomBytes(8).toString('hex'); // 16-char hex
+  await db.collection('pendingMixes').doc(pendingMixId).set({
+    snapshot: mixSnapshot,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString() // 24h TTL hint
+  });
+  return pendingMixId;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { tier = 'beta' } = req.body || {};
+  const { tier = 'beta', mixSnapshot } = req.body || {};
 
   try {
     // aimix = €7.99 one-time unlock for Stage 3 AI Mix review (Mix V2)
@@ -35,13 +66,16 @@ export default async function handler(req, res) {
             quantity: 1
           };
 
+      const metadata = { tier, source: 'letto', origin: 'mix-stage3' };
+      if (mixSnapshot && typeof mixSnapshot === 'object') {
+        metadata.pendingMixId = await persistPendingMix(mixSnapshot);
+      }
+
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: [lineItem],
-        metadata: { tier, source: 'letto', origin: 'mix-stage3' },
-        payment_intent_data: {
-          metadata: { tier, source: 'letto' }
-        },
+        metadata,
+        payment_intent_data: { metadata: { ...metadata } },
         allow_promotion_codes: true,
         success_url: `${SITE_URL}/results.html?unlock=aimix&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${SITE_URL}/results.html?cancelled=1`,
@@ -67,7 +101,6 @@ export default async function handler(req, res) {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      // NO customer_email — Stripe collects it. THIS is the fix.
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: { tier, source: 'letto', origin: 'landing' },
       subscription_data: {
@@ -75,8 +108,6 @@ export default async function handler(req, res) {
         trial_period_days: 14
       },
       allow_promotion_codes: true,
-      // In subscription mode, Stripe creates a Customer automatically; customer_creation is invalid here.
-      // payment_method_collection 'always' ensures card is captured even on free trial.
       payment_method_collection: 'always',
       success_url: `${SITE_URL}/dobrodosao.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${SITE_URL}/?cancelled=1`,
