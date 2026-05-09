@@ -516,10 +516,15 @@ export default async function handler(req, res) {
 
                 console.log(`[LETTO] purchasedMixes/${tripId} written · ${lowerEmail} · €${grandTotal}`);
 
-                // C-2: Resend confirmation email — graceful fallback if no API key
-                sendMixConfirmationEmail(tripDoc).catch(e => {
+                // C-2: Resend confirmation email — must await on Vercel (the
+                // function freezes once 200 is sent back to Stripe, killing
+                // any in-flight fire-and-forget fetches). Adds ~300-700ms
+                // to webhook latency; Stripe accepts up to 30s.
+                try {
+                  await sendMixConfirmationEmail(tripDoc);
+                } catch (e) {
                   console.error('[LETTO] mix email send failed:', e.message);
-                });
+                }
               } else {
                 console.warn(`[LETTO] pendingMixId=${pendingMixId} not found in pendingMixes — purchase recorded without snapshot`);
               }
