@@ -9,7 +9,8 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/about", "destination": "/about.html" },
-    { "source": "/results", "destination": "/results.html" }
+    { "source": "/results", "destination": "/results.html" },
+    { "source": "/trip/:id", "destination": "/trip.html?id=:id" }
   ],
   "headers": [
     {

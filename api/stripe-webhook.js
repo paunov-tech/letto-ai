@@ -308,8 +308,13 @@ function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
         <div style="font-family:'Segoe UI',sans-serif;font-size:11px;color:rgba(245,239,224,0.6);text-align:center;margin-top:4px;">tripId · <span style="font-family:'JetBrains Mono',monospace;color:#D9A94A;">${safe(trip.tripId)}</span></div>
       </td></tr>
 
+      <!-- Online view CTA -->
+      <tr><td style="padding:18px 36px 0;text-align:center;">
+        <a href="https://letto.live/trip/${safe(trip.tripId)}" style="display:inline-block;padding:11px 24px;border:1px solid #1F2226;border-radius:6px;color:#1F2226;font-family:'Segoe UI',sans-serif;font-size:13px;font-weight:600;text-decoration:none;">Otvori online →</a>
+      </td></tr>
+
       <!-- Attachment hint -->
-      <tr><td style="padding:14px 36px 0;text-align:center;font-family:'Segoe UI',sans-serif;font-size:12px;color:#6A604D;">
+      <tr><td style="padding:12px 36px 0;text-align:center;font-family:'Segoe UI',sans-serif;font-size:12px;color:#6A604D;">
         📎 PDF priložen · <em style="color:#A17433;">letto-mix-${safe(trip.tripId)}.pdf</em>
       </td></tr>
 
@@ -468,6 +473,8 @@ function buildMixEmailText(trip, originName, destName, dateRange) {
   if (h.bookingUrl) lines.push(`  Rezerviši: ${h.bookingUrl}`);
   lines.push('');
   lines.push(`TOTAL: €${Math.round(trip.grandTotal || 0)}`);
+  lines.push('');
+  lines.push(`Otvori online: https://letto.live/trip/${trip.tripId}`);
   lines.push(`tripId: ${trip.tripId}`);
   lines.push('');
   lines.push('Pitanja? podrska@letto.live · letto.live');

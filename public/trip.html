@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tvoj Letto Mix</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAF6EA;
+    --paper-warm: #F5EFE0;
+    --line: #E4D9BC;
+    --line-soft: #EDE3CB;
+    --ink: #1F2226;
+    --ink-mid: #3A3F47;
+    --muted: #6A604D;
+    --gold: #A17433;
+    --gold-deep: #7C5B22;
+    --gold-light: #D9A94A;
+    --burgundy: #7C1E29;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(180deg, var(--paper) 0%, var(--paper-warm) 100%);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 640px; margin: 0 auto; padding: 32px 20px 64px; }
+
+  .top {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .top a { color: var(--gold-deep); text-decoration: none; font-size: 13px; letter-spacing: 0.04em; }
+  .top a:hover { color: var(--ink); }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 16px 40px -16px rgba(10,13,17,0.08), 0 1px 3px rgba(10,13,17,0.04);
+  }
+
+  .header {
+    background: var(--ink);
+    color: var(--paper-warm);
+    padding: 32px 32px 28px;
+    text-align: center;
+    border-bottom: 3px solid var(--gold-light);
+  }
+  .header__eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .header__route {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(28px, 6vw, 38px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .header__sub {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 16px;
+    margin-top: 8px;
+    color: rgba(245, 239, 224, 0.75);
+  }
+  .header__trip-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--gold-light);
+    margin-top: 14px;
+    letter-spacing: 0.05em;
+  }
+
+  .section {
+    padding: 24px 32px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .section:first-of-type { border-top: 0; }
+  .section__eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .section__title {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .section__meta {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 14.5px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .section__price-row {
+    margin-top: 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .section__price-num {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .section__price-note {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 13px 24px;
+    border-radius: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+  }
+  .cta--primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .cta--primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(10,13,17,0.18); }
+  .cta--secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+  .cta--secondary:hover { background: var(--paper-warm); }
+
+  .total {
+    background: var(--ink);
+    color: var(--paper-warm);
+    padding: 28px 32px;
+    text-align: center;
+  }
+  .total__label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .total__num {
+    font-family: 'Fraunces', serif;
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--gold-light);
+  }
+  .total__pax {
+    font-size: 12px;
+    color: rgba(245, 239, 224, 0.6);
+    margin-top: 6px;
+  }
+
+  .footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .footer a { color: var(--gold-deep); text-decoration: none; }
+  .footer a:hover { color: var(--ink); }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--paper-warm) 0%, var(--paper) 50%, var(--paper-warm) 100%);
+    background-size: 200% 100%;
+    border: 1px solid var(--line-soft);
+    border-radius: 14px;
+    height: 480px;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .error-state {
+    text-align: center;
+    padding: 60px 24px;
+  }
+  .error-state h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .error-state p {
+    color: var(--muted);
+    font-family: 'Instrument Serif', serif;
+    font-size: 16px;
+    line-height: 1.5;
+    max-width: 420px;
+    margin: 0 auto 18px;
+  }
+
+  @media (max-width: 520px) {
+    .container { padding: 18px 14px 40px; }
+    .header { padding: 26px 22px 22px; }
+    .section { padding: 20px 22px; }
+    .total { padding: 22px 22px; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <a href="https://letto.live/">← letto.live</a>
+    </div>
+
+    <div id="root">
+      <div class="skeleton"></div>
+    </div>
+
+    <div class="footer">
+      Pitanja? <a href="mailto:podrska@letto.live">podrska@letto.live</a> · SIAL Consulting · Brežice
+    </div>
+  </div>
+
+<script>
+(function () {
+  function safe(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  }
+  function getId() {
+    // Both /trip/{id} (rewrite to /trip.html?id=X) and direct /trip.html?id=X
+    var qs = new URLSearchParams(window.location.search);
+    return qs.get('id') || '';
+  }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso + (iso.length === 10 ? 'T00:00:00Z' : ''));
+      return d.toLocaleDateString('sr-Latn', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) { return iso; }
+  }
+  function fmtRange(a, b) {
+    if (!a || !b) return '';
+    return fmtDate(a) + ' – ' + fmtDate(b);
+  }
+  function stopsLabel(s) {
+    if (s === 0) return 'direktan';
+    if (s === 1) return '1 presedanje';
+    if (s > 1) return s + ' presedanja';
+    return '';
+  }
+
+  function renderError(title, msg) {
+    document.getElementById('root').innerHTML =
+      '<div class="card"><div class="error-state">' +
+        '<h1>' + safe(title) + '</h1>' +
+        '<p>' + safe(msg) + '</p>' +
+        '<a class="cta cta--secondary" href="https://letto.live/">letto.live →</a>' +
+      '</div></div>';
+    document.title = title + ' · Letto';
+  }
+
+  function render(trip) {
+    var route = trip.route || {};
+    var f = trip.flight || {};
+    var h = trip.hotel || {};
+    var pax = trip.pax || {};
+    var origin = route.origin || '?';
+    var dest = route.dest || '?';
+    var dates = fmtRange(f.depart, f.return);
+    var stops = stopsLabel(f.stops);
+    var stars = (h.stars > 0 && h.stars <= 5) ? ' ' + '★'.repeat(h.stars) : '';
+    var paxParts = [];
+    if (pax.adults) paxParts.push(pax.adults + ' ' + (pax.adults === 1 ? 'osoba' : 'osobe'));
+    if (pax.children) paxParts.push(pax.children + ' deca');
+    if (pax.infants) paxParts.push(pax.infants + ' bebe');
+    var nights = h.nights ? (' · ' + h.nights + ' ' + (h.nights === 1 ? 'noć' : 'noći')) : '';
+
+    document.title = 'Letto Mix · ' + origin + ' → ' + dest;
+
+    var flightMeta = [f.depart && fmtDate(f.depart), f.duration, stops].filter(Boolean).join('  ·  ');
+    var flightTitle = [f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Let';
+
+    document.getElementById('root').innerHTML =
+      '<div class="card">' +
+        '<div class="header">' +
+          '<div class="header__eyebrow">Letto Mix · paid</div>' +
+          '<div class="header__route">' + safe(origin) + ' → ' + safe(dest) + '</div>' +
+          (dates ? '<div class="header__sub">' + safe(dates) + '</div>' : '') +
+          '<div class="header__trip-id">tripId · ' + safe(trip.tripId) + '</div>' +
+        '</div>' +
+
+        '<div class="section">' +
+          '<div class="section__eyebrow">✈ Flight</div>' +
+          '<div class="section__title">' + safe(flightTitle) + '</div>' +
+          (flightMeta ? '<div class="section__meta">' + safe(flightMeta) + '</div>' : '') +
+          '<div class="section__price-row">' +
+            '<span class="section__price-num">€' + Math.round(f.totalPrice || 0) + '</span>' +
+            '<span class="section__price-note">' + safe(f.bookingPartner || 'partner') + '</span>' +
+          '</div>' +
+          (f.bookingUrl
+            ? '<a class="cta cta--primary" href="' + safe(f.bookingUrl) + '" target="_blank" rel="noopener">Rezerviši let →</a>'
+            : '') +
+        '</div>' +
+
+        '<div class="section">' +
+          '<div class="section__eyebrow">🏨 Stay</div>' +
+          '<div class="section__title">' + safe(h.name || 'Hotel') + safe(stars) + '</div>' +
+          (h.neighborhood ? '<div class="section__meta">' + safe(h.neighborhood) + nights + '</div>' : (h.nights ? '<div class="section__meta">' + nights.replace(' · ', '') + '</div>' : '')) +
+          '<div class="section__price-row">' +
+            '<span class="section__price-num">€' + Math.round(h.priceTotal || 0) + '</span>' +
+            (h.pricePerNight ? '<span class="section__price-note">€' + Math.round(h.pricePerNight) + ' / noć</span>' : '') +
+          '</div>' +
+          (h.bookingUrl
+            ? '<a class="cta cta--secondary" href="' + safe(h.bookingUrl) + '" target="_blank" rel="noopener">Rezerviši hotel →</a>'
+            : '') +
+        '</div>' +
+
+        '<div class="total">' +
+          '<div class="total__label">Total</div>' +
+          '<div class="total__num">€' + Math.round(trip.grandTotal || 0) + '</div>' +
+          (paxParts.length ? '<div class="total__pax">' + safe(paxParts.join(' · ')) + '</div>' : '') +
+        '</div>' +
+      '</div>';
+  }
+
+  var id = getId();
+  if (!id) {
+    renderError('Nema trip ID-a', 'URL ne sadrži tripId. Otvori link iz email-a koji si dobio nakon plaćanja.');
+    return;
+  }
+
+  fetch('/api/trip?id=' + encodeURIComponent(id))
+    .then(function (r) {
+      if (r.status === 404) throw new Error('not_found');
+      if (!r.ok) throw new Error('http_' + r.status);
+      return r.json();
+    })
+    .then(render)
+    .catch(function (err) {
+      if (err.message === 'not_found') {
+        renderError('Mix nije pronađen', 'Trip ID iz linka ne postoji ili je istekao. Proveri da je link iz email-a kompletan.');
+      } else {
+        renderError('Greška pri učitavanju', 'Pokušaj da osvežiš stranicu. Ako problem ostane, javi nam na podrska@letto.live.');
+      }
+    });
+})();
+</script>
+</body>
+</html>
