@@ -183,6 +183,20 @@ async function notifyAdminFallback({ email, inviteLink, reason }) {
 let __resendSenderCache = null;
 async function resolveResendSender(apiKey) {
   if (__resendSenderCache) return __resendSenderCache;
+
+  // 1) Explicit override via env wins — full From header, e.g.
+  //    RESEND_FROM="Letto Mix <mix@example.com>"
+  if (process.env.RESEND_FROM) {
+    __resendSenderCache = {
+      from: process.env.RESEND_FROM,
+      replyTo: process.env.RESEND_REPLY_TO || null
+    };
+    console.log('[mix-email] sender from RESEND_FROM env:', __resendSenderCache.from);
+    return __resendSenderCache;
+  }
+
+  // 2) Discover via Resend /v1/domains; prefer letto.live → sial.com →
+  //    first verified domain. Logs the verified list so debugging is trivial.
   try {
     const r = await fetch('https://api.resend.com/domains', {
       headers: { Authorization: `Bearer ${apiKey}` }
@@ -193,15 +207,21 @@ async function resolveResendSender(apiKey) {
       return __resendSenderCache;
     }
     const j = await r.json();
-    const domains = (j.data || []).filter(d => d.status === 'verified').map(d => d.name);
-    if (domains.includes('letto.live')) {
+    const verified = (j.data || []).filter(d => d.status === 'verified').map(d => d.name);
+    console.log('[mix-email] verified Resend domains:', verified.join(', ') || '(none)');
+
+    if (verified.includes('letto.live')) {
       __resendSenderCache = { from: 'Letto Mix <mix@letto.live>', replyTo: null };
-    } else if (domains.includes('sial.com')) {
+    } else if (verified.includes('sial.com')) {
       __resendSenderCache = { from: 'Letto Mix <mix@sial.com>', replyTo: 'noreply@letto.live' };
+    } else if (verified.length > 0) {
+      // Fall back to whatever IS verified — better deliverability beats
+      // brand-perfect sender if the user hasn't verified letto.live yet.
+      const d = verified[0];
+      __resendSenderCache = { from: `Letto Mix <mix@${d}>`, replyTo: 'podrska@letto.live' };
+      console.log('[mix-email] using first verified domain:', d);
     } else {
-      // No matching verified domain — log and fall back to letto.live (will fail
-      // gracefully at send time if not actually verified).
-      console.warn('[mix-email] no verified letto.live or sial.com — verified list:', domains.join(', ') || '(empty)');
+      console.warn('[mix-email] NO verified domains in Resend — send will fail. Add domain at https://resend.com/domains.');
       __resendSenderCache = { from: 'Letto Mix <mix@letto.live>', replyTo: null };
     }
     return __resendSenderCache;
