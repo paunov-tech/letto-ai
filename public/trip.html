@@ -62,6 +62,20 @@
     font-weight: 600;
     margin-bottom: 12px;
   }
+  .tier-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    margin-right: 8px;
+    border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    vertical-align: middle;
+  }
+  .tier-pill--budget { background: #1B7A3E; color: #E8F4EE; }
+  .tier-pill--value  { background: #2563AB; color: #E0EBF7; }
+  .tier-pill--lux    { background: #D9A94A; color: #1F2226; }
   .header__route {
     font-family: 'Fraunces', serif;
     font-size: clamp(28px, 6vw, 38px);
@@ -310,10 +324,15 @@
     var flightMeta = [f.depart && fmtDate(f.depart), f.duration, stops].filter(Boolean).join('  ·  ');
     var flightTitle = [f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Let';
 
+    var tier = (trip.tier === 'budget' || trip.tier === 'lux') ? trip.tier : 'value';
+    var tierLabel = tier.toUpperCase();
     document.getElementById('root').innerHTML =
       '<div class="card">' +
         '<div class="header">' +
-          '<div class="header__eyebrow">Letto Mix · paid</div>' +
+          '<div style="margin-bottom:14px;">' +
+            '<span class="tier-pill tier-pill--' + tier + '">' + tierLabel + '</span>' +
+            '<span class="header__eyebrow" style="margin-bottom:0;">Letto Mix · paid</span>' +
+          '</div>' +
           '<div class="header__route">' + safe(origin) + ' → ' + safe(dest) + '</div>' +
           (dates ? '<div class="header__sub">' + safe(dates) + '</div>' : '') +
           '<div class="header__trip-id">tripId · ' + safe(trip.tripId) + '</div>' +

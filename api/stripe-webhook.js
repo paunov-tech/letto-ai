@@ -233,6 +233,13 @@ async function resolveResendSender(apiKey) {
   }
 }
 
+// Final 2 · tier display + color helpers (Budget green / Value blue / Lux gold)
+function tierColors(tier) {
+  if (tier === 'budget') return { bg: '#1B7A3E', fg: '#E8F4EE', label: 'BUDGET' };
+  if (tier === 'lux')    return { bg: '#D9A94A', fg: '#1F2226', label: 'LUX' };
+  return                  { bg: '#2563AB', fg: '#E0EBF7', label: 'VALUE' }; // default value
+}
+
 function fmtDateRangeForEmail(dep, ret) {
   if (!dep || !ret) return '';
   try {
@@ -253,6 +260,7 @@ function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
     : f.stops > 1 ? f.stops + ' presedanja' : '';
   const flightMeta = [f.depart, f.duration, stopsLabel].filter(Boolean).join(' · ');
   const safe = (s) => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+  const tCol = tierColors(trip.tier);
 
   return `<!doctype html>
 <html><body style="margin:0;padding:0;background:#F5EFE0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1F2226;">
@@ -262,7 +270,10 @@ function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
 
       <!-- Header -->
       <tr><td style="padding:32px 36px 22px;text-align:center;border-bottom:1px solid #E4D9BC;">
-        <div style="font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:#A17433;font-weight:600;margin-bottom:8px;">Letto Mix · paid</div>
+        <div style="margin-bottom:10px;">
+          <span style="display:inline-block;padding:4px 12px;background:${tCol.bg};color:${tCol.fg};font-family:'Segoe UI',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;border-radius:99px;">${tCol.label}</span>
+          <span style="margin-left:6px;font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:#A17433;font-weight:600;vertical-align:middle;">Letto Mix · paid</span>
+        </div>
         <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:28px;line-height:1.2;color:#1F2226;">${safe(originName)} → ${safe(destName)}</h1>
         <p style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#5A4F3A;">${safe(dateRange)}</p>
       </td></tr>
@@ -364,16 +375,24 @@ function buildMixPdfBuffer(trip, originName, destName, dateRange) {
       const ARR = '->';
       const STAR = '*';
 
-      // Header band
-      doc.rect(0, 0, doc.page.width, 96).fill(COL.ink);
-      doc.fillColor(COL.goldBright).font('Helvetica-Bold').fontSize(10).text('LETTO MIX  ·  PAID', doc.page.margins.left, 32, { characterSpacing: 2.4 });
-      doc.fillColor('#FAF6EA').font('Helvetica').fontSize(22).text(`${originName} ${ARR} ${destName}`, doc.page.margins.left, 48);
-      doc.fillColor('#D9CFB4').fontSize(11).text(dateRange || '', doc.page.margins.left, 76);
-      doc.fillColor(COL.goldBright).font('Helvetica').fontSize(9).text(`tripId: ${trip.tripId}`, doc.page.margins.left, 76, { width: W, align: 'right' });
+      // Header band — solid ink with tier-colored pill
+      const tCol = tierColors(trip.tier);
+      doc.rect(0, 0, doc.page.width, 100).fill(COL.ink);
+
+      // Tier pill (top-left)
+      const pillW = 60, pillH = 16;
+      doc.roundedRect(doc.page.margins.left, 26, pillW, pillH, 8).fill(tCol.bg);
+      doc.fillColor(tCol.fg).font('Helvetica-Bold').fontSize(8.5).text(tCol.label, doc.page.margins.left, 30, { width: pillW, align: 'center', characterSpacing: 1.6 });
+      // "LETTO MIX · PAID" eyebrow next to pill
+      doc.fillColor(COL.goldBright).font('Helvetica-Bold').fontSize(10).text('LETTO MIX  ·  PAID', doc.page.margins.left + pillW + 10, 30, { characterSpacing: 2.4 });
+
+      doc.fillColor('#FAF6EA').font('Helvetica').fontSize(22).text(`${originName} ${ARR} ${destName}`, doc.page.margins.left, 52);
+      doc.fillColor('#D9CFB4').fontSize(11).text(dateRange || '', doc.page.margins.left, 80);
+      doc.fillColor(COL.goldBright).font('Helvetica').fontSize(9).text(`tripId: ${trip.tripId}`, doc.page.margins.left, 80, { width: W, align: 'right' });
 
       // Reset to body
       doc.fillColor(COL.ink).font('Helvetica');
-      doc.y = 130;
+      doc.y = 134;
 
       // Section: Flight
       doc.fillColor(COL.gold).font('Helvetica-Bold').fontSize(9).text('FLIGHT', { characterSpacing: 2.4 });
@@ -498,7 +517,8 @@ async function sendMixConfirmationEmail(trip) {
   const origin = route.origin || '?';
   const dest = route.dest || '?';
   const dateRange = fmtDateRangeForEmail(f.depart, f.return);
-  const subj = `Tvoj Letto Mix · ${origin} → ${dest}${dateRange ? ' · ' + dateRange : ''}`;
+  const tierLabel = trip.tier ? (trip.tier.charAt(0).toUpperCase() + trip.tier.slice(1)) : 'Mix';
+  const subj = `Tvoj Letto ${tierLabel} Mix · ${origin} → ${dest}${dateRange ? ' · ' + dateRange : ''}`;
 
   const html = buildMixEmailHtml({ trip, originName: origin, destName: dest, dateRange });
   const text = buildMixEmailText(trip, origin, dest, dateRange);
@@ -641,11 +661,16 @@ export default async function handler(req, res) {
                 const grandTotal = flightTotal + hotelTotal;
                 tripId = pendingMixId; // reuse short hex as the canonical trip ID
 
+                // Final 2 · tier denormalized from snapshot.flight.selected.tier
+                // (selectPackage stores it; default 'value' if missing).
+                const priceTier = (f.tier === 'budget' || f.tier === 'lux') ? f.tier : 'value';
+
                 const tripDoc = {
                   tripId,
                   userEmail: lowerEmail,
                   stripeSessionId: session.id,
                   paidAt,
+                  tier: priceTier,
                   // C-2: route fields denormalized for email subject + display
                   route: {
                     origin: (f.origin || sp.origin_iata || '').toUpperCase(),

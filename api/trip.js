@@ -46,6 +46,7 @@ export default async function handler(req, res) {
     // has the email + tripId combo if they reach here.
     return res.status(200).json({
       tripId: d.tripId,
+      tier: d.tier || 'value',
       route: d.route || null,
       paidAt: d.paidAt || null,
       flight: d.flight || null,

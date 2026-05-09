@@ -5060,8 +5060,19 @@
 
   // ─────────────────────────────────────────────────────────
   // Catalog packages: fetch, render, select
+  //
+  // Smart default fallback chain (Final 1):
+  //   - On initial load (default Value tier), if 0 matches we auto-flip
+  //     to Budget. If Budget is also 0, we flip to Lux. Real empty state
+  //     only when ALL three tiers have 0.
+  //   - Disabled when the user explicitly clicks a chip (wantedTier set).
+  //     User intent always wins — they see the empty state of their click.
   // ─────────────────────────────────────────────────────────
-  function loadPackages() {
+  var TIER_FALLBACK = ['value', 'budget', 'lux']; // order tried on auto-flip
+
+  function loadPackages(opts) {
+    opts = opts || {};
+    var userClick = !!opts.userClick;
     var p = readUrlParams();
     var mount = document.getElementById('mix-packages');
     if (!mount) return;
@@ -5092,10 +5103,30 @@
       })
       .then(function (data) {
         var arr = (data && Array.isArray(data.packages)) ? data.packages : [];
-        console.log('[mix-v2] loadPackages · ' + arr.length + ' matches in ' + (Date.now() - startedAt) + 'ms · mode=' + (data.mode || '?'));
+        console.log('[mix-v2] loadPackages · ' + arr.length + ' matches in ' + (Date.now() - startedAt) + 'ms · tier=' + (packagesState.priceTier || 'all') + ' · mode=' + (data.mode || '?'));
         packagesState.raw = arr;
         packagesState.loadedFor = key;
         packagesState.loadedAt = Date.now();
+
+        // Smart fallback: only on initial (non-user-click) load when current
+        // tier returned 0. Walk the TIER_FALLBACK chain skipping tiers we
+        // already tried this session.
+        if (!userClick && arr.length === 0) {
+          packagesState._triedTiers = packagesState._triedTiers || {};
+          packagesState._triedTiers[packagesState.priceTier || 'null'] = true;
+          var nextTier = TIER_FALLBACK.find(function (t) { return !packagesState._triedTiers[t]; });
+          if (nextTier) {
+            console.log('[mix-v2] auto-flip ' + (packagesState.priceTier || 'all') + ' → ' + nextTier + ' · destination has no ' + packagesState.priceTier + ' tier');
+            packagesState.priceTier = nextTier;
+            packagesState.loadedFor = ''; // bust cache
+            // Reflect on the chips
+            updateTierChipsActive(nextTier);
+            loadPackages({ userClick: false });
+            return;
+          }
+          console.log('[mix-v2] no packages in any tier for this route — empty state will show');
+        }
+
         paintPackages();
       })
       .catch(function (e) {
@@ -5106,6 +5137,17 @@
           '<p data-sr>Greška pri učitavanju paketa. Osveži pa probaj ponovo.</p>' +
         '</div>';
       });
+  }
+
+  // Reusable: sync chip aria/active to a given tier
+  function updateTierChipsActive(tier) {
+    var allChips = document.querySelectorAll('[data-pkg-tier]');
+    for (var i = 0; i < allChips.length; i++) {
+      var t = allChips[i].getAttribute('data-pkg-tier') || '';
+      var active = (t === (tier || ''));
+      allChips[i].classList.toggle('is-active', active);
+      allChips[i].setAttribute('aria-selected', active ? 'true' : 'false');
+    }
   }
 
   function paintPackages() {
@@ -5234,6 +5276,10 @@
       bookingUrl:     fl.bookingUrl || '',
       bookingPartner: fl.bookingPartner || '',
       pkgId:          pkg.id,
+      // Final 2 · tier badge propagation. Default 'value' if missing
+      // (pre-tier seeds didn't have it; backfill covered all known but
+      // any future engine doc without tier still gets a sane label).
+      tier:           pkg.tier || 'value',
       capturedAt:     Date.now()
     };
 
@@ -5905,16 +5951,11 @@
       var tier = chip.getAttribute('data-pkg-tier') || '';
       if (packagesState.priceTier === (tier || null)) return; // no-op
       packagesState.priceTier = tier || null;
-      packagesState.loadedFor = ''; // bust cache so loadPackages re-fetches
-      // Update chip active state visually
-      var allChips = document.querySelectorAll('[data-pkg-tier]');
-      for (var i = 0; i < allChips.length; i++) {
-        var t = allChips[i].getAttribute('data-pkg-tier') || '';
-        var active = (t === tier);
-        allChips[i].classList.toggle('is-active', active);
-        allChips[i].setAttribute('aria-selected', active ? 'true' : 'false');
-      }
-      loadPackages();
+      packagesState.loadedFor = '';
+      // Reset auto-flip memory so user can switch back to Value freely
+      packagesState._triedTiers = {};
+      updateTierChipsActive(tier);
+      loadPackages({ userClick: true }); // explicit user intent — no auto-flip
     });
     document.addEventListener('click', function (e) {
       if (!e.target || !e.target.closest) return;
