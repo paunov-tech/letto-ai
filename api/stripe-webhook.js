@@ -7,6 +7,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import PDFDocument from 'pdfkit';
+import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
 
 // Init Firebase Admin
 if (!getApps().length) {
@@ -870,7 +871,10 @@ async function handler(req, res) {
                     duration: f.duration || null,
                     stops: typeof f.stops === 'number' ? f.stops : null,
                     totalPrice: flightTotal,
-                    bookingUrl: f.bookingUrl || null,
+                    // P0 fix · strip stale TP fare tokens before persist so the
+                    // saved record + email + PDF + /trip page all serve the
+                    // durable form. Mining engine source-side fix is follow-up.
+                    bookingUrl: cleanAviasalesUrl(f.bookingUrl || null),
                     bookingPartner: f.bookingPartner || null
                   },
                   hotel: {

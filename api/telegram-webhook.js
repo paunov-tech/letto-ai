@@ -4,6 +4,7 @@
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -69,7 +70,10 @@ function formatBookingLinksBlock(pkg) {
 
   const lines = [];
 
-  const flightUrl = fl.bookingUrl || '';
+  // P0 fix · clean Aviasales URLs of stale TP fare tokens before posting
+  // to the Telegram channel. Channels persist messages indefinitely, so a
+  // dirty URL would rot the same way as the catalog records.
+  const flightUrl = cleanAviasalesUrl(fl.bookingUrl || '');
   const partnerName = fl.bookingPartner || fl.airline || '';
   if (flightUrl && partnerName) {
     lines.push(`✈️ <a href="${flightUrl}">Rezerviši let — ${partnerName}</a>`);

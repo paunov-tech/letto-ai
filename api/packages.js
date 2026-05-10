@@ -16,6 +16,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
+import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -112,6 +113,15 @@ async function handler(req, res) {
       });
 
       packages = packages.slice(0, limit);
+    }
+
+    // P0 fix · strip stale TP fare tokens from Aviasales bookingUrls before
+    // they leave this endpoint. Defense in depth — even if mining engine still
+    // produces dirty URLs, the public response always serves the durable form.
+    for (const pkg of packages) {
+      if (pkg?.flight?.bookingUrl) {
+        pkg.flight.bookingUrl = cleanAviasalesUrl(pkg.flight.bookingUrl);
+      }
     }
 
     return res.status(200).json({

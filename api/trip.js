@@ -9,6 +9,7 @@
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -44,12 +45,16 @@ export default async function handler(req, res) {
 
     // Strip nothing for now — tripId is the access token, the user already
     // has the email + tripId combo if they reach here.
+    // P0 fix · strip stale TP fare tokens from Aviasales bookingUrl in flight.
+    const flight = d.flight ? { ...d.flight } : null;
+    if (flight?.bookingUrl) flight.bookingUrl = cleanAviasalesUrl(flight.bookingUrl);
+
     return res.status(200).json({
       tripId: d.tripId,
       tier: d.tier || 'value',
       route: d.route || null,
       paidAt: d.paidAt || null,
-      flight: d.flight || null,
+      flight,
       hotel: d.hotel || null,
       pax: d.pax || null,
       grandTotal: d.grandTotal || 0,
