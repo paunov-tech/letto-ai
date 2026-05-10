@@ -42,6 +42,30 @@
   .section-title { font-size: 14px; font-weight: 500; color: var(--gold-light); margin: 24px 0 12px; letter-spacing: 0.05em; text-transform: uppercase; }
   pre { background: var(--bg); padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto; border: 1px solid var(--border); }
 </style>
+<!-- Sentry · letto-prod (EU region) · GDPR-aware (legitimate interest under Art. 6(1)(f)) -->
+<script
+  src="https://js-de.sentry-cdn.com/971aff07cdaeabfc32b5ddd87c492819.min.js"
+  crossorigin="anonymous"
+  defer
+></script>
+<script>
+  window.sentryOnLoad = function () {
+    Sentry.init({
+      sendDefaultPii: false,
+      tracesSampleRate: 0.1,
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 0,
+      environment: 'production',
+      beforeSend: function (event) {
+        if (event.request) {
+          delete event.request.cookies;
+          delete event.request.query_string;
+        }
+        return event;
+      }
+    });
+  };
+</script>
 </head>
 <body>
 <div class="container">

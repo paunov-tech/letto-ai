@@ -22,6 +22,30 @@
   a { color: #8A5F1F; }
   footer { padding: 40px 32px; border-top: 1px solid #D4C9AE; text-align: center; color: #726A58; font-size: 13px; }
 </style>
+<!-- Sentry · letto-prod (EU region) · GDPR-aware (legitimate interest under Art. 6(1)(f)) -->
+<script
+  src="https://js-de.sentry-cdn.com/971aff07cdaeabfc32b5ddd87c492819.min.js"
+  crossorigin="anonymous"
+  defer
+></script>
+<script>
+  window.sentryOnLoad = function () {
+    Sentry.init({
+      sendDefaultPii: false,
+      tracesSampleRate: 0.1,
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 0,
+      environment: 'production',
+      beforeSend: function (event) {
+        if (event.request) {
+          delete event.request.cookies;
+          delete event.request.query_string;
+        }
+        return event;
+      }
+    });
+  };
+</script>
 <script src="/consent.js" defer></script>
 </head>
 <body>
