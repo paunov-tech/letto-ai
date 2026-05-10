@@ -209,7 +209,7 @@
       <div class="step-num">4</div>
       <div class="step-body">
         <h3>Treba ti pomoć?</h3>
-        <p>Napiši nam na <a href="mailto:info@letto.live">info@letto.live</a> ili pitaj bota komandom <code>/status</code>. Otkazati pretplatu možeš bilo kada kroz <a href="#">Stripe portal</a> (link u tvom email-u).</p>
+        <p>Napiši nam na <a href="mailto:info@letto.live">info@letto.live</a> ili pitaj bota komandom <code>/status</code>. Otkazati pretplatu možeš bilo kada kroz <a href="#" id="stripe-portal-link">Stripe portal</a>.</p>
       </div>
     </div>
   </div>
@@ -237,6 +237,42 @@
       }
     }
   } catch (e) {}
+
+  // P1.1 · Stripe Billing Portal link. Reads sessionId persisted on this
+  // page above (from Stripe success_url ?session_id=...) and trades it for
+  // a one-shot portal URL via /api/customer-portal. If localStorage was
+  // cleared (incognito, different browser, etc.), tell the user to reach
+  // for the link in their welcome email or contact support.
+  var portalLink = document.getElementById('stripe-portal-link');
+  if (portalLink) {
+    portalLink.addEventListener('click', async function (e) {
+      e.preventDefault();
+      var sid = localStorage.getItem('letto_premium_session') || localStorage.getItem('letto_mix_session');
+      if (!sid) {
+        alert('Sesija nije pronađena u ovom pregledaču. Otvori link iz tvog welcome email-a ili nas kontaktiraj na info@letto.live');
+        return;
+      }
+      var original = portalLink.textContent;
+      portalLink.textContent = 'Učitavam…';
+      try {
+        var res = await fetch('/api/customer-portal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sid })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok && data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        alert('Greška: ' + (data.error || ('HTTP ' + res.status)));
+        portalLink.textContent = original;
+      } catch (err) {
+        alert('Mreža nedostupna. Pokušaj ponovo za par sekundi.');
+        portalLink.textContent = original;
+      }
+    });
+  }
 </script>
 </body>
 </html>
