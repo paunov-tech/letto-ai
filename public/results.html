@@ -3949,7 +3949,7 @@
       { "@type": "Question", "name": "How are deals selected?", "acceptedAnswer": { "@type": "Answer", "text": "AI scans 50+ sources every 6 hours, calculates 90-day route median, flags anything ≥30% below. We then manually verify each before publishing." } },
       { "@type": "Question", "name": "Do you charge commission?", "acceptedAnswer": { "@type": "Answer", "text": "No. You book directly with the airline or hotel. We charge a flat subscription, never a per-booking fee." } },
       { "@type": "Question", "name": "Which airports do you cover?", "acceptedAnswer": { "@type": "Answer", "text": "BEG (Belgrade) launching first. INI, TIV, ZAG, SJJ, SKP rolling out in coming weeks. Bus routes (Halkidiki, Sofia) supported." } },
-      { "@type": "Question", "name": "What's included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Full daily deal feed, premium Telegram channel, route alerts. €19/3mo beta, €29/3mo full." } },
+      { "@type": "Question", "name": "What's included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Full daily deal feed, premium Telegram channel, route alerts. €9.99 per month + VAT, cancel anytime." } },
       { "@type": "Question", "name": "Can I cancel anytime?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. One click in the Stripe portal. No questions, no retention emails." } }
     ] }
   ]
@@ -4116,24 +4116,11 @@
 <!-- ═══════════════════════════════════════════════ -->
 <!-- ANNOUNCEMENT BAR · click → Stripe Beta           -->
 <!-- ═══════════════════════════════════════════════ -->
-<div class="announcement-bar" data-stripe="beta" role="button" tabindex="0" aria-label="Claim beta spot">
+<div class="announcement-bar" data-stripe="premium" role="button" tabindex="0" aria-label="Subscribe to Letto Premium">
   <div class="inner">
     <span class="pulse-dot"></span>
-    <span data-en>BETA · First 100 subscribers get Premium for €19 / 3 months · <strong style="color: var(--gold-light);"><span data-spots-remaining>99</span> spots remaining</strong> <span class="claim-arrow">Claim yours →</span></span>
-    <span data-sr>BETA · Prvih 100 pretplatnika dobija Premium za €19 / 3 meseca · <strong style="color: var(--gold-light);">preostalo <span data-spots-remaining>99</span> mesta</strong> <span class="claim-arrow">Uzmi svoje →</span></span>
-
-    <script>
-    (function () {
-      fetch('/api/spots-remaining')
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d || d.remaining == null) return;
-          var els = document.querySelectorAll('[data-spots-remaining]');
-          for (var i = 0; i < els.length; i++) els[i].textContent = d.remaining;
-        })
-        .catch(function () {});
-    })();
-    </script>
+    <span data-en>LETTO Premium · Unlock all Mixes · <strong style="color: var(--gold-light);">€9.99 / month + VAT</strong> <span class="claim-arrow">Subscribe →</span></span>
+    <span data-sr>LETTO Premium · Otključaj sve Mix-ove · <strong style="color: var(--gold-light);">€9.99 / mesec + PDV</strong> <span class="claim-arrow">Pretplati se →</span></span>
   </div>
 </div>
 
@@ -4180,8 +4167,8 @@
             <div>
               <div class="dropdown-link-title" data-en>Pricing</div>
               <div class="dropdown-link-title" data-sr>Cena</div>
-              <div class="dropdown-link-sub" data-en>€19 / 3 months · beta</div>
-              <div class="dropdown-link-sub" data-sr>€19 / 3 meseca · beta</div>
+              <div class="dropdown-link-sub" data-en>€9.99 / month + VAT</div>
+              <div class="dropdown-link-sub" data-sr>€9.99 / mesec + PDV</div>
             </div>
           </a>
         </div>
@@ -4248,7 +4235,7 @@
       <button class="active" onclick="setLang('en')" id="btn-en">EN</button>
       <button onclick="setLang('sr')" id="btn-sr">SR</button>
     </div>
-    <a href="#" class="btn-ink" data-stripe="beta">
+    <a href="#" class="btn-ink" data-stripe="premium">
       <span data-en>Subscribe →</span>
       <span data-sr>Pretplati se →</span>
     </a>
@@ -4410,31 +4397,37 @@
             <span data-sr>Vidi <em>svoj</em> Mix · let i smeštaj zajedno.</span>
           </h3>
           <p class="paywall-body">
-            <span data-en>One unlock reveals the full review: chosen <strong>flight</strong>, chosen <strong>hotel</strong>, totals, and direct booking links to each partner.</span>
-            <span data-sr>Jednim klikom otključavaš pun pregled: izabran <strong>let</strong>, izabran <strong>hotel</strong>, ukupna cena i direktni linkovi za rezervaciju kod svakog partnera.</span>
+            <span data-en>Subscribe to LETTO Premium and every Mix is unlocked: chosen <strong>flight</strong>, chosen <strong>hotel</strong>, totals, and direct booking links to each partner.</span>
+            <span data-sr>Pretplati se na LETTO Premium i svaki Mix je otključan: izabran <strong>let</strong>, izabran <strong>hotel</strong>, ukupna cena i direktni linkovi za rezervaciju kod svakog partnera.</span>
           </p>
           <div class="paywall-price">
             <div style="display:flex; align-items:baseline; justify-content:center; gap:14px; flex-wrap:wrap;">
-              <div class="price-main" style="color: var(--burgundy);">€7.99</div>
+              <div class="price-main" style="color: var(--burgundy);">€9.99</div>
             </div>
             <div class="price-period" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:6px;">
-              <span data-en><strong>One-time</strong> · this Mix</span>
-              <span data-sr><strong>Jednokratno</strong> · ovaj Mix</span>
+              <span data-en>per <strong>month</strong> + VAT</span>
+              <span data-sr>po <strong>mesecu</strong> + PDV</span>
             </div>
           </div>
           <div class="paywall-math">
-            <span data-en>Cancel-free. Pay once, see the whole package, book directly with each partner.</span>
-            <span data-sr>Bez pretplate. Plati jednom, vidi pun paket, rezerviši direktno kod svakog partnera.</span>
+            <span data-en>One unlocked package usually pays the subscription back several times over.</span>
+            <span data-sr>Jedan otključan paket se obično isplati više puta od cene pretplate.</span>
           </div>
-          <a href="#" class="paywall-cta" data-stripe="aimix">
-            <span data-en>Unlock AI Mix · €7.99 →</span>
-            <span data-sr>Otključaj AI Mix · €7.99 →</span>
+          <a href="#" class="paywall-cta" data-stripe="premium">
+            <span data-en>Subscribe · €9.99 / month + VAT →</span>
+            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
           </a>
           <div class="paywall-assurance">
             <span data-en>Secure checkout · Stripe</span><span data-sr>Sigurno plaćanje · Stripe</span>
             <span class="dot">·</span>
+            <span data-en>Cancel anytime</span><span data-sr>Otkaži kad god</span>
+            <span class="dot">·</span>
             <span>GDPR</span>
           </div>
+          <p class="paywall-fineprint" style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:10px;text-align:center;line-height:1.5;">
+            <span data-en>Auto-renew · cancel anytime — subscription stays active until the end of the current period.</span>
+            <span data-sr>Auto-obnova · otkaži bilo kada — pretplata radi do kraja current perioda.</span>
+          </p>
         </div>
       </div>
 
@@ -5904,13 +5897,13 @@
     var unlocked = document.body.classList.contains('letto-premium') ||
                    document.body.classList.contains('letto-mix-unlocked');
     if (!unlocked) {
-      // Trigger Stripe AI Mix unlock (€7.99) — same as paywall card CTA
+      // Trigger Stripe Premium subscribe (€9.99/mo + VAT) — same as paywall card CTA
       if (typeof window.lettoCheckout === 'function') {
-        window.lettoCheckout('aimix');
+        window.lettoCheckout('premium');
       } else {
         window.alert(l === 'en'
-          ? 'Unlock the Mix for €7.99 to open the partner booking link.'
-          : 'Otključaj Mix za €7.99 da otvoriš partnerski link za rezervaciju.');
+          ? 'Subscribe to LETTO Premium (€9.99 / month + VAT) to open the partner booking link.'
+          : 'Pretplati se na LETTO Premium (€9.99 / mesec + PDV) da otvoriš partnerski link za rezervaciju.');
       }
       return;
     }
@@ -6477,22 +6470,20 @@
           </p>
           <div class="paywall-price">
             <div style="display: flex; align-items: baseline; justify-content: center; gap: 14px; flex-wrap: wrap;">
-              <span style="font-family: 'JetBrains Mono', monospace; font-size: 22px; color: var(--muted); text-decoration: line-through;">€29</span>
-              <div class="price-main" style="color: var(--burgundy);">€19</div>
+              <div class="price-main" style="color: var(--burgundy);">€9.99</div>
             </div>
             <div class="price-period" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:6px;">
-              <span data-en>for <strong>3 months</strong></span>
-              <span data-sr>za <strong>3 meseca</strong></span>
-              <span style="font-size:10px; letter-spacing:0.18em; text-transform:uppercase; background:var(--burgundy); color:white; padding:3px 8px; border-radius:99px; font-style:normal; font-weight:600;">BETA</span>
+              <span data-en>per <strong>month</strong> + VAT</span>
+              <span data-sr>po <strong>mesecu</strong> + PDV</span>
             </div>
           </div>
           <div class="paywall-math">
             <span data-en>One unlocked package usually pays the subscription back several times over.</span>
             <span data-sr>Jedan otključan paket se obično isplati više puta od cene pretplate.</span>
           </div>
-          <a href="#" class="paywall-cta" data-stripe="beta">
-            <span data-en>Unlock for €19 (beta) →</span>
-            <span data-sr>Otključaj za €19 (beta) →</span>
+          <a href="#" class="paywall-cta" data-stripe="premium">
+            <span data-en>Subscribe · €9.99 / month + VAT →</span>
+            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
           </a>
           <div class="paywall-assurance">
             <span data-en>Cancel anytime</span><span data-sr>Otkaži kad god</span>

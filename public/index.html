@@ -2629,7 +2629,7 @@
       { "@type": "Question", "name": "How are deals selected?", "acceptedAnswer": { "@type": "Answer", "text": "AI scans 50+ sources every 6 hours, calculates 90-day route median, flags anything ≥30% below. We then manually verify each before publishing." } },
       { "@type": "Question", "name": "Do you charge commission?", "acceptedAnswer": { "@type": "Answer", "text": "No. You book directly with the airline or hotel. We charge a flat subscription, never a per-booking fee." } },
       { "@type": "Question", "name": "Which airports do you cover?", "acceptedAnswer": { "@type": "Answer", "text": "BEG (Belgrade) launching first. INI, TIV, ZAG, SJJ, SKP rolling out in coming weeks. Bus routes (Halkidiki, Sofia) supported." } },
-      { "@type": "Question", "name": "What's included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Full daily deal feed, premium Telegram channel, route alerts. €19/3mo beta, €29/3mo full." } },
+      { "@type": "Question", "name": "What's included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Full daily deal feed, premium Telegram channel, route alerts. €9.99 per month + VAT, cancel anytime." } },
       { "@type": "Question", "name": "Can I cancel anytime?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — anytime through the Stripe portal. Your access stays active until the end of the current billing period; auto-renew is then turned off and we don't charge again." } }
     ] }
   ]
@@ -2819,24 +2819,11 @@
 <!-- ═══════════════════════════════════════════════ -->
 <!-- ANNOUNCEMENT BAR · click → Stripe Beta           -->
 <!-- ═══════════════════════════════════════════════ -->
-<div class="announcement-bar" data-stripe="beta" role="button" tabindex="0" aria-label="Claim beta spot">
+<div class="announcement-bar" data-stripe="premium" role="button" tabindex="0" aria-label="Subscribe to Letto Premium">
   <div class="inner">
     <span class="pulse-dot"></span>
-    <span data-en>BETA · First 100 subscribers get Premium for €19 / 3 months · <strong style="color: var(--gold-light);"><span data-spots-remaining>99</span> spots remaining</strong> <span class="claim-arrow">Claim yours →</span></span>
-    <span data-sr>BETA · Prvih 100 pretplatnika dobija Premium za €19 / 3 meseca · <strong style="color: var(--gold-light);">preostalo <span data-spots-remaining>99</span> mesta</strong> <span class="claim-arrow">Uzmi svoje →</span></span>
-
-    <script>
-    (function () {
-      fetch('/api/spots-remaining')
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d || d.remaining == null) return;
-          var els = document.querySelectorAll('[data-spots-remaining]');
-          for (var i = 0; i < els.length; i++) els[i].textContent = d.remaining;
-        })
-        .catch(function () {});
-    })();
-    </script>
+    <span data-en>LETTO Premium · Unlock all Mixes · <strong style="color: var(--gold-light);">€9.99 / month + VAT</strong> <span class="claim-arrow">Subscribe →</span></span>
+    <span data-sr>LETTO Premium · Otključaj sve Mix-ove · <strong style="color: var(--gold-light);">€9.99 / mesec + PDV</strong> <span class="claim-arrow">Pretplati se →</span></span>
   </div>
 </div>
 
@@ -2883,8 +2870,8 @@
             <div>
               <div class="dropdown-link-title" data-en>Pricing</div>
               <div class="dropdown-link-title" data-sr>Cena</div>
-              <div class="dropdown-link-sub" data-en>€19 / 3 months · beta</div>
-              <div class="dropdown-link-sub" data-sr>€19 / 3 meseca · beta</div>
+              <div class="dropdown-link-sub" data-en>€9.99 / month + VAT</div>
+              <div class="dropdown-link-sub" data-sr>€9.99 / mesec + PDV</div>
             </div>
           </a>
         </div>
@@ -2951,7 +2938,7 @@
       <button class="active" onclick="setLang('en')" id="btn-en">EN</button>
       <button onclick="setLang('sr')" id="btn-sr">SR</button>
     </div>
-    <a href="#" class="btn-ink" data-stripe="beta">
+    <a href="#" class="btn-ink" data-stripe="premium">
       <span data-en>Subscribe →</span>
       <span data-sr>Pretplati se →</span>
     </a>
@@ -3271,8 +3258,8 @@
         <span data-sr>Manje od jednog<br><span class="italic gold-foil">večernjeg izlaska.</span></span>
       </h2>
       <p>
-        <span data-en>The first package you book through Premium pays for the entire 3 months — usually with hundreds of euros to spare.</span>
-        <span data-sr>Prvi paket koji rezervišeš kroz Premium isplaćuje celu pretplatu — obično sa par stotina evra preko.</span>
+        <span data-en>The first package you book through Premium typically pays the subscription several months over — and you can cancel anytime after.</span>
+        <span data-sr>Prvi paket koji rezervišeš kroz Premium obično isplati pretplatu nekoliko meseci unapred — i možeš otkazati bilo kada.</span>
       </p>
     </div>
 
@@ -3305,20 +3292,15 @@
 
       <!-- PREMIUM TIER -->
       <div class="tier premium">
-        <div class="ribbon">
-          <span data-en>First 100 → €19 / 3 months</span>
-          <span data-sr>Prvih 100 → €19 / 3 meseca</span>
-        </div>
-
         <div class="eyebrow">PREMIUM</div>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;">
-          <span class="price-main mono">€29</span>
-          <span class="price-annual" data-en>/ 3 months</span>
-          <span class="price-annual" data-sr>/ 3 meseca</span>
+          <span class="price-main mono">€9.99</span>
+          <span class="price-annual" data-en>/ month + VAT</span>
+          <span class="price-annual" data-sr>/ mesec + PDV</span>
         </div>
         <div class="price-cap">
-          <span data-en>About €9.70 per month · cancel anytime</span>
-          <span data-sr>Oko €9.70 mesečno · otkazivanje kad god</span>
+          <span data-en>Auto-renew · cancel anytime · runs to the end of the current period</span>
+          <span data-sr>Auto-obnova · otkaži bilo kada · radi do kraja current perioda</span>
         </div>
 
         <ul class="features">
@@ -3330,14 +3312,10 @@
           <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>14-day money-back guarantee</span><span data-sr>Garancija povraćaja 14 dana</span></span></li>
         </ul>
 
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <button class="btn-gold" data-stripe="beta" style="width: 100%; justify-content: center; padding: 16px 28px;">
-            <span data-en>Unlock for €19 (beta) →</span>
-            <span data-sr>Otključaj za €19 (beta) →</span>
-          </button>
-          <button data-stripe="premium" style="width: 100%; padding: 12px 28px; border-radius: 8px; background: transparent; border: 1px solid rgba(217,169,74,0.4); color: var(--gold-light); font-size: 13px; cursor: pointer; transition: all 0.2s; font-family: 'IBM Plex Sans', sans-serif; font-weight: 500;">
-            <span data-en>Or full price · €29 / 3 months</span>
-            <span data-sr>Ili puna cena · €29 / 3 meseca</span>
+        <div>
+          <button class="btn-gold" data-stripe="premium" style="width: 100%; justify-content: center; padding: 16px 28px;">
+            <span data-en>Subscribe · €9.99 / month + VAT →</span>
+            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
           </button>
         </div>
       </div>
@@ -4253,8 +4231,8 @@
               <span class="v91-chev">▼</span>
             </summary>
             <div class="v91-faq-body">
-              <span data-en>Full daily deal feed, premium Telegram channel, route alerts. €19/3mo beta, €29/3mo full.</span>
-              <span data-sr>Pun dnevni feed dealova, premium Telegram kanal, alerti za rute. €19/3mo beta, €29/3mo full.</span>
+              <span data-en>Full daily deal feed, premium Telegram channel, route alerts. €9.99 / month + VAT, cancel anytime.</span>
+              <span data-sr>Pun dnevni feed dealova, premium Telegram kanal, alerti za rute. €9.99 / mesec + PDV, otkaži bilo kada.</span>
             </div>
           </details>
 
@@ -4527,22 +4505,20 @@
           </p>
           <div class="paywall-price">
             <div style="display: flex; align-items: baseline; justify-content: center; gap: 14px; flex-wrap: wrap;">
-              <span style="font-family: 'JetBrains Mono', monospace; font-size: 22px; color: var(--muted); text-decoration: line-through;">€29</span>
-              <div class="price-main" style="color: var(--burgundy);">€19</div>
+              <div class="price-main" style="color: var(--burgundy);">€9.99</div>
             </div>
             <div class="price-period" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:6px;">
-              <span data-en>for <strong>3 months</strong></span>
-              <span data-sr>za <strong>3 meseca</strong></span>
-              <span style="font-size:10px; letter-spacing:0.18em; text-transform:uppercase; background:var(--burgundy); color:white; padding:3px 8px; border-radius:99px; font-style:normal; font-weight:600;">BETA</span>
+              <span data-en>per <strong>month</strong> + VAT</span>
+              <span data-sr>po <strong>mesecu</strong> + PDV</span>
             </div>
           </div>
           <div class="paywall-math">
             <span data-en>One unlocked package usually pays the subscription back several times over.</span>
             <span data-sr>Jedan otključan paket se obično isplati više puta od cene pretplate.</span>
           </div>
-          <a href="#" class="paywall-cta" data-stripe="beta">
-            <span data-en>Unlock for €19 (beta) →</span>
-            <span data-sr>Otključaj za €19 (beta) →</span>
+          <a href="#" class="paywall-cta" data-stripe="premium">
+            <span data-en>Subscribe · €9.99 / month + VAT →</span>
+            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
           </a>
           <div class="paywall-assurance">
             <span data-en>Cancel anytime</span><span data-sr>Otkaži kad god</span>

@@ -792,7 +792,6 @@ async function handler(req, res) {
         const firstName = session.customer_details?.name?.split(' ')[0];
         const customerId = session.customer;
         const subscriptionId = session.subscription;
-        const tier = session.metadata?.tier;
 
         // F14/F18: paid session with no captured email (Apple Pay / Express
         // checkout edge). Stripe stores it on the Customer object even when
@@ -805,189 +804,39 @@ async function handler(req, res) {
             console.warn('[LETTO] customer retrieve failed for email recovery:', e.message);
           }
         }
-        // If email is still null we DO NOT abort — the user paid and we owe
-        // them a record. The aimix branch below writes the trip with
-        // status='pending_email_capture' for manual recovery via
-        // /api/admin?action=resend-mix. The premium branch (further down)
-        // still falls back to persistOrphanPurchase since premium needs an
-        // email to issue the Telegram invite.
 
-        // One-time AI Mix unlock (€7.99) — flag user + persist the bought trip
-        // as a purchasedMixes record (C-1 · Mix kao proizvod, faza 1).
-        if (tier === 'aimix' || session.mode === 'payment') {
-          const lowerEmail = email ? email.toLowerCase() : null;
-          const paidAt = new Date().toISOString();
-
-          if (lowerEmail) {
-            await db.collection('letto_subscribers').doc(lowerEmail).set({
-              email: lowerEmail,
-              stripeCustomerId: customerId,
-              aimixUnlocked: true,
-              aimixUnlockedAt: paidAt,
-              aimixSessionId: session.id
-            }, { merge: true });
-          }
-
-          // Resolve pending mix snapshot → purchasedMixes record.
-          const pendingMixId = session.metadata?.pendingMixId;
-          let tripId = null;
-          if (pendingMixId) {
-            try {
-              const snap = await db.collection('pendingMixes').doc(pendingMixId).get();
-              if (snap.exists) {
-                const { snapshot } = snap.data();
-                const f = snapshot?.flight?.selected || {};
-                const h = snapshot?.hotel?.selected || {};
-                const sp = snapshot?.searchParams || {};
-                const adults = sp.adults || 1;
-                const children = sp.children || 0;
-                const infants = sp.infants || 0;
-                const flightTotal = Math.round(f.totalPrice || f.priceNum || 0);
-                const hotelTotal = Math.round(h.priceTotal || 0);
-                const grandTotal = flightTotal + hotelTotal;
-                tripId = pendingMixId; // reuse short hex as the canonical trip ID
-
-                // Final 2 · tier denormalized. Prefer snapshot.tier (top-level,
-                // current frontend) and fall back to flight.selected.tier (older
-                // snapshots) before defaulting to 'value'.
-                const rawTier = snapshot?.tier || f.tier;
-                const priceTier = (rawTier === 'budget' || rawTier === 'lux') ? rawTier : 'value';
-
-                const tripDoc = {
-                  tripId,
-                  stripeSessionId: session.id,
-                  paidAt,
-                  tier: priceTier,
-                  // C-2: route fields denormalized for email subject + display
-                  route: {
-                    origin: (f.origin || sp.origin_iata || '').toUpperCase(),
-                    dest: (f.dest || sp.destination_iata || '').toUpperCase()
-                  },
-                  flight: {
-                    airline: f.airline || null,
-                    flightNumber: f.flightNumber || null,
-                    depart: f.depart || sp.depart_date || null,
-                    return: f.ret || sp.return_date || null,
-                    duration: f.duration || null,
-                    stops: typeof f.stops === 'number' ? f.stops : null,
-                    totalPrice: flightTotal,
-                    // P0 fix · strip stale TP fare tokens before persist so the
-                    // saved record + email + PDF + /trip page all serve the
-                    // durable form. Mining engine source-side fix is follow-up.
-                    bookingUrl: cleanAviasalesUrl(f.bookingUrl || null),
-                    bookingPartner: f.bookingPartner || null
-                  },
-                  hotel: {
-                    name: h.name || null,
-                    stars: h.stars || null,
-                    neighborhood: h.neighborhood || null,
-                    nights: h.nights || null,
-                    pricePerNight: h.pricePerNight || null,
-                    priceTotal: hotelTotal,
-                    bookingUrl: h.bookingUrl || null,
-                    hotellookId: h.id || null
-                  },
-                  pax: { adults, children, infants },
-                  grandTotal,
-                  currency: f.currency || h.currency || 'EUR',
-                  // F18: when email is null we still record the trip — the
-                  // user paid and is owed a record. status 'pending_email_capture'
-                  // marks it for manual recovery via /api/admin?action=resend-mix.
-                  userEmail: lowerEmail,
-                  stripeCustomerId: customerId || null,
-                  status: lowerEmail ? 'paid' : 'pending_email_capture',
-                  pendingMixId
-                };
-
-                // F25 · snapshot/session currency drift detector. Snapshot is
-                // captured client-side (display currency); session.currency is
-                // what Stripe actually charged. They should always match for
-                // letto.live (EUR-only), but if the Hotels.com Provider ever
-                // returns a non-EUR snapshot, the user paid the session
-                // currency — that's authoritative. Force tripDoc.currency to
-                // session.currency and alert for a manual data-flow audit.
-                const snapshotCurrencyLower = (tripDoc.currency || 'eur').toString().toLowerCase();
-                const sessionCurrencyLower = (session.currency || 'eur').toString().toLowerCase();
-                if (snapshotCurrencyLower !== sessionCurrencyLower) {
-                  console.error('[stripe-webhook] mixSnapshot.currency != session.currency', {
-                    snapshot: snapshotCurrencyLower,
-                    session: sessionCurrencyLower,
-                    sessionId: session.id,
-                    tripId
-                  });
-                  await postSlackAlert(
-                    `⚠️ Snapshot/session currency drift · trip=${tripId} snapshot=${snapshotCurrencyLower} session=${sessionCurrencyLower} · session authoritative; tripDoc.currency overridden`
-                  ).catch(() => {});
-                  tripDoc.currency = sessionCurrencyLower.toUpperCase();
-                }
-
-                await db.collection('purchasedMixes').doc(tripId).set(tripDoc);
-
-                // cleanup pending doc
-                await db.collection('pendingMixes').doc(pendingMixId).delete().catch(() => {});
-
-                console.log(`[LETTO] purchasedMixes/${tripId} written · ${lowerEmail || '<pending email>'} · €${grandTotal}`);
-
-                if (lowerEmail) {
-                  // C-2: Resend confirmation email — must await on Vercel (the
-                  // function freezes once 200 is sent back to Stripe, killing
-                  // any in-flight fire-and-forget fetches). Adds ~300-700ms
-                  // to webhook latency; Stripe accepts up to 30s.
-                  try {
-                    await sendMixConfirmationEmail(tripDoc);
-                  } catch (e) {
-                    console.error('[LETTO] mix email send failed:', e.message);
-                  }
-                } else {
-                  // F18: trip recorded, but no email to send to. Alert ops so
-                  // someone can find the user via Stripe Dashboard (last 4 +
-                  // customer ID) and POST /api/admin?action=resend-mix.
-                  await postSlackAlert(
-                    `🚨 F18 · Missing email · session=${session.id} amount=${(session.amount_total || 0) / 100}€ trip=${tripId} · MANUAL EMAIL RECOVERY · Stripe Dashboard → last 4 + customer ID → POST /api/admin?action=resend-mix&tripId=${tripId}&email=X`
-                  ).catch(e => console.error('[LETTO] F18 alert failed:', e.message));
-                }
-              } else {
-                console.warn(`[LETTO] pendingMixId=${pendingMixId} not found in pendingMixes — purchase recorded without snapshot`);
-              }
-            } catch (e) {
-              console.error('[LETTO] purchasedMixes write failed:', e.message);
-            }
-          } else {
-            console.log(`[LETTO] aimix paid without pendingMixId (legacy or external) · ${lowerEmail || '<pending email>'}`);
-          }
-
-          console.log(`[LETTO] AI Mix unlocked: ${lowerEmail || '<pending email>'}${tripId ? ' · trip=' + tripId : ''}`);
-          break;
-        }
-
-        // Premium subscription path — needs email to issue the Telegram invite
-        // and welcome SendGrid send. If email is still missing here, log it as
-        // an orphan purchase (failed_purchases collection) for manual recovery.
+        // Single-tier subscription path — needs email to issue the Telegram
+        // invite and welcome email. If email is still missing here, log it
+        // as an orphan purchase (failed_purchases) for manual recovery.
         if (!email) {
-          console.error('[LETTO] PAID premium session with no recoverable email · session=' + session.id);
+          console.error('[LETTO] PAID session with no recoverable email · session=' + session.id);
           await persistOrphanPurchase(session, null);
           break;
         }
 
-        // Generate one-time Telegram invite
+        const lowerEmail = email.toLowerCase();
         const inviteLink = await generateTelegramInvite(email);
 
-        // Upsert user to Firestore
-        await db.collection('letto_subscribers').doc(email.toLowerCase()).set({
-          email: email.toLowerCase(),
+        // Upsert subscriber. aimixUnlocked stays in the doc shape so the
+        // Mix V2 paywall logic in /api/me + results.html continues to work
+        // without code change — every subscriber unlocks Mix.
+        await db.collection('letto_subscribers').doc(lowerEmail).set({
+          email: lowerEmail,
           tier: 'premium',
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
           premiumSince: new Date().toISOString(),
           subscribed: true,
+          aimixUnlocked: true,
+          aimixUnlockedAt: new Date().toISOString(),
+          aimixSessionId: session.id,
           telegramInviteLink: inviteLink,
           telegramInviteIssued: new Date().toISOString()
         }, { merge: true });
 
-        // Welcome email through retry pipeline (parity with mix flow).
-        // Failures persist to failed_email_sends with flow='premium_welcome'
-        // and ping Slack; daily cron retries via /api/admin?action=retry-failed-emails.
-        // Telegram admin fallback kept as belt-and-suspenders.
+        // Welcome email through retry pipeline. Failures persist to
+        // failed_email_sends with flow='premium_welcome' and ping Slack;
+        // daily cron retries via /api/admin?action=retry-failed-emails.
         const sg = await sendWelcomeEmailWithRetry({
           to: email,
           firstName,
@@ -1003,7 +852,7 @@ async function handler(req, res) {
           await notifyAdminFallback({ email, inviteLink, reason: 'retry_exhausted' });
         }
 
-        console.log(`[LETTO] Premium activated: ${email}, invite: ${inviteLink}`);
+        console.log(`[LETTO] Premium activated: ${email}`);
         break;
       }
 
