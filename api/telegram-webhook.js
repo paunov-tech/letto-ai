@@ -181,6 +181,26 @@ async function promptRejectReason(pkgId, cb) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // SECURITY: validate Telegram webhook secret_token header.
+  // Without this gate, any external POST can spoof callback_query.message.chat.id
+  // and bypass the inner admin check, triggering approvePackage / publishToTelegram
+  // for arbitrary package IDs. Telegram sets x-telegram-bot-api-secret-token
+  // when the webhook is registered via setWebhook(secret_token=...).
+  const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (expectedSecret) {
+    const got = req.headers['x-telegram-bot-api-secret-token'];
+    if (got !== expectedSecret) {
+      console.warn('[telegram-webhook] rejected: invalid or missing secret_token header');
+      return res.status(401).json({ error: 'unauthorized' });
+    }
+  } else {
+    // Fail-closed: if env var not configured, refuse all requests rather than
+    // silently accepting unauthenticated traffic. Operator must configure
+    // TELEGRAM_WEBHOOK_SECRET + register webhook with secret_token to enable.
+    console.error('[telegram-webhook] TELEGRAM_WEBHOOK_SECRET env missing — refusing all webhook traffic');
+    return res.status(503).json({ error: 'webhook_not_configured' });
+  }
+
   const update = req.body;
   if (!update) return res.status(200).json({ ok: true });
 
