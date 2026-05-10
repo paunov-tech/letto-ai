@@ -78,6 +78,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── CURRENCY MISMATCHES (F46) ──────────────────────────
+    // Webhook quarantines paid sessions whose currency != EUR before any
+    // purchasedMixes / letto_subscribers write. Manual reconciliation only.
+    match /currency_mismatches/{sessionId} {
+      allow read, write: if false;
+    }
+
     // ─── DENY BY DEFAULT ────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

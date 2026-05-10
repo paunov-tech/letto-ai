@@ -26,6 +26,23 @@ const db = getFirestore();
 
 const SITE_URL = process.env.VITE_SITE_URL || 'https://letto.live';
 
+// F26 · expected currency for the entire Letto product line. Any divergence
+// (Price ID flipped to USD, inline price_data typo, etc.) must hard-fail
+// here before the Stripe session is created so we never collect money in
+// a currency we can't reconcile.
+const EXPECTED_CURRENCY = 'eur';
+
+// Cache resolved Price → currency lookups for the warm function lifetime so
+// repeated checkouts don't pay an extra Stripe API call each.
+const priceCurrencyCache = new Map();
+async function assertPriceCurrency(priceId) {
+  if (priceCurrencyCache.has(priceId)) return priceCurrencyCache.get(priceId);
+  const price = await stripe.prices.retrieve(priceId);
+  const currency = (price.currency || '').toLowerCase();
+  priceCurrencyCache.set(priceId, currency);
+  return currency;
+}
+
 // Stripe metadata is limited to 50 keys × 500 chars per value, so we can't
 // stuff a full mix snapshot (bookingUrls alone exceed that). Instead we
 // persist the snapshot to Firestore pendingMixes/{pendingMixId} and put just
@@ -66,6 +83,24 @@ export default async function handler(req, res) {
             quantity: 1
           };
 
+      // F26 · currency assertion. Inline path can typo `currency`; Price ID
+      // path can drift in dashboard. Verify both shapes before we hand the
+      // line item to Stripe.
+      const inlineCurrency = lineItem.price_data && lineItem.price_data.currency;
+      if (inlineCurrency && inlineCurrency.toLowerCase() !== EXPECTED_CURRENCY) {
+        console.error('[stripe-checkout] currency mismatch (inline)',
+          { expected: EXPECTED_CURRENCY, actual: inlineCurrency });
+        return res.status(500).json({ error: 'Internal currency configuration error' });
+      }
+      if (lineItem.price) {
+        const priceCurrency = await assertPriceCurrency(lineItem.price);
+        if (priceCurrency !== EXPECTED_CURRENCY) {
+          console.error('[stripe-checkout] currency mismatch (Price ID)',
+            { priceId: lineItem.price, expected: EXPECTED_CURRENCY, actual: priceCurrency });
+          return res.status(500).json({ error: 'Internal currency configuration error' });
+        }
+      }
+
       const metadata = { tier, source: 'letto', origin: 'mix-stage3' };
       if (mixSnapshot && typeof mixSnapshot === 'object') {
         metadata.pendingMixId = await persistPendingMix(mixSnapshot);
@@ -97,6 +132,14 @@ export default async function handler(req, res) {
         error: 'Price ID not configured',
         details: `Missing env var STRIPE_${tier.toUpperCase()}_PRICE_ID`
       });
+    }
+
+    // F26 · currency assertion on the subscription Price ID.
+    const subPriceCurrency = await assertPriceCurrency(priceId);
+    if (subPriceCurrency !== EXPECTED_CURRENCY) {
+      console.error('[stripe-checkout] subscription currency mismatch',
+        { tier, priceId, expected: EXPECTED_CURRENCY, actual: subPriceCurrency });
+      return res.status(500).json({ error: 'Internal currency configuration error' });
     }
 
     const session = await stripe.checkout.sessions.create({

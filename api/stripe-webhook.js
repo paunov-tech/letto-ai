@@ -716,6 +716,30 @@ export default async function handler(req, res) {
           break;
         }
 
+        // F46 · currency mismatch quarantine. If Stripe Account default ever
+        // flips, or a misconfigured Price ID slips into prod, we must NOT
+        // record this purchase or send the customer a confirmation. Park it
+        // in currency_mismatches for manual reconciliation.
+        const sessionCurrency = (session.currency || '').toLowerCase();
+        if (sessionCurrency && sessionCurrency !== 'eur') {
+          console.error('[stripe-webhook] session.currency != eur',
+            { sessionId: session.id, currency: sessionCurrency });
+          await postSlackAlert(
+            `🚨 Currency mismatch · session=${session.id} currency=${sessionCurrency} expected=eur · ABORTED purchasedMixes write · manual review`
+          ).catch(e => console.error('[stripe-webhook] currency alert failed:', e.message));
+          await db.collection('currency_mismatches').doc(session.id).set({
+            sessionId: session.id,
+            customerEmail: session.customer_email || session.customer_details?.email || null,
+            currency: sessionCurrency,
+            amountTotal: session.amount_total || null,
+            mode: session.mode,
+            tier: session.metadata?.tier || null,
+            detectedAt: new Date().toISOString(),
+            status: 'manual_review'
+          }, { merge: true }).catch(e => console.error('[stripe-webhook] currency_mismatches write failed:', e.message));
+          return res.status(200).json({ received: true, note: 'currency mismatch quarantined' });
+        }
+
         let email = session.customer_email || session.customer_details?.email;
         const firstName = session.customer_details?.name?.split(' ')[0];
         const customerId = session.customer;
@@ -816,6 +840,29 @@ export default async function handler(req, res) {
                   status: 'paid',
                   pendingMixId
                 };
+
+                // F25 · snapshot/session currency drift detector. Snapshot is
+                // captured client-side (display currency); session.currency is
+                // what Stripe actually charged. They should always match for
+                // letto.live (EUR-only), but if the Hotels.com Provider ever
+                // returns a non-EUR snapshot, the user paid the session
+                // currency — that's authoritative. Force tripDoc.currency to
+                // session.currency and alert for a manual data-flow audit.
+                const snapshotCurrencyLower = (tripDoc.currency || 'eur').toString().toLowerCase();
+                const sessionCurrencyLower = (session.currency || 'eur').toString().toLowerCase();
+                if (snapshotCurrencyLower !== sessionCurrencyLower) {
+                  console.error('[stripe-webhook] mixSnapshot.currency != session.currency', {
+                    snapshot: snapshotCurrencyLower,
+                    session: sessionCurrencyLower,
+                    sessionId: session.id,
+                    tripId
+                  });
+                  await postSlackAlert(
+                    `⚠️ Snapshot/session currency drift · trip=${tripId} snapshot=${snapshotCurrencyLower} session=${sessionCurrencyLower} · session authoritative; tripDoc.currency overridden`
+                  ).catch(() => {});
+                  tripDoc.currency = sessionCurrencyLower.toUpperCase();
+                }
+
                 await db.collection('purchasedMixes').doc(tripId).set(tripDoc);
 
                 // cleanup pending doc
