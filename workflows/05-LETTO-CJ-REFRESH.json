@@ -1,0 +1,137 @@
+{
+  "name": "05-LETTO-CJ-REFRESH",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 5,11,17,23 * * *"
+            }
+          ]
+        }
+      },
+      "id": "trigger-cj",
+      "name": "Trigger · 30min before each WF01",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://letto.live/api/cj-refresh",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "call-refresh",
+      "name": "POST /api/cj-refresh",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        304
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Q7ueeN8C8VDTA3fH",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://letto.live/api/notify-admin",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.NOTIFY_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event\": \"cj_refresh_complete\",\n  \"workflow\": \"05-CJ-REFRESH\",\n  \"detail\": {\n    \"totalWritten\": {{$json.totalWritten}},\n    \"totalFailed\": {{$json.totalFailed}},\n    \"durationMs\": {{$json.durationMs}},\n    \"partners\": {{ JSON.stringify($json.partners) }}\n  }\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "notify-result",
+      "name": "Notify · CJ refresh",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        688,
+        304
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger · 30min before each WF01": {
+      "main": [
+        [
+          {
+            "node": "POST /api/cj-refresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /api/cj-refresh": {
+      "main": [
+        [
+          {
+            "node": "Notify · CJ refresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "wjvDlFRiG9vJhjHN"
+  },
+  "versionId": "def69916-673f-4506-9563-0785b5285dca",
+  "meta": {
+    "instanceId": "a71668074d700fc6c3aaea026fbd6fbdf267538be8697af97ab4cbf5a0a41858"
+  },
+  "id": "gymciswmEryTxis4",
+  "tags": []
+}
