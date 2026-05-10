@@ -1,0 +1,122 @@
+{
+  "ran_at": "2026-05-10T20:35:08.381637+00:00",
+  "source": "resend_api last 500 emails sample",
+  "bounced_unique_recipients_in_sample": 29,
+  "skipped_test_addresses": [
+    "test_smoke@example.com"
+  ],
+  "patched": [
+    {
+      "email": "info@cesarica-vodice.com",
+      "doc_id": "info_cesarica_vodice_com"
+    },
+    {
+      "email": "info@campvira.com",
+      "doc_id": "info_campvira_com"
+    },
+    {
+      "email": "info@bretanide.com",
+      "doc_id": "info_bretanide_com"
+    },
+    {
+      "email": "info@atriumsplit.hr",
+      "doc_id": "info_atriumsplit_hr"
+    },
+    {
+      "email": "info@aci-marinas.com",
+      "doc_id": "info_aci_marinas_com"
+    },
+    {
+      "email": "hotel-park-split@hotel-park-split.hr",
+      "doc_id": "hotel_park_split_hotel_park_split_hr"
+    },
+    {
+      "email": "dvor@dvor-split.hr",
+      "doc_id": "dvor_dvor_split_hr"
+    },
+    {
+      "email": "brijuni@np-brijuni.hr",
+      "doc_id": "brijuni_np_brijuni_hr"
+    },
+    {
+      "email": "biokovo@biokovo.com",
+      "doc_id": "biokovo_biokovo_com"
+    },
+    {
+      "email": "alan@hotel-alan.hr",
+      "doc_id": "alan_hotel_alan_hr"
+    },
+    {
+      "email": "info@petbunara.hr",
+      "doc_id": "info_petbunara_hr"
+    },
+    {
+      "email": "info@np-brijuni.hr",
+      "doc_id": "info_np_brijuni_hr"
+    },
+    {
+      "email": "info@lokandapeskarija.com",
+      "doc_id": "info_lokandapeskarija_com"
+    },
+    {
+      "email": "info@konoba-primosten.com",
+      "doc_id": "info_konoba_primosten_com"
+    },
+    {
+      "email": "info@konoba-marinero.com",
+      "doc_id": "info_konoba_marinero_com"
+    },
+    {
+      "email": "info@kamp-marusici.hr",
+      "doc_id": "info_kamp_marusici_hr"
+    },
+    {
+      "email": "info@istria-novigrad.com",
+      "doc_id": "info_istria_novigrad_com"
+    },
+    {
+      "email": "info@ikador.com",
+      "doc_id": "info_ikador_com"
+    },
+    {
+      "email": "info@hvarheritaghotel.com",
+      "doc_id": "info_hvarheritaghotel_com"
+    },
+    {
+      "email": "info@hotelsirena-hvar.com",
+      "doc_id": "info_hotelsirena_hvar_com"
+    },
+    {
+      "email": "info@hotelissa.hr",
+      "doc_id": "info_hotelissa_hr"
+    },
+    {
+      "email": "info@hotel-skradinski-buk.hr",
+      "doc_id": "info_hotel_skradinski_buk_hr"
+    },
+    {
+      "email": "info@hotel-meteor.hr",
+      "doc_id": "info_hotel_meteor_hr"
+    },
+    {
+      "email": "info@hotel-borak.com",
+      "doc_id": "info_hotel_borak_com"
+    },
+    {
+      "email": "daniel.marusic@dt-croatia.com",
+      "doc_id": "daniel_marusic_dt_croatia_com"
+    },
+    {
+      "email": "info@monte.hr",
+      "doc_id": "info_monte_hr"
+    },
+    {
+      "email": "info@konoba-kopacina.com",
+      "doc_id": "info_konoba_kopacina_com"
+    }
+  ],
+  "not_found": [
+    "moroslavpaunov@iclaud.com"
+  ],
+  "errors": []
+}
