@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // Register the Telegram webhook for LETTO bot.
 // Reads TELEGRAM_BOT_TOKEN from .env.telegram or process.env.
+// Reads TELEGRAM_WEBHOOK_SECRET from .secrets/telegram-webhook-secret.env or process.env.
+// The secret_token is REQUIRED — /api/telegram-webhook rejects unauthenticated traffic.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const REPO = resolve(new URL('..', import.meta.url).pathname);
+
 const envFile = `${REPO}/.env.telegram`;
 let token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token && existsSync(envFile)) {
@@ -17,6 +20,18 @@ if (!token) {
   process.exit(1);
 }
 
+const secretFile = `${REPO}/.secrets/telegram-webhook-secret.env`;
+let secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+if (!secret && existsSync(secretFile)) {
+  const m = readFileSync(secretFile, 'utf8').match(/^TELEGRAM_WEBHOOK_SECRET=(.*)$/m);
+  if (m) secret = m[1].replace(/^"|"$/g, '');
+}
+if (!secret) {
+  console.error('❌ TELEGRAM_WEBHOOK_SECRET not set (.secrets/telegram-webhook-secret.env or env)');
+  console.error('   Set the same value in Vercel env so /api/telegram-webhook accepts the traffic.');
+  process.exit(1);
+}
+
 const WEBHOOK_URL = 'https://letto.live/api/telegram-webhook';
 
 const r = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
@@ -24,6 +39,7 @@ const r = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     url: WEBHOOK_URL,
+    secret_token: secret,
     allowed_updates: ['message', 'chat_member', 'channel_post'],
     drop_pending_updates: true
   })
