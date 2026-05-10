@@ -49,7 +49,7 @@ async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
   <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;">
     <p style="margin:0 0 8px;font-weight:600;">⚙️ Otkazivanje / promena podataka:</p>
     <p style="margin:0;"><a href="${portalUrl}" style="color:#b45309;word-break:break-all;">Stripe Billing Portal</a></p>
-    <p style="margin:8px 0 0;font-size:13px;color:#475569;">Link važi 30 minuta. Ako istekne, pošalji ponovo zahtev na <a href="https://letto.live/me">letto.live/me</a>.</p>
+    <p style="margin:8px 0 0;font-size:13px;color:#475569;">Otkaži kad god kroz Stripe portal · pretplata radi do kraja current perioda. Link važi 30 minuta. Ako istekne, pošalji ponovo zahtev na <a href="https://letto.live/me">letto.live/me</a>.</p>
   </div>
   <p style="font-size:13px;color:#94a3b8;margin-top:32px;">Ako nisi tražio ovaj email, ignoriši ga. Niko nije dobio pristup tvom nalogu.</p>
 </body></html>`;
@@ -61,6 +61,7 @@ async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
     '',
     'Otkazivanje / promena podataka (Stripe portal · link važi 30 min):',
     portalUrl,
+    'Otkaži kad god · pretplata radi do kraja current perioda.',
     '',
     'Ako nisi tražio ovaj email, ignoriši ga.'
   ].join('\n');
