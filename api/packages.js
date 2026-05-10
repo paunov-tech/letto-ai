@@ -14,6 +14,7 @@
 // Cache: CDN 5 min, SWR 10 min — accepts that engine output is stale up to 5 min.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 
 if (!getApps().length) {
@@ -35,7 +36,7 @@ function shiftDateISO(iso, days) {
   return d.toISOString().slice(0, 10);
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'method_not_allowed' });
@@ -125,3 +126,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'internal' });
   }
 }
+
+export default withSentry('packages', handler);

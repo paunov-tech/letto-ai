@@ -6,6 +6,7 @@
 
 import Stripe from 'stripe';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { randomBytes } from 'node:crypto';
 
@@ -58,7 +59,7 @@ async function persistPendingMix(mixSnapshot) {
   return pendingMixId;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -175,3 +176,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSentry('stripe-checkout', handler);

@@ -7,6 +7,7 @@
 // scheduled invocations).
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { sendMixConfirmationEmail, sendWelcomeEmailWithRetry, postSlackAlert } from './stripe-webhook.js';
 
@@ -33,7 +34,7 @@ function checkAuth(req) {
   return false;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!checkAuth(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -539,3 +540,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+export default withSentry('admin', handler);

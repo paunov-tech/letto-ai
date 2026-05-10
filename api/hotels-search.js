@@ -15,6 +15,7 @@
 // Edge cache 1h via Cache-Control: s-maxage=3600. With ~14k req/mo plan,
 // this absorbs duplicate searches across users on the same dates+destination.
 
+import { withSentry } from '../lib/sentry-backend.js';
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY || '';
 const RAPIDAPI_HOST = 'hotels-com-provider.p.rapidapi.com';
 const TP_MARKER     = process.env.TRAVELPAYOUTS_MARKER || '722287';
@@ -270,7 +271,7 @@ const ALLOWED_ORIGINS = ['https://letto.live', 'https://www.letto.live'];
 
 function isValidIso(d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // CORS
   const origin = req.headers.origin || '';
   let allow = false;
@@ -395,3 +396,5 @@ export default async function handler(req, res) {
     }
   });
 }
+
+export default withSentry('hotels-search', handler);

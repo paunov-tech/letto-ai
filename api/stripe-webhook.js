@@ -4,6 +4,7 @@
 
 import Stripe from 'stripe';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import PDFDocument from 'pdfkit';
 
@@ -730,7 +731,7 @@ async function generateTelegramInvite(customerEmail) {
 // Vercel's bundler. Side effects (Firebase init) are idempotent.
 export { sendMixConfirmationEmail, sendWelcomeEmailWithRetry, postSlackAlert };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
 
   const sig = req.headers['stripe-signature'];
@@ -1045,3 +1046,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+export default withSentry('stripe-webhook', handler);

@@ -16,6 +16,7 @@
 
 import Stripe from 'stripe';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 
 if (!getApps().length) {
@@ -35,7 +36,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 const EMPTY = { premium: false, mixUnlocked: false };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json(EMPTY);
@@ -76,3 +77,5 @@ export default async function handler(req, res) {
     return res.status(200).json(EMPTY);
   }
 }
+
+export default withSentry('me', handler);
