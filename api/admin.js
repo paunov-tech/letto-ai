@@ -220,6 +220,66 @@ export default async function handler(req, res) {
       return res.status(200).json({ subscribers: rows, counts });
     }
 
+    // F13 SMOKE TEST · trigger an end-to-end email failure with a synthetic
+    // trip whose userEmail is deliberately invalid. Exercises the real retry
+    // pipeline (3 attempts × exp backoff), persists to failed_email_sends, and
+    // posts to Slack. Cleans up the test record after capturing it so the
+    // daily cron doesn't keep retrying a fake trip.
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'smoke-f13') {
+      const fakeTripId = 'smoke' + Math.random().toString(16).slice(2, 12);
+      const fakeTrip = {
+        tripId: fakeTripId,
+        userEmail: 'invalid-format-no-at-symbol', // Resend returns 422
+        tier: 'value',
+        route: { origin: 'BEG', dest: 'TST' },
+        flight: {
+          airline: 'TestAir',
+          flightNumber: 'TA001',
+          depart: '2099-01-01',
+          return: '2099-01-08',
+          duration: '2h 30m',
+          stops: 0,
+          totalPrice: 199,
+          bookingUrl: null,
+          bookingPartner: null
+        },
+        hotel: {
+          name: 'Smoke Test Hotel',
+          stars: 4,
+          neighborhood: 'Centar',
+          nights: 7,
+          pricePerNight: 100,
+          priceTotal: 700,
+          bookingUrl: null
+        },
+        pax: { adults: 1, children: 0, infants: 0 },
+        grandTotal: 899,
+        currency: 'EUR',
+        status: 'paid',
+        paidAt: new Date().toISOString()
+      };
+
+      const sendResult = await sendMixConfirmationEmail(fakeTrip);
+      const recRef = db.collection('failed_email_sends').doc(fakeTripId);
+      const recSnap = await recRef.get();
+      const recData = recSnap.exists ? recSnap.data() : null;
+      // Cleanup test record so the daily cron doesn't loop on a fake tripId.
+      await recRef.delete().catch(() => {});
+
+      return res.status(200).json({
+        smoke: 'f13',
+        fakeTripId,
+        sendResult,
+        persistedRecord: recData,
+        cleanedUp: recSnap.exists,
+        notes: [
+          'Slack alert was posted iff sendResult.attempts === 3.',
+          'failed_email_sends/{fakeTripId} was created and then deleted.',
+          'No real customer was emailed.'
+        ]
+      });
+    }
+
     // F13 RETRY · scan failed_email_sends and re-attempt delivery for each
     // pending_retry record. Designed to be called by Vercel cron daily AND
     // manually by admin via Bearer ADMIN_TOKEN. Caps total retries per record

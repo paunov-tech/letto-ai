@@ -5,7 +5,8 @@
   "framework": null,
   "functions": {
     "api/hotels-search.js": { "maxDuration": 25 },
-    "api/cj-refresh.js":    { "maxDuration": 60 }
+    "api/cj-refresh.js":    { "maxDuration": 60 },
+    "api/admin.js":         { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
