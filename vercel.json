@@ -16,7 +16,9 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/impressum", "destination": "/impressum.html" },
-    { "source": "/dobrodosao", "destination": "/dobrodosao.html" }
+    { "source": "/dobrodosao", "destination": "/dobrodosao.html" },
+    { "source": "/welcome", "destination": "/dobrodosao.html" },
+    { "source": "/me", "destination": "/me.html" }
   ],
   "headers": [
     {
