@@ -661,9 +661,11 @@ export default async function handler(req, res) {
                 const grandTotal = flightTotal + hotelTotal;
                 tripId = pendingMixId; // reuse short hex as the canonical trip ID
 
-                // Final 2 · tier denormalized from snapshot.flight.selected.tier
-                // (selectPackage stores it; default 'value' if missing).
-                const priceTier = (f.tier === 'budget' || f.tier === 'lux') ? f.tier : 'value';
+                // Final 2 · tier denormalized. Prefer snapshot.tier (top-level,
+                // current frontend) and fall back to flight.selected.tier (older
+                // snapshots) before defaulting to 'value'.
+                const rawTier = snapshot?.tier || f.tier;
+                const priceTier = (rawTier === 'budget' || rawTier === 'lux') ? rawTier : 'value';
 
                 const tripDoc = {
                   tripId,

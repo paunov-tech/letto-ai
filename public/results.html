@@ -3009,18 +3009,32 @@
     margin: 0 auto 16px;
     max-width: 420px;
   }
+  .pkg-empty__ctas {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
   .pkg-empty__cta {
     display: inline-block;
     padding: 12px 22px;
-    background: var(--ink);
-    color: var(--paper);
     border-radius: 8px;
     font-family: 'IBM Plex Sans', sans-serif;
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
   }
-  .pkg-empty__cta:hover { background: var(--ink-soft); }
+  .pkg-empty__cta--primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .pkg-empty__cta--primary:hover { background: var(--ink-soft); }
+  .pkg-empty__cta--secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line-soft);
+  }
+  .pkg-empty__cta--secondary:hover { background: var(--paper-warm); border-color: var(--ink-soft); }
   .pkg-error p {
     font-family: 'Instrument Serif', serif;
     color: var(--burgundy);
@@ -5165,12 +5179,18 @@
       mount.innerHTML = '<div class="pkg-empty">' +
         '<h3 data-en>No matching packages</h3>' +
         '<h3 data-sr>Nema paketa za ovu rutu</h3>' +
-        '<p data-en>Our engine hasn\'t curated a flight + hotel mix for ' + escapeHtml(destCity || 'this route') + ' on these dates yet. Check today\'s top deals or try different dates.</p>' +
-        '<p data-sr>Naš engine još uvek nije pripremio paket za ' + escapeHtml(destCity || 'ovu rutu') + ' u ovim datumima. Pogledaj današnje top deal-ove ili izaberi druge datume.</p>' +
-        '<a class="pkg-empty__cta" href="/#deals">' +
-          '<span data-en>See today\'s deals →</span>' +
-          '<span data-sr>Vidi današnje deal-ove →</span>' +
-        '</a>' +
+        '<p data-en>Our engine hasn\'t curated any tier (Budget / Value / Lux) for ' + escapeHtml(destCity || 'this route') + ' on these dates yet. Try different dates or browse today\'s top deals.</p>' +
+        '<p data-sr>Naš engine još uvek nije pripremio nijedan tier (Budget / Value / Lux) za ' + escapeHtml(destCity || 'ovu rutu') + ' u ovim datumima. Probaj druge datume ili pogledaj današnje deal-ove.</p>' +
+        '<div class="pkg-empty__ctas">' +
+          '<a class="pkg-empty__cta pkg-empty__cta--primary" href="/">' +
+            '<span data-en>Search different dates →</span>' +
+            '<span data-sr>Pretraži druge datume →</span>' +
+          '</a>' +
+          '<a class="pkg-empty__cta pkg-empty__cta--secondary" href="/#deals">' +
+            '<span data-en>Today\'s deals</span>' +
+            '<span data-sr>Današnji deal-ovi</span>' +
+          '</a>' +
+        '</div>' +
       '</div>';
       return;
     }
@@ -6589,8 +6609,11 @@
       if (typeof getState !== 'function') return null;
       var s = getState();
       if (!s) return null;
+      var sel = s.flight && s.flight.selected;
+      var tier = sel && (sel.tier === 'budget' || sel.tier === 'lux') ? sel.tier : 'value';
       return {
-        flight: { selected: s.flight && s.flight.selected || null },
+        tier: tier, // top-level denormalized for webhook robustness
+        flight: { selected: sel || null },
         hotel:  { selected: s.hotel  && s.hotel.selected  || null },
         searchParams: s.searchParams || null
       };
