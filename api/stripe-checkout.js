@@ -63,7 +63,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { tier = 'beta', mixSnapshot } = req.body || {};
+  const { tier = 'beta', mixSnapshot, userEmail } = req.body || {};
+  // F18 · pre-fill Stripe checkout email when the frontend has it (currently
+  // optional; Stripe still collects on its hosted page if missing). Limits
+  // the Apple Pay / Express edge where wallet flows can omit email entirely.
+  const customerEmail = (typeof userEmail === 'string' && userEmail.includes('@'))
+    ? userEmail.trim().toLowerCase()
+    : undefined;
 
   try {
     // aimix = €7.99 one-time unlock for Stage 3 AI Mix review (Mix V2)
@@ -116,7 +122,8 @@ export default async function handler(req, res) {
         cancel_url: `${SITE_URL}/results.html?cancelled=1`,
         locale: 'auto',
         billing_address_collection: 'auto',
-        customer_creation: 'always'
+        customer_creation: 'always',
+        customer_email: customerEmail
       });
 
       return res.status(200).json({ url: session.url, sessionId: session.id });
@@ -155,7 +162,8 @@ export default async function handler(req, res) {
       success_url: `${SITE_URL}/dobrodosao.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${SITE_URL}/?cancelled=1`,
       locale: 'auto',
-      billing_address_collection: 'auto'
+      billing_address_collection: 'auto',
+      customer_email: customerEmail
     });
 
     return res.status(200).json({ url: session.url, sessionId: session.id });

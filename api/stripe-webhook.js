@@ -748,7 +748,7 @@ export default async function handler(req, res) {
 
         // F14/F18: paid session with no captured email (Apple Pay / Express
         // checkout edge). Stripe stores it on the Customer object even when
-        // not on the session itself — try one recovery before giving up.
+        // not on the session itself — try one recovery from there.
         if (!email && customerId) {
           try {
             const cust = await stripe.customers.retrieve(customerId);
@@ -757,25 +757,28 @@ export default async function handler(req, res) {
             console.warn('[LETTO] customer retrieve failed for email recovery:', e.message);
           }
         }
-        if (!email) {
-          console.error('[LETTO] PAID session with no recoverable email · session=' + session.id);
-          await persistOrphanPurchase(session, session.metadata?.pendingMixId);
-          break;
-        }
+        // If email is still null we DO NOT abort — the user paid and we owe
+        // them a record. The aimix branch below writes the trip with
+        // status='pending_email_capture' for manual recovery via
+        // /api/admin?action=resend-mix. The premium branch (further down)
+        // still falls back to persistOrphanPurchase since premium needs an
+        // email to issue the Telegram invite.
 
         // One-time AI Mix unlock (€7.99) — flag user + persist the bought trip
         // as a purchasedMixes record (C-1 · Mix kao proizvod, faza 1).
         if (tier === 'aimix' || session.mode === 'payment') {
-          const lowerEmail = email.toLowerCase();
+          const lowerEmail = email ? email.toLowerCase() : null;
           const paidAt = new Date().toISOString();
 
-          await db.collection('letto_subscribers').doc(lowerEmail).set({
-            email: lowerEmail,
-            stripeCustomerId: customerId,
-            aimixUnlocked: true,
-            aimixUnlockedAt: paidAt,
-            aimixSessionId: session.id
-          }, { merge: true });
+          if (lowerEmail) {
+            await db.collection('letto_subscribers').doc(lowerEmail).set({
+              email: lowerEmail,
+              stripeCustomerId: customerId,
+              aimixUnlocked: true,
+              aimixUnlockedAt: paidAt,
+              aimixSessionId: session.id
+            }, { merge: true });
+          }
 
           // Resolve pending mix snapshot → purchasedMixes record.
           const pendingMixId = session.metadata?.pendingMixId;
@@ -804,7 +807,6 @@ export default async function handler(req, res) {
 
                 const tripDoc = {
                   tripId,
-                  userEmail: lowerEmail,
                   stripeSessionId: session.id,
                   paidAt,
                   tier: priceTier,
@@ -837,7 +839,12 @@ export default async function handler(req, res) {
                   pax: { adults, children, infants },
                   grandTotal,
                   currency: f.currency || h.currency || 'EUR',
-                  status: 'paid',
+                  // F18: when email is null we still record the trip — the
+                  // user paid and is owed a record. status 'pending_email_capture'
+                  // marks it for manual recovery via /api/admin?action=resend-mix.
+                  userEmail: lowerEmail,
+                  stripeCustomerId: customerId || null,
+                  status: lowerEmail ? 'paid' : 'pending_email_capture',
                   pendingMixId
                 };
 
@@ -868,16 +875,25 @@ export default async function handler(req, res) {
                 // cleanup pending doc
                 await db.collection('pendingMixes').doc(pendingMixId).delete().catch(() => {});
 
-                console.log(`[LETTO] purchasedMixes/${tripId} written · ${lowerEmail} · €${grandTotal}`);
+                console.log(`[LETTO] purchasedMixes/${tripId} written · ${lowerEmail || '<pending email>'} · €${grandTotal}`);
 
-                // C-2: Resend confirmation email — must await on Vercel (the
-                // function freezes once 200 is sent back to Stripe, killing
-                // any in-flight fire-and-forget fetches). Adds ~300-700ms
-                // to webhook latency; Stripe accepts up to 30s.
-                try {
-                  await sendMixConfirmationEmail(tripDoc);
-                } catch (e) {
-                  console.error('[LETTO] mix email send failed:', e.message);
+                if (lowerEmail) {
+                  // C-2: Resend confirmation email — must await on Vercel (the
+                  // function freezes once 200 is sent back to Stripe, killing
+                  // any in-flight fire-and-forget fetches). Adds ~300-700ms
+                  // to webhook latency; Stripe accepts up to 30s.
+                  try {
+                    await sendMixConfirmationEmail(tripDoc);
+                  } catch (e) {
+                    console.error('[LETTO] mix email send failed:', e.message);
+                  }
+                } else {
+                  // F18: trip recorded, but no email to send to. Alert ops so
+                  // someone can find the user via Stripe Dashboard (last 4 +
+                  // customer ID) and POST /api/admin?action=resend-mix.
+                  await postSlackAlert(
+                    `🚨 F18 · Missing email · session=${session.id} amount=${(session.amount_total || 0) / 100}€ trip=${tripId} · MANUAL EMAIL RECOVERY · Stripe Dashboard → last 4 + customer ID → POST /api/admin?action=resend-mix&tripId=${tripId}&email=X`
+                  ).catch(e => console.error('[LETTO] F18 alert failed:', e.message));
                 }
               } else {
                 console.warn(`[LETTO] pendingMixId=${pendingMixId} not found in pendingMixes — purchase recorded without snapshot`);
@@ -886,10 +902,19 @@ export default async function handler(req, res) {
               console.error('[LETTO] purchasedMixes write failed:', e.message);
             }
           } else {
-            console.log(`[LETTO] aimix paid without pendingMixId (legacy or external) · ${lowerEmail}`);
+            console.log(`[LETTO] aimix paid without pendingMixId (legacy or external) · ${lowerEmail || '<pending email>'}`);
           }
 
-          console.log(`[LETTO] AI Mix unlocked: ${lowerEmail}${tripId ? ' · trip=' + tripId : ''}`);
+          console.log(`[LETTO] AI Mix unlocked: ${lowerEmail || '<pending email>'}${tripId ? ' · trip=' + tripId : ''}`);
+          break;
+        }
+
+        // Premium subscription path — needs email to issue the Telegram invite
+        // and welcome SendGrid send. If email is still missing here, log it as
+        // an orphan purchase (failed_purchases collection) for manual recovery.
+        if (!email) {
+          console.error('[LETTO] PAID premium session with no recoverable email · session=' + session.id);
+          await persistOrphanPurchase(session, null);
           break;
         }
 

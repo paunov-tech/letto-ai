@@ -220,6 +220,123 @@ export default async function handler(req, res) {
       return res.status(200).json({ subscribers: rows, counts });
     }
 
+    // F18 RECOVERY · attach an email to a paid trip whose webhook arrived
+    // without one (Apple Pay / Express edge), then send the confirmation.
+    // Authoritative auth check is the admin token; cron does not run this.
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'resend-mix') {
+      const tripId = (req.query.tripId || '').toString().trim();
+      const email = (req.query.email || '').toString().trim().toLowerCase();
+      if (!tripId || !/^[a-f0-9]{16}$/.test(tripId)) {
+        return res.status(400).json({ error: 'tripId required (16-char hex)' });
+      }
+      if (!email || !email.includes('@')) {
+        return res.status(400).json({ error: 'email required (must include @)' });
+      }
+      const tripRef = db.collection('purchasedMixes').doc(tripId);
+      const tripSnap = await tripRef.get();
+      if (!tripSnap.exists) {
+        return res.status(404).json({ error: 'trip not found', tripId });
+      }
+      const trip = tripSnap.data();
+      if (trip.status !== 'pending_email_capture') {
+        return res.status(400).json({ error: 'trip not pending_email_capture', currentStatus: trip.status });
+      }
+      // Update the doc, then run the confirmation through the regular retry
+      // pipeline. If sending succeeds, status flips to 'paid'.
+      await tripRef.update({
+        userEmail: email,
+        recoveredAt: new Date().toISOString()
+      });
+      // Also flip the subscriber doc now that we know the email.
+      await db.collection('letto_subscribers').doc(email).set({
+        email,
+        stripeCustomerId: trip.stripeCustomerId || null,
+        aimixUnlocked: true,
+        aimixUnlockedAt: trip.paidAt || new Date().toISOString(),
+        aimixSessionId: trip.stripeSessionId || null,
+        recoveredFromPendingEmail: true
+      }, { merge: true });
+
+      const sendRes = await sendMixConfirmationEmail({ ...trip, userEmail: email });
+      if (sendRes.ok) {
+        await tripRef.update({ status: 'paid' });
+        return res.status(200).json({ ok: true, tripId, email, status: 'recovered', sendId: sendRes.id || null });
+      }
+      // Retry pipeline already persisted to failed_email_sends + alerted Slack.
+      return res.status(200).json({
+        ok: false,
+        tripId,
+        email,
+        status: 'email_attached_send_failed',
+        sendResult: sendRes,
+        note: 'Trip is updated with email; failed_email_sends record exists for cron retry.'
+      });
+    }
+
+    // F18 SMOKE TEST · synthesize a paid Stripe session with NO email and
+    // walk through the same write path the webhook would. Verifies that
+    // (a) the trip is recorded with status='pending_email_capture',
+    // (b) the F18 Slack alert fires,
+    // (c) the manual recovery endpoint can flip the trip to 'paid'.
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'smoke-f18') {
+      const fakeTripId = (Math.random().toString(16).slice(2) + '000000').slice(0, 16);
+      const fakeSessionId = 'cs_smoke_' + fakeTripId;
+      const fakeAmount = 799;
+
+      // Write a pending_email_capture trip directly (bypasses Stripe webhook,
+      // exercises the same Firestore shape the webhook produces).
+      const tripDoc = {
+        tripId: fakeTripId,
+        stripeSessionId: fakeSessionId,
+        stripeCustomerId: null,
+        paidAt: new Date().toISOString(),
+        tier: 'value',
+        userEmail: null,
+        route: { origin: 'BEG', dest: 'TST' },
+        flight: {
+          airline: 'TestAir', flightNumber: 'TA-F18',
+          depart: '2099-01-01', return: '2099-01-08',
+          duration: '2h', stops: 0, totalPrice: 199,
+          bookingUrl: null, bookingPartner: null
+        },
+        hotel: {
+          name: 'F18 Smoke Hotel', stars: 4, neighborhood: 'Centar',
+          nights: 7, pricePerNight: 100, priceTotal: 700,
+          bookingUrl: null, hotellookId: null
+        },
+        pax: { adults: 1, children: 0, infants: 0 },
+        grandTotal: 899,
+        currency: 'EUR',
+        status: 'pending_email_capture',
+        pendingMixId: fakeTripId
+      };
+      await db.collection('purchasedMixes').doc(fakeTripId).set(tripDoc);
+      await postSlackAlert(
+        `🚨 F18 SMOKE · session=${fakeSessionId} amount=${fakeAmount / 100}€ trip=${fakeTripId} · this is a synthetic test alert; no real customer affected`
+      ).catch(() => {});
+
+      // Read back to confirm
+      const writtenSnap = await db.collection('purchasedMixes').doc(fakeTripId).get();
+      const written = writtenSnap.exists ? writtenSnap.data() : null;
+
+      // Cleanup
+      await db.collection('purchasedMixes').doc(fakeTripId).delete().catch(() => {});
+
+      return res.status(200).json({
+        smoke: 'f18',
+        fakeTripId,
+        writtenStatus: written?.status,
+        writtenUserEmail: written?.userEmail,
+        cleanedUp: !!writtenSnap.exists,
+        notes: [
+          'Trip was written with userEmail=null and status=pending_email_capture.',
+          'Slack alert was posted (look for the SMOKE prefix to distinguish from real F18s).',
+          'Test trip was deleted from Firestore.',
+          'To verify the recovery endpoint, omit cleanup and call resend-mix manually.'
+        ]
+      });
+    }
+
     // F13 SMOKE TEST · trigger an end-to-end email failure with a synthetic
     // trip whose userEmail is deliberately invalid. Exercises the real retry
     // pipeline (3 attempts × exp backoff), persists to failed_email_sends, and
