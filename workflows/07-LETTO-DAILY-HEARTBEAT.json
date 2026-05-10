@@ -1,0 +1,93 @@
+{
+  "name": "07-LETTO-DAILY-HEARTBEAT",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Trigger · daily 02:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// FAZA C2 · daily heartbeat compose.\n// Reads the n8n REST API for all LETTO workflows, computes recency vs each\n// workflow's expected interval, formats a Slack-ready report. Inputs are\n// hardcoded so this node has zero external dependencies.\n//\n// Expected intervals come from each workflow's scheduleTrigger config:\n//   00-ERROR-HANDLER:  on-demand (no cron) — skip recency check\n//   01-MIXING:         12h\n//   02-PRICE-VERIFIER: 6h\n//   03-NEWSLETTER:     weekly (168h)\n//   04-TELEGRAM-DAILY: 24h\n//   05-CJ-REFRESH:     30m before each WF01 (~12h)\n//   06-SCRAPE-REFRESH: 4h\n\nconst WORKFLOWS = [\n  { id: 'wjvDlFRiG9vJhjHN', name: '00-LETTO-ERROR-HANDLER',  intervalH: null },\n  { id: 'CDKykLsWg6vpmM89', name: '01-LETTO-MIXING-ENGINE',  intervalH: 12 },\n  { id: 'J2oO4TJoPLBkE5SH', name: '02-LETTO-PRICE-VERIFIER', intervalH: 6 },\n  { id: 'WRjnjjweNV0L3V6N', name: '03-LETTO-WEEKLY-NEWSLETTER', intervalH: 168 },\n  { id: 'xlGvHDQfvo8PxfiL', name: '04-LETTO-TELEGRAM-DAILY', intervalH: 24 },\n  { id: 'gymciswmEryTxis4', name: '05-LETTO-CJ-REFRESH',     intervalH: 12 },\n  { id: 'JfocgS4yBLph2GVH', name: '06-LETTO-SCRAPE-REFRESH', intervalH: 4 }\n];\n\nreturn [{ json: { workflows: WORKFLOWS, generatedAt: new Date().toISOString() } }];"
+      },
+      "name": "List Letto workflows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 320]
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/api/v1/executions?workflowId={{$json.workflows[0].id}}&limit=1",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-N8N-API-KEY", "value": "={{$env.N8N_API_KEY}}" }
+          ]
+        },
+        "options": { "timeout": 10000, "response": { "response": { "neverError": true } } }
+      },
+      "name": "Probe (placeholder · loop in real run)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 320],
+      "notes": "Iteration over WORKFLOWS happens in the next code node via fetch() loop, since n8n's HTTP node can't loop over a list cleanly without SplitInBatches. Keep this node as a no-op placeholder OR replace with SplitInBatches + HTTP if you prefer the visual flow. Code node below does the actual probing."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Probe each workflow's last execution via n8n REST API and compose the\n// Slack heartbeat message. Uses fetch() inside a code node — simpler than\n// SplitInBatches for a one-time daily summary.\n//\n// Status semantics:\n//   ✅  fired within expected interval\n//   ⚠️  fired but stale (>2× interval)\n//   🔴  last execution status === 'error' OR no executions found\n\nconst WORKFLOWS = $input.all()[0].json.workflows;\nconst N8N_API = 'http://localhost:5678/api/v1';\nconst apiKey = $env.N8N_API_KEY;\nconst now = Date.now();\n\nasync function lastExec(id) {\n  try {\n    const r = await this.helpers.httpRequest({\n      method: 'GET',\n      url: N8N_API + '/executions?workflowId=' + id + '&limit=1',\n      headers: { 'X-N8N-API-KEY': apiKey },\n      json: true\n    });\n    const list = r && r.data ? r.data : [];\n    return list[0] || null;\n  } catch (e) {\n    return { error: e.message };\n  }\n}\n\nconst lines = ['📊 Letto orchestra heartbeat · ' + new Date().toISOString().slice(0,10)];\nlet anyAlert = false;\n\nfor (const wf of WORKFLOWS) {\n  const exec = await lastExec.call(this, wf.id);\n  let glyph = '✅';\n  let suffix = '';\n  if (!exec || exec.error) {\n    glyph = '🔴';\n    suffix = ' · NO RECENT EXECUTIONS' + (exec && exec.error ? ' (' + exec.error + ')' : '');\n    anyAlert = true;\n  } else {\n    const startedAt = new Date(exec.startedAt).getTime();\n    const ageMs = now - startedAt;\n    const ageH = Math.floor(ageMs / 3600000);\n    const ageM = Math.floor((ageMs % 3600000) / 60000);\n    const ageStr = ageH + 'h ' + ageM + 'm';\n    if (exec.status === 'error' || exec.status === 'crashed') {\n      glyph = '🔴'; suffix = ' · last status=' + exec.status + ' (' + ageStr + ' ago)';\n      anyAlert = true;\n    } else if (wf.intervalH && ageMs > 2 * wf.intervalH * 3600000) {\n      glyph = '⚠️'; suffix = ' · stale (' + ageStr + ' ago, expected every ' + wf.intervalH + 'h)';\n      anyAlert = true;\n    } else {\n      suffix = ' · last fired ' + ageStr + ' ago' + (wf.intervalH ? ' (' + wf.intervalH + 'h cron)' : '');\n    }\n  }\n  lines.push(glyph + ' ' + wf.name + suffix);\n}\n\nif (!anyAlert) lines.push('\\nAll greens · orchestra stable.');\n\nreturn [{ json: { text: lines.join('\\n'), anyAlert } }];"
+      },
+      "name": "Probe + compose report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 320]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SLACK_ALERT_WEBHOOK_URL}}",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text }) }}",
+        "options": { "timeout": 10000 }
+      },
+      "name": "Post heartbeat to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 320]
+    }
+  ],
+  "connections": {
+    "Trigger · daily 02:00 UTC": {
+      "main": [[{ "node": "List Letto workflows", "type": "main", "index": 0 }]]
+    },
+    "List Letto workflows": {
+      "main": [[{ "node": "Probe + compose report", "type": "main", "index": 0 }]]
+    },
+    "Probe + compose report": {
+      "main": [[{ "node": "Post heartbeat to Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "wjvDlFRiG9vJhjHN"
+  }
+}

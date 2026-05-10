@@ -35,6 +35,10 @@
     {
       "path": "/api/admin?action=retry-failed-emails",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/admin?action=packages-health",
+      "schedule": "0 6 * * *"
     }
   ]
 }

@@ -220,6 +220,55 @@ export default async function handler(req, res) {
       return res.status(200).json({ subscribers: rows, counts });
     }
 
+    // FAZA C3 · packages-health daily Slack report. Surfaces "engine is dead"
+    // (new < 5 in 24h) and "catalog drift" (Lux > 70% of total) so we can
+    // notice before the FB ad spend is sending users to a stale catalog.
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'packages-health') {
+      const since = new Date(Date.now() - 24 * 3600000).toISOString();
+      const [pubPubSnap, pubPremSnap] = await Promise.all([
+        db.collection(COLL).where('status', '==', 'published_public').get(),
+        db.collection(COLL).where('status', '==', 'published_premium').get()
+      ]);
+      const all = [...pubPubSnap.docs, ...pubPremSnap.docs].map(d => d.data());
+      const total = all.length;
+      const new24h = all.filter(p => (p.metadata?.createdAt || '') >= since).length;
+      const tierCounts = { budget: 0, value: 0, lux: 0, untiered: 0 };
+      const destCounts = {};
+      for (const p of all) {
+        const t = p.tier || 'untiered';
+        tierCounts[t] = (tierCounts[t] || 0) + 1;
+        const dc = (p.destination?.code || '?').toUpperCase();
+        destCounts[dc] = (destCounts[dc] || 0) + 1;
+      }
+      const topDests = Object.entries(destCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([code, n]) => `${code}=${n}`)
+        .join(', ');
+      const luxPct = total > 0 ? Math.round((tierCounts.lux / total) * 100) : 0;
+      const alerts = [];
+      if (new24h < 5) alerts.push(`🚨 Engine output low · only ${new24h} new packages in 24h (expected ≥5)`);
+      if (luxPct > 70) alerts.push(`⚠️ Catalog drift · Lux ${luxPct}% of catalog (smart-fallback chain under pressure)`);
+
+      const lines = [
+        `📦 Letto packages health · ${new Date().toISOString().slice(0, 10)}`,
+        `Total published: ${total} · new 24h: ${new24h}`,
+        `Tier: budget=${tierCounts.budget} · value=${tierCounts.value} · lux=${tierCounts.lux} · untiered=${tierCounts.untiered}`,
+        `Top destinations: ${topDests || '(none)'}`,
+        ...alerts
+      ];
+      const text = lines.join('\n');
+
+      // Always post to Slack (daily heartbeat + alerts) so we have a regular
+      // pulse — silence after a quiet failure is worse than mild noise.
+      await postSlackAlert(text).catch(e => console.error('[packages-health] Slack post failed:', e.message));
+
+      return res.status(200).json({
+        ok: true,
+        total, new24h, tierCounts, luxPct, topDests, alerts, text
+      });
+    }
+
     // F18 RECOVERY · attach an email to a paid trip whose webhook arrived
     // without one (Apple Pay / Express edge), then send the confirmation.
     // Authoritative auth check is the admin token; cron does not run this.
