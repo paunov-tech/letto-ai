@@ -16,7 +16,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
-import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
+import { cleanAviasalesUrl, buildAviasalesUrl } from '../lib/aviasales-url.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -115,12 +115,19 @@ async function handler(req, res) {
       packages = packages.slice(0, limit);
     }
 
-    // P0 fix · strip stale TP fare tokens from Aviasales bookingUrls before
-    // they leave this endpoint. Defense in depth — even if mining engine still
-    // produces dirty URLs, the public response always serves the durable form.
+    // P0 fix · normalize the bookingUrl shipped to the frontend. Two cases:
+    //   1) URL exists → strip any stale TP fare tokens, convert YYMMDD → DDMM
+    //   2) URL is missing/empty (mining engine sometimes writes packages
+    //      without it) → synthesize from origin + destination + dates so
+    //      the frontend's `var url = fSel.bookingUrl || ''` doesn't yield
+    //      an empty CTA on Custom Mix searches that surface these packages.
     for (const pkg of packages) {
-      if (pkg?.flight?.bookingUrl) {
+      if (!pkg.flight) pkg.flight = {};
+      if (pkg.flight.bookingUrl) {
         pkg.flight.bookingUrl = cleanAviasalesUrl(pkg.flight.bookingUrl);
+      } else {
+        const synth = buildAviasalesUrl(pkg);
+        if (synth) pkg.flight.bookingUrl = synth;
       }
     }
 
