@@ -161,6 +161,52 @@ Otkazivanje: jednim klikom u Stripe portal-u (link u potvrdi plaćanja).
   return { ok: false, status: r.status, body: body.slice(0, 500) };
 }
 
+// FAZA B · premium welcome email parity with the mix retry pipeline.
+// 3 attempts × exp backoff (1s, 3s) before persisting to failed_email_sends
+// with flow='premium_welcome' and posting Slack. The daily retry cron picks
+// these up via the same /api/admin?action=retry-failed-emails handler.
+async function sendWelcomeEmailWithRetry(args) {
+  // args = { to, firstName, inviteLink, stripeCustomerId, stripeSessionId, subscriptionId }
+  const backoffsMs = [1000, 3000];
+  let lastErr = null;
+  for (let i = 0; i < 3; i++) {
+    if (i > 0) await sleep(backoffsMs[i - 1]);
+    let res;
+    try {
+      res = await sendWelcomeEmail({ to: args.to, firstName: args.firstName, inviteLink: args.inviteLink });
+    } catch (e) {
+      res = { ok: false, reason: e.message };
+    }
+    if (res.ok) return { ok: true, attempts: i + 1 };
+    lastErr = res;
+    console.error(`[welcome-email] attempt ${i + 1}/3 failed · to=${args.to} ·`, JSON.stringify(res).slice(0, 240));
+  }
+
+  // All 3 failed — persist + alert
+  await db.collection('failed_email_sends').doc('welcome_' + args.to).set({
+    flow: 'premium_welcome',
+    userEmail: args.to,
+    inviteLink: args.inviteLink || null,
+    stripeCustomerId: args.stripeCustomerId || null,
+    stripeSessionId: args.stripeSessionId || null,
+    subscriptionId: args.subscriptionId || null,
+    attemptedAt: new Date().toISOString(),
+    attempts: 3,
+    status: 'pending_retry',
+    error: {
+      reason: lastErr?.reason || null,
+      status: lastErr?.status || null,
+      body: lastErr?.body ? String(lastErr.body).slice(0, 2000) : null
+    }
+  }, { merge: true }).catch(e => console.error('[welcome-email] failed_email_sends write failed:', e.message));
+
+  await postSlackAlert(
+    `🚨 Premium welcome email failed (3/3) · ${args.to} · err=${(lastErr && (lastErr.reason || lastErr.status)) || 'unknown'}\nManual retry: POST /api/admin?action=retry-failed-emails`
+  ).catch(e => console.error('[welcome-email] Slack alert failed:', e.message));
+
+  return { ok: false, attempts: 3, lastError: lastErr };
+}
+
 async function notifyAdminFallback({ email, inviteLink, reason }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
@@ -682,7 +728,7 @@ async function generateTelegramInvite(customerEmail) {
 // Exported for /api/admin?action=retry-failed-emails to reuse the same
 // retry+alert pipeline. Importing from another API route is supported by
 // Vercel's bundler. Side effects (Firebase init) are idempotent.
-export { sendMixConfirmationEmail, postSlackAlert };
+export { sendMixConfirmationEmail, sendWelcomeEmailWithRetry, postSlackAlert };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
@@ -933,13 +979,23 @@ export default async function handler(req, res) {
           telegramInviteIssued: new Date().toISOString()
         }, { merge: true });
 
-        // Welcome email with Telegram invite link via SendGrid
-        const sg = await sendWelcomeEmail({ to: email, firstName, inviteLink }).catch(err => ({ ok: false, reason: err.message }));
+        // Welcome email through retry pipeline (parity with mix flow).
+        // Failures persist to failed_email_sends with flow='premium_welcome'
+        // and ping Slack; daily cron retries via /api/admin?action=retry-failed-emails.
+        // Telegram admin fallback kept as belt-and-suspenders.
+        const sg = await sendWelcomeEmailWithRetry({
+          to: email,
+          firstName,
+          inviteLink,
+          stripeCustomerId: customerId,
+          stripeSessionId: session.id,
+          subscriptionId
+        }).catch(err => ({ ok: false, reason: err.message }));
         if (sg.ok) {
-          console.log(`[LETTO] Welcome email sent to ${email}`);
+          console.log(`[LETTO] Welcome email sent to ${email} (attempts=${sg.attempts})`);
         } else {
-          console.error(`[LETTO] SendGrid send failed (${sg.status || sg.reason}):`, sg.body || sg.reason);
-          await notifyAdminFallback({ email, inviteLink, reason: `${sg.status || sg.reason || 'unknown'}` });
+          console.error(`[LETTO] Welcome email exhausted retries for ${email}:`, sg.lastError);
+          await notifyAdminFallback({ email, inviteLink, reason: 'retry_exhausted' });
         }
 
         console.log(`[LETTO] Premium activated: ${email}, invite: ${inviteLink}`);

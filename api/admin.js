@@ -8,7 +8,7 @@
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { sendMixConfirmationEmail, postSlackAlert } from './stripe-webhook.js';
+import { sendMixConfirmationEmail, sendWelcomeEmailWithRetry, postSlackAlert } from './stripe-webhook.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -407,23 +407,44 @@ export default async function handler(req, res) {
         .limit(50)
         .get();
 
-      const results = { scanned: snap.size, delivered: 0, escalated: 0, errors: [] };
+      const results = { scanned: snap.size, delivered: 0, escalated: 0, errors: [], byFlow: {} };
       for (const doc of snap.docs) {
         const rec = doc.data();
-        const tripId = rec.tripId;
+        const flow = rec.flow || 'mix'; // legacy records (pre-FAZA-B) lack flow → assume mix
+        results.byFlow[flow] = results.byFlow[flow] || { delivered: 0, escalated: 0, errors: 0 };
+
         try {
-          const tripSnap = await db.collection('purchasedMixes').doc(tripId).get();
-          if (!tripSnap.exists) {
-            await doc.ref.update({
-              status: 'manual_review',
-              lastAttemptAt: new Date().toISOString(),
-              lastError: { reason: 'purchasedMixes_doc_missing' }
+          let send;
+          let label = doc.id;
+          if (flow === 'premium_welcome') {
+            // Premium welcome retry: re-send the SendGrid welcome email.
+            send = await sendWelcomeEmailWithRetry({
+              to: rec.userEmail,
+              firstName: null,
+              inviteLink: rec.inviteLink || null,
+              stripeCustomerId: rec.stripeCustomerId || null,
+              stripeSessionId: rec.stripeSessionId || null,
+              subscriptionId: rec.subscriptionId || null
             });
-            results.escalated++;
-            continue;
+            label = `welcome:${rec.userEmail}`;
+          } else {
+            // Default: mix confirmation. Look up the canonical trip.
+            const tripId = rec.tripId;
+            const tripSnap = await db.collection('purchasedMixes').doc(tripId).get();
+            if (!tripSnap.exists) {
+              await doc.ref.update({
+                status: 'manual_review',
+                lastAttemptAt: new Date().toISOString(),
+                lastError: { reason: 'purchasedMixes_doc_missing' }
+              });
+              results.escalated++;
+              results.byFlow[flow].escalated++;
+              continue;
+            }
+            send = await sendMixConfirmationEmail(tripSnap.data());
+            label = `mix:${tripId}`;
           }
-          const trip = tripSnap.data();
-          const send = await sendMixConfirmationEmail(trip);
+
           if (send.ok) {
             await doc.ref.update({
               status: 'delivered',
@@ -432,6 +453,7 @@ export default async function handler(req, res) {
               attempts: (rec.attempts || 0) + (send.attempts || 1)
             });
             results.delivered++;
+            results.byFlow[flow].delivered++;
           } else {
             const totalAttempts = (rec.attempts || 0) + (send.attempts || 3);
             if (totalAttempts >= 6) {
@@ -442,8 +464,9 @@ export default async function handler(req, res) {
                 lastError: send.lastError || { reason: 'unknown' }
               });
               results.escalated++;
+              results.byFlow[flow].escalated++;
               await postSlackAlert(
-                `🛑 Email send escalated to manual_review · trip=${tripId} · ${trip.userEmail} · ${totalAttempts} attempts. Open Stripe + Resend dashboards.`
+                `🛑 Email escalated to manual_review · ${label} · ${totalAttempts} attempts · flow=${flow}. Open Stripe + email-provider dashboards.`
               ).catch(() => {});
             } else {
               await doc.ref.update({
@@ -454,7 +477,8 @@ export default async function handler(req, res) {
             }
           }
         } catch (e) {
-          results.errors.push({ tripId, message: e.message });
+          results.errors.push({ docId: doc.id, flow, message: e.message });
+          results.byFlow[flow].errors++;
         }
       }
       return res.status(200).json(results);
