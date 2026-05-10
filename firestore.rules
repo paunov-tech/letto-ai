@@ -63,6 +63,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── FAILED EMAIL SENDS (F13) ───────────────────────────
+    // Webhook writes here when sendMixConfirmationEmail exhausts retries.
+    // Daily Vercel cron + admin retry endpoint reprocess pending_retry rows.
+    match /failed_email_sends/{tripId} {
+      allow read, write: if false;
+    }
+
+    // ─── FAILED PURCHASES (F14/F18) ─────────────────────────
+    // Webhook writes here when a paid Stripe session has no recoverable
+    // customer email (Apple Pay / Express checkout edge). Manual recovery
+    // through Stripe Dashboard.
+    match /failed_purchases/{sessionId} {
+      allow read, write: if false;
+    }
+
     // ─── DENY BY DEFAULT ────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

@@ -500,16 +500,12 @@ function buildMixEmailText(trip, originName, destName, dateRange) {
   return lines.join('\n');
 }
 
-async function sendMixConfirmationEmail(trip) {
+// Build the email request body once so retries don't regenerate the PDF
+// (PDF gen is the expensive step at ~200ms; HTTP attempt is a few hundred ms).
+async function buildMixEmailRequest(trip) {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.log('[mix-email] RESEND_API_KEY missing — skipping email send (trip=' + trip.tripId + ')');
-    return { ok: false, reason: 'no_api_key' };
-  }
-  if (!trip.userEmail) {
-    console.warn('[mix-email] no userEmail on trip', trip.tripId);
-    return { ok: false, reason: 'no_email' };
-  }
+  if (!apiKey) return { error: 'no_api_key' };
+  if (!trip.userEmail) return { error: 'no_email' };
 
   const sender = await resolveResendSender(apiKey);
   const f = trip.flight || {};
@@ -549,6 +545,10 @@ async function sendMixConfirmationEmail(trip) {
     console.error('[mix-email] PDF generation failed (sending without attachment):', e.message);
   }
 
+  return { apiKey, body };
+}
+
+async function attemptResendSend(apiKey, body, tripId) {
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -557,15 +557,106 @@ async function sendMixConfirmationEmail(trip) {
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
-      console.error('[mix-email] Resend HTTP', r.status, JSON.stringify(j).slice(0, 300));
       return { ok: false, status: r.status, body: j };
     }
-    console.log('[mix-email] sent ·', trip.userEmail, '· id=' + (j.id || '?') + ' · trip=' + trip.tripId);
+    console.log('[mix-email] sent ·', body.to[0], '· id=' + (j.id || '?') + ' · trip=' + tripId);
     return { ok: true, id: j.id };
   } catch (e) {
-    console.error('[mix-email] send failed:', e.message);
     return { ok: false, reason: e.message };
   }
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// F13: 3-attempt exponential backoff retry. On final failure: persist to
+// failed_email_sends + Slack alert so the customer's missing confirmation is
+// visible to operators rather than buried in Vercel logs.
+async function sendMixConfirmationEmail(trip) {
+  const prep = await buildMixEmailRequest(trip);
+  if (prep.error) {
+    console.warn('[mix-email] cannot build request:', prep.error, 'trip=' + trip.tripId);
+    return { ok: false, reason: prep.error };
+  }
+
+  const backoffsMs = [1000, 3000, 9000];
+  let lastErr = null;
+  for (let i = 0; i < 3; i++) {
+    if (i > 0) await sleep(backoffsMs[i - 1]);
+    const res = await attemptResendSend(prep.apiKey, prep.body, trip.tripId);
+    if (res.ok) return { ok: true, id: res.id, attempts: i + 1 };
+    lastErr = res;
+    console.error(`[mix-email] attempt ${i + 1}/3 failed · trip=${trip.tripId} ·`, JSON.stringify(res).slice(0, 240));
+  }
+
+  // All 3 attempts failed. Persist the failure with enough context for replay.
+  await persistEmailFailure(trip, lastErr).catch(e =>
+    console.error('[mix-email] failed_email_sends write failed:', e.message)
+  );
+  await postSlackAlert(
+    `🚨 Email send failed (3/3) · trip=${trip.tripId} · ${trip.userEmail} · err=${(lastErr && (lastErr.reason || lastErr.status)) || 'unknown'}\nManual retry: POST /api/admin?action=retry-failed-emails`
+  ).catch(e => console.error('[mix-email] Slack alert failed:', e.message));
+
+  return { ok: false, attempts: 3, lastError: lastErr };
+}
+
+async function persistEmailFailure(trip, lastErr) {
+  await db.collection('failed_email_sends').doc(trip.tripId).set({
+    tripId: trip.tripId,
+    userEmail: trip.userEmail,
+    attemptedAt: new Date().toISOString(),
+    attempts: 3,
+    status: 'pending_retry',
+    error: {
+      reason: lastErr?.reason || null,
+      status: lastErr?.status || null,
+      body: lastErr?.body ? JSON.stringify(lastErr.body).slice(0, 2000) : null
+    },
+    tripSnapshot: {
+      tier: trip.tier || null,
+      route: trip.route || null,
+      grandTotal: trip.grandTotal || null,
+      currency: trip.currency || null
+    }
+  }, { merge: true });
+}
+
+// Slack incoming webhook helper. Silent no-op if SLACK_ALERT_WEBHOOK_URL unset
+// (so dev environments don't blow up on missing config).
+async function postSlackAlert(text) {
+  const url = process.env.SLACK_ALERT_WEBHOOK_URL;
+  if (!url) {
+    console.log('[slack-alert] (no webhook configured) ·', text);
+    return;
+  }
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  }).catch(e => { throw new Error('Slack POST failed: ' + e.message); });
+}
+
+// F14/F18: handler for paid sessions where Stripe gave us no email at all
+// (Apple Pay / Express checkout edge). Persist a recoverable record + alert
+// so we can manually contact the customer through the Stripe Dashboard.
+async function persistOrphanPurchase(session, pendingMixId) {
+  try {
+    await db.collection('failed_purchases').doc(session.id).set({
+      stripeSessionId: session.id,
+      stripeCustomerId: session.customer || null,
+      pendingMixId: pendingMixId || null,
+      paidAt: new Date().toISOString(),
+      amount_total: session.amount_total || null,
+      currency: session.currency || null,
+      mode: session.mode,
+      reason: 'no_customer_email',
+      status: 'pending_recovery'
+    }, { merge: true });
+  } catch (e) {
+    console.error('[orphan-purchase] write failed:', e.message);
+  }
+  await postSlackAlert(
+    `🚨 Paid session with NO email · ${session.id} · €${(session.amount_total || 0) / 100} · cust=${session.customer || 'none'}\nLook up via Stripe Dashboard → contact customer manually.`
+  ).catch(e => console.error('[orphan-purchase] Slack alert failed:', e.message));
 }
 
 async function generateTelegramInvite(customerEmail) {
@@ -587,6 +678,11 @@ async function generateTelegramInvite(customerEmail) {
   const data = await resp.json();
   return data.result?.invite_link || null;
 }
+
+// Exported for /api/admin?action=retry-failed-emails to reuse the same
+// retry+alert pipeline. Importing from another API route is supported by
+// Vercel's bundler. Side effects (Firebase init) are idempotent.
+export { sendMixConfirmationEmail, postSlackAlert };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
@@ -620,13 +716,28 @@ export default async function handler(req, res) {
           break;
         }
 
-        const email = session.customer_email || session.customer_details?.email;
+        let email = session.customer_email || session.customer_details?.email;
         const firstName = session.customer_details?.name?.split(' ')[0];
         const customerId = session.customer;
         const subscriptionId = session.subscription;
         const tier = session.metadata?.tier;
 
-        if (!email) break;
+        // F14/F18: paid session with no captured email (Apple Pay / Express
+        // checkout edge). Stripe stores it on the Customer object even when
+        // not on the session itself — try one recovery before giving up.
+        if (!email && customerId) {
+          try {
+            const cust = await stripe.customers.retrieve(customerId);
+            if (cust && cust.email) email = cust.email;
+          } catch (e) {
+            console.warn('[LETTO] customer retrieve failed for email recovery:', e.message);
+          }
+        }
+        if (!email) {
+          console.error('[LETTO] PAID session with no recoverable email · session=' + session.id);
+          await persistOrphanPurchase(session, session.metadata?.pendingMixId);
+          break;
+        }
 
         // One-time AI Mix unlock (€7.99) — flag user + persist the bought trip
         // as a purchasedMixes record (C-1 · Mix kao proizvod, faza 1).

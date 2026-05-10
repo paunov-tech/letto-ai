@@ -1,9 +1,14 @@
 // api/admin.js — Admin panel API for letto_packages (v7 schema)
 // Lists pending packages, handles approve (to public/premium) / reject / edit.
 // Protected by ADMIN_TOKEN env variable.
+//
+// Auth: Bearer ADMIN_TOKEN OR (for /retry-failed-emails) Vercel cron with
+// `Authorization: Bearer <CRON_SECRET>` (Vercel injects this header on
+// scheduled invocations).
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { sendMixConfirmationEmail, postSlackAlert } from './stripe-webhook.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -20,7 +25,12 @@ const COLL = 'letto_packages';
 
 function checkAuth(req) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  return token === process.env.ADMIN_TOKEN;
+  if (token && token === process.env.ADMIN_TOKEN) return true;
+  // Vercel cron sends Authorization: Bearer ${CRON_SECRET}. Allow that path
+  // for /retry-failed-emails so the daily scheduler can invoke without
+  // sharing the human admin token.
+  if (token && process.env.CRON_SECRET && token === process.env.CRON_SECRET) return true;
+  return false;
 }
 
 export default async function handler(req, res) {
@@ -208,6 +218,69 @@ export default async function handler(req, res) {
         cancelled: rows.filter(r => !!r.premiumEndedAt && r.tier === 'free').length
       };
       return res.status(200).json({ subscribers: rows, counts });
+    }
+
+    // F13 RETRY · scan failed_email_sends and re-attempt delivery for each
+    // pending_retry record. Designed to be called by Vercel cron daily AND
+    // manually by admin via Bearer ADMIN_TOKEN. Caps total retries per record
+    // at 6 (3 from webhook + 3 from this loop) before flagging manual_review.
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'retry-failed-emails') {
+      const snap = await db.collection('failed_email_sends')
+        .where('status', '==', 'pending_retry')
+        .limit(50)
+        .get();
+
+      const results = { scanned: snap.size, delivered: 0, escalated: 0, errors: [] };
+      for (const doc of snap.docs) {
+        const rec = doc.data();
+        const tripId = rec.tripId;
+        try {
+          const tripSnap = await db.collection('purchasedMixes').doc(tripId).get();
+          if (!tripSnap.exists) {
+            await doc.ref.update({
+              status: 'manual_review',
+              lastAttemptAt: new Date().toISOString(),
+              lastError: { reason: 'purchasedMixes_doc_missing' }
+            });
+            results.escalated++;
+            continue;
+          }
+          const trip = tripSnap.data();
+          const send = await sendMixConfirmationEmail(trip);
+          if (send.ok) {
+            await doc.ref.update({
+              status: 'delivered',
+              deliveredAt: new Date().toISOString(),
+              resendId: send.id || null,
+              attempts: (rec.attempts || 0) + (send.attempts || 1)
+            });
+            results.delivered++;
+          } else {
+            const totalAttempts = (rec.attempts || 0) + (send.attempts || 3);
+            if (totalAttempts >= 6) {
+              await doc.ref.update({
+                status: 'manual_review',
+                lastAttemptAt: new Date().toISOString(),
+                attempts: totalAttempts,
+                lastError: send.lastError || { reason: 'unknown' }
+              });
+              results.escalated++;
+              await postSlackAlert(
+                `🛑 Email send escalated to manual_review · trip=${tripId} · ${trip.userEmail} · ${totalAttempts} attempts. Open Stripe + Resend dashboards.`
+              ).catch(() => {});
+            } else {
+              await doc.ref.update({
+                lastAttemptAt: new Date().toISOString(),
+                attempts: totalAttempts,
+                lastError: send.lastError || { reason: 'unknown' }
+              });
+            }
+          }
+        } catch (e) {
+          results.errors.push({ tripId, message: e.message });
+        }
+      }
+      return res.status(200).json(results);
     }
 
     return res.status(400).json({ error: 'Invalid action or method' });

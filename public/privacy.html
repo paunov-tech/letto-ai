@@ -21,6 +21,7 @@
   a { color: #8A5F1F; }
   footer { padding: 40px 32px; border-top: 1px solid #D4C9AE; text-align: center; color: #726A58; font-size: 13px; }
 </style>
+<script src="/consent.js" defer></script>
 </head>
 <body>
 
@@ -41,9 +42,19 @@
     <li><strong>Email adresa</strong> — kada se pretplatiš na newsletter ili postaneš Premium korisnik.</li>
     <li><strong>Podaci o plaćanju</strong> — obrađuju se isključivo preko Stripe-a. Mi ne čuvamo brojeve kreditnih kartica. Videti <a href="https://stripe.com/privacy" target="_blank">Stripe Privacy Policy</a>.</li>
     <li><strong>Telegram user ID</strong> — ako se pridružiš našim Telegram kanalima preko bota.</li>
-    <li><strong>Analitika</strong> — anonimne informacije o posetama sajtu (bez cookies koji te identifikuju), kroz privacy-first alat Plausible.</li>
+    <li><strong>Pretrage i izabrani Mix paketi</strong> — pri korišćenju Mix V2 (let + hotel), tvoji izabrani paketi se čuvaju u localStorage tvog uređaja i, posle plaćanja, u našoj bazi (purchasedMixes) za potrebe slanja itinerara i podrške.</li>
+    <li><strong>Marketing piksel (Meta/Facebook)</strong> — samo ako si dao saglasnost za "Marketing" kategoriju kolačića. Bez saglasnosti, piksel se ne pokreće. Saglasnost možeš povući u svakom trenutku preko linka "Podešavanja kolačića" u footer-u.</li>
     <li><strong>AI upiti</strong> — kada koristiš AI pretragu, tvoj tekst se šalje Anthropic Claude API-ju za parsing. Ne skladištimo upite duže od 30 dana.</li>
   </ul>
+
+  <h2>1a. Kolačići i saglasnost</h2>
+  <p>Pri prvoj poseti, prikazaćemo banner sa tri kategorije:</p>
+  <ul>
+    <li><strong>Neophodni</strong> — uvek aktivni. Bez njih sajt ne može da funkcioniše (autentikacija, jezik, korpa).</li>
+    <li><strong>Analitika</strong> — anonimno merenje saobraćaja. Trenutno nije aktivno; biće omogućeno tek kada počnemo da koristimo Plausible/PostHog. Tvoja saglasnost se pamti i primeniti će se automatski.</li>
+    <li><strong>Marketing</strong> — Meta/Facebook piksel za remarketing oglasa. Pokreće se samo uz tvoju eksplicitnu saglasnost.</li>
+  </ul>
+  <p>Saglasnost se čuva lokalno u tvom pregledaču (key: <code>letto_cookie_consent</code>). Možeš je promeniti u svakom trenutku klikom na <a href="#" onclick="window.lettoOpenConsentModal && window.lettoOpenConsentModal(); return false;">Podešavanja kolačića</a>.</p>
 
   <h2>2. Kako koristimo tvoje podatke</h2>
   <ul>
@@ -55,13 +66,19 @@
 
   <p><strong>Mi NE prodajemo tvoje podatke trećim licima.</strong> Nikada.</p>
 
-  <h2>3. Gde se podaci čuvaju</h2>
-  <p>Tvoji podaci se skladište u:</p>
+  <h2>3. Gde se podaci čuvaju i ko su naši obrađivači</h2>
+  <p>Tvoji podaci se skladište kod sledećih obrađivača (data processors):</p>
   <ul>
-    <li>Google Firebase Firestore (server: Evropa — europe-west1, Belgium)</li>
-    <li>Stripe (SAD i EU, u skladu sa EU-US Data Privacy Framework)</li>
-    <li>Mailchimp (SAD, Standard Contractual Clauses)</li>
-    <li>Telegram (samo user ID i status pretplate, nikakav sadržaj poruka)</li>
+    <li><strong>Google Firebase Firestore</strong> — primarna baza (server: Evropa — europe-west1, Belgium).</li>
+    <li><strong>Stripe</strong> — obrada plaćanja (SAD i EU, EU-US Data Privacy Framework).</li>
+    <li><strong>Resend</strong> — slanje transakcionih emailova (potvrda kupovine, itinerar PDF). Server: SAD, Standard Contractual Clauses.</li>
+    <li><strong>SendGrid</strong> — slanje welcome emailova za Premium pretplate (SAD, SCC).</li>
+    <li><strong>Telegram</strong> — samo user ID i status pretplate, nikakav sadržaj poruka.</li>
+    <li><strong>RapidAPI / Hotels.com Provider</strong> — pri pretrazi hotela, IATA destinacija + datumi se prosleđuju za dobijanje cena. Bez ličnih podataka.</li>
+    <li><strong>CJ Affiliate (Commission Junction)</strong> — affiliate inventar (avio kompanije). Bez ličnih podataka.</li>
+    <li><strong>Anthropic (Claude API)</strong> — AI parsing korisničkih upita. Anthropic ne koristi tvoje upite za treniranje.</li>
+    <li><strong>Meta/Facebook Pixel</strong> — samo uz Marketing saglasnost. Šalje agregisane informacije o stranicama koje si posetio za optimizaciju oglasa.</li>
+    <li><strong>Vercel</strong> — hosting infrastruktura (Frankfurt FRA1).</li>
   </ul>
 
   <h2>4. Tvoja prava (GDPR)</h2>

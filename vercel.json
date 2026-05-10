@@ -30,5 +30,10 @@
       ]
     }
   ],
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/admin?action=retry-failed-emails",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
