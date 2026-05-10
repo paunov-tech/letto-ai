@@ -1,0 +1,41 @@
+name: Deploy tag
+
+# FAZA E3 · Tag every push to main with deploy-YYYY-MM-DD-HHmm-<sha>.
+# Vercel runs the actual deploy off the same push; this workflow runs in
+# parallel and adds a lightweight tag we can use for rollback / change
+# log diffs without depending on Vercel's UI.
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create + push deploy tag
+        env:
+          GIT_USER_NAME: github-actions[bot]
+          GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          git config user.name "$GIT_USER_NAME"
+          git config user.email "$GIT_USER_EMAIL"
+          STAMP=$(date -u +%Y-%m-%d-%H%M)
+          SHA=$(git rev-parse --short HEAD)
+          TAG="deploy-${STAMP}-${SHA}"
+          if git tag --list | grep -qx "$TAG"; then
+            echo "Tag $TAG already exists — skipping"
+          else
+            git tag -a "$TAG" -m "Auto deploy tag at ${STAMP} for ${SHA}"
+            git push origin "$TAG"
+            echo "Tagged: $TAG"
+          fi

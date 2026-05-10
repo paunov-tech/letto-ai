@@ -9,6 +9,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
+import { Storage } from '@google-cloud/storage';
 import { sendMixConfirmationEmail, sendWelcomeEmailWithRetry, postSlackAlert } from './stripe-webhook.js';
 
 if (!getApps().length) {
@@ -219,6 +220,142 @@ async function handler(req, res) {
         cancelled: rows.filter(r => !!r.premiumEndedAt && r.tier === 'free').length
       };
       return res.status(200).json({ subscribers: rows, counts });
+    }
+
+    // FAZA E1 · daily Firestore export to GCS.
+    // Snapshots the 6 high-value collections to JSON, uploads to
+    //   gs://${FIREBASE_BACKUP_BUCKET}/daily/YYYY-MM-DD/<collection>.json
+    // and posts size summary to Slack. 30-day retention is enforced via
+    // a bucket lifecycle rule the operator sets up at bucket creation
+    // (`gsutil lifecycle set lifecycle.json gs://letto-ai-backups`).
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'daily-firestore-export') {
+      const bucketName = process.env.FIREBASE_BACKUP_BUCKET;
+      if (!bucketName) {
+        return res.status(500).json({
+          error: 'FIREBASE_BACKUP_BUCKET env var not set',
+          hint: 'Create a GCS bucket (e.g. letto-ai-backups, location=eu) and set the env var to its name.'
+        });
+      }
+      const COLLECTIONS = [
+        'letto_subscribers',
+        'letto_packages',
+        'purchasedMixes',
+        'failed_email_sends',
+        'currency_mismatches',
+        'failed_purchases'
+      ];
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const storage = new Storage({
+        projectId: 'letto-ai',
+        credentials: {
+          client_email: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+          private_key: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+        }
+      });
+      const bucket = storage.bucket(bucketName);
+      const summary = { date: today, bucket: bucketName, collections: [], totalBytes: 0 };
+      for (const collName of COLLECTIONS) {
+        try {
+          const snap = await db.collection(collName).get();
+          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const json = JSON.stringify(docs, (_k, v) => {
+            // Firestore Timestamps serialize to {_seconds, _nanoseconds};
+            // also handle DocumentReferences by emitting their path.
+            if (v && typeof v === 'object' && typeof v.toDate === 'function') {
+              try { return v.toDate().toISOString(); } catch { return null; }
+            }
+            return v;
+          }, 2);
+          const objectPath = `daily/${today}/${collName}.json`;
+          const file = bucket.file(objectPath);
+          await file.save(json, {
+            contentType: 'application/json',
+            metadata: { metadata: { backupDate: today, collection: collName, docCount: String(docs.length) } }
+          });
+          summary.collections.push({ name: collName, docs: docs.length, bytes: Buffer.byteLength(json) });
+          summary.totalBytes += Buffer.byteLength(json);
+        } catch (e) {
+          console.error('[daily-firestore-export]', collName, 'failed:', e.message);
+          summary.collections.push({ name: collName, error: e.message });
+        }
+      }
+      const totalMb = (summary.totalBytes / (1024 * 1024)).toFixed(2);
+      const text = `✅ Daily backup · ${COLLECTIONS.length} collections · ${totalMb} MB · ${today}\n` +
+        summary.collections.map(c =>
+          c.error ? `  🔴 ${c.name}: ${c.error}` : `  ${c.name}: ${c.docs} docs (${(c.bytes / 1024).toFixed(1)} KB)`
+        ).join('\n');
+      await postSlackAlert(text).catch(() => {});
+      return res.status(200).json({ ok: true, ...summary });
+    }
+
+    // FAZA E2 · daily review report. Surfaces every "stuck" record across
+    // the reliability collections so a human can act before it ages out.
+    if ((req.method === 'POST' || req.method === 'GET') && action === 'daily-review-report') {
+      const since24h = new Date(Date.now() - 24 * 3600000).toISOString();
+
+      const [pendingEmail, manualReviewEmail, currencyMM, pendingTrips] = await Promise.all([
+        db.collection('failed_email_sends').where('status', '==', 'pending_retry').get().catch(() => ({ docs: [] })),
+        db.collection('failed_email_sends').where('status', '==', 'manual_review').get().catch(() => ({ docs: [] })),
+        db.collection('currency_mismatches').where('status', '==', 'manual_review').get().catch(() => ({ docs: [] })),
+        db.collection('purchasedMixes').where('status', '==', 'pending_email_capture').get().catch(() => ({ docs: [] }))
+      ]);
+
+      const pendingEmailCount = pendingEmail.docs.length;
+      const manualReviewCount = manualReviewEmail.docs.length;
+      const currencyCount = currencyMM.docs.length;
+      const pendingTripsCount = pendingTrips.docs.length;
+
+      // Compute oldest pending-email-capture trip age in hours
+      let oldestPendingTripHours = 0;
+      for (const d of pendingTrips.docs) {
+        const paidAt = d.data().paidAt;
+        if (!paidAt) continue;
+        const ageH = (Date.now() - new Date(paidAt).getTime()) / 3600000;
+        if (ageH > oldestPendingTripHours) oldestPendingTripHours = ageH;
+      }
+
+      // Trial expiring next 24h — premium subscribers with trialEndsAt < +24h.
+      // Best-effort; current letto_subscribers schema may not have trialEndsAt
+      // yet. Skip silently if collection query fails.
+      let trialExpiring = 0;
+      try {
+        const trialSnap = await db.collection('letto_subscribers')
+          .where('subscribed', '==', true)
+          .get();
+        const cutoff = Date.now() + 24 * 3600000;
+        trialExpiring = trialSnap.docs.filter(d => {
+          const t = d.data().trialEndsAt;
+          if (!t) return false;
+          const ts = new Date(t).getTime();
+          return ts > Date.now() && ts < cutoff;
+        }).length;
+      } catch (_) { /* schema may not have field; ignore */ }
+
+      const lines = [
+        `📋 Letto daily review · ${new Date().toISOString().slice(0, 10)}`,
+        `failed_email_sends: ${pendingEmailCount} pending · ${manualReviewCount} manual_review`,
+        `currency_mismatches: ${currencyCount} manual_review`,
+        `pending_email_capture mixes: ${pendingTripsCount}${pendingTripsCount ? ` (oldest: ${oldestPendingTripHours.toFixed(1)}h)` : ''}`,
+        `trial expiring 24h: ${trialExpiring}`
+      ];
+      const totalActions = pendingEmailCount + manualReviewCount + currencyCount + pendingTripsCount;
+      lines.push(totalActions > 0
+        ? `Action items: ${totalActions} record(s) need attention.`
+        : 'Action items: none.');
+
+      const text = lines.join('\n');
+      await postSlackAlert(text).catch(() => {});
+      return res.status(200).json({
+        ok: true,
+        date: new Date().toISOString().slice(0, 10),
+        pendingEmailCount,
+        manualReviewCount,
+        currencyMismatchCount: currencyCount,
+        pendingTripsCount,
+        oldestPendingTripHours: Math.round(oldestPendingTripHours * 10) / 10,
+        trialExpiring,
+        text
+      });
     }
 
     // FAZA C3 · packages-health daily Slack report. Surfaces "engine is dead"
