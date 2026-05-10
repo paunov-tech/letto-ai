@@ -12,10 +12,28 @@
 // Stars: derived as round(guestRating / 2) per master-design Korak 1 spec
 //        (Hotels.com Provider doesn't return hotel-class stars in list response).
 //
-// Edge cache 1h via Cache-Control: s-maxage=3600. With ~14k req/mo plan,
-// this absorbs duplicate searches across users on the same dates+destination.
+// Caching: Firestore-backed cache layer (lib/hotels-cache.js, 6h TTL) sits
+// in front of the entire RapidAPI pipeline. Cache hits skip the 8s region
+// lookup + 15s property search + up to 5×6s detail enrichment — total
+// hot-path 27s+ → cache-hit ~150ms. Edge CDN cache headers stay as a
+// secondary layer for repeat hits in the same minute.
 
 import { withSentry } from '../lib/sentry-backend.js';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { buildCacheKey, getCached, setCached } from '../lib/hotels-cache.js';
+
+if (!getApps().length) {
+  initializeApp({
+    credential: cert({
+      projectId: 'letto-ai',
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    })
+  });
+}
+const db = getFirestore();
+
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY || '';
 const RAPIDAPI_HOST = 'hotels-com-provider.p.rapidapi.com';
 const TP_MARKER     = process.env.TRAVELPAYOUTS_MARKER || '722287';
@@ -314,6 +332,27 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'Unknown destination IATA: ' + destinationRaw });
   }
 
+  // Cache check — skip the entire RapidAPI pipeline if we have a fresh hit
+  // for this destination + date + pax combo within the 6h TTL.
+  const cacheKey = buildCacheKey({ destination: destinationRaw, checkIn, checkOut, adults, children });
+  const cached = await getCached(db, cacheKey);
+  if (cached) {
+    res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    return res.status(200).json({
+      hotels: (cached.hotels || []).slice(0, limit),
+      destination: cached.destination,
+      meta: {
+        totalReturned: (cached.hotels || []).length,
+        limit,
+        marker: TP_MARKER,
+        cacheHit: true,
+        cacheAgeMs: cached.ageMs,
+        ...(debug ? { source: 'firestore-cache' } : {})
+      }
+    });
+  }
+
   // Region lookup
   const region = await searchRegion(cityEn);
   if (region.error) {
@@ -379,19 +418,27 @@ async function handler(req, res) {
   res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
   res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
 
+  const destinationPayload = {
+    iata: destinationRaw,
+    cityEn,
+    regionId: region.regionId,
+    coords: region.coords
+  };
+
+  // Persist to Firestore cache so subsequent searches for the same combo
+  // skip the 27s pipeline. Fire-and-forget — never block the response.
+  setCached(db, cacheKey, { hotels: hotelsAll, destination: destinationPayload })
+    .catch(e => console.warn('[hotels-search] cache write failed:', e.message));
+
   return res.status(200).json({
     hotels,
-    destination: {
-      iata: destinationRaw,
-      cityEn,
-      regionId: region.regionId,
-      coords: region.coords
-    },
+    destination: destinationPayload,
     meta: {
       totalReturned: hotelsAll.length,
       limit,
       marker: TP_MARKER,
       distancesEnriched,
+      cacheHit: false,
       ...(debug ? { rateLimit: propsResult.rateLimit } : {})
     }
   });

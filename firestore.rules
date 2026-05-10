@@ -85,6 +85,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── HOTELS SEARCH CACHE (FAZA H) ───────────────────────
+    // 6h-TTL Firestore cache for /api/hotels-search RapidAPI results, keyed
+    // by destinationIATA_checkIn_checkOut_adults_children. Server-side only;
+    // client reads go through the API which validates auth/CORS.
+    match /hotels_search_cache/{cacheKey} {
+      allow read, write: if false;
+    }
+
     // ─── DENY BY DEFAULT ────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
