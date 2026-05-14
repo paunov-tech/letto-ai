@@ -17,6 +17,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { cleanAviasalesUrl, buildAviasalesUrl } from '../lib/aviasales-url.js';
+import { verifyPremiumSession, getSessionIdFromRequest } from '../lib/auth.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -45,8 +46,22 @@ async function handler(req, res) {
 
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
 
-  const tier = req.query.tier === 'premium' ? 'premium' : 'public';
-  const status = tier === 'premium' ? 'published_premium' : 'published_public';
+  // Premium tier requires a verified Stripe session — same check /api/me
+  // performs. Without this, anyone could call ?tier=premium and read the
+  // gated catalog. Per-user response, so disable shared caching.
+  const wantsPremium = req.query.tier === 'premium';
+  if (wantsPremium) {
+    const sessionId = getSessionIdFromRequest(req);
+    const auth = await verifyPremiumSession(sessionId);
+    if (!auth.premium) {
+      res.setHeader('Cache-Control', 'private, no-store');
+      return res.status(401).json({ error: 'premium_required' });
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+  }
+
+  const tier = wantsPremium ? 'premium' : 'public';
+  const status = wantsPremium ? 'published_premium' : 'published_public';
   const limit = Math.min(parseInt(req.query.limit) || 20, 50);
 
   const origin = (req.query.origin || '').toUpperCase().slice(0, 3) || null;
