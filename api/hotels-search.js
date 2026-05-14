@@ -22,6 +22,7 @@ import { withSentry } from '../lib/sentry-backend.js';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { buildCacheKey, getCached, setCached } from '../lib/hotels-cache.js';
+import { applyRateLimit } from '../lib/rate-limit.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -289,20 +290,42 @@ const ALLOWED_ORIGINS = ['https://letto.live', 'https://www.letto.live'];
 
 function isValidIso(d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); }
 
-async function handler(req, res) {
-  // CORS
-  const origin = req.headers.origin || '';
-  let allow = false;
+// Browser-trusted origin check. CORS headers alone don't block non-browser
+// callers (curl, scripts), so we enforce via 403 too. Allows letto.live,
+// *.vercel.app preview deploys, and localhost (dev).
+function isAllowedHost(value) {
+  if (!value) return false;
   try {
-    allow = ALLOWED_ORIGINS.includes(origin) || /\.vercel\.app$/.test(new URL(origin || 'https://x.local').hostname);
+    const h = new URL(value).hostname;
+    if (h === 'letto.live' || h === 'www.letto.live') return true;
+    if (h.endsWith('.vercel.app')) return true;
+    if (h === 'localhost' || h === '127.0.0.1') return true;
   } catch (e) {}
-  if (allow) {
+  return false;
+}
+
+async function handler(req, res) {
+  // CORS preflight + headers
+  const origin = req.headers.origin || '';
+  const referer = req.headers.referer || '';
+  const allow = isAllowedHost(origin) || (!origin && isAllowedHost(referer));
+  if (allow && origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET')     return res.status(405).json({ error: 'Method not allowed' });
+
+  // Hard gate (not just CORS): block non-browser callers and disallowed origins.
+  // Every RapidAPI cache miss costs Tipsters quota, so we protect quota by
+  // refusing requests that don't originate from a known frontend host.
+  if (!allow) return res.status(403).json({ error: 'forbidden_origin' });
+
+  // Per-IP rate limit on top of origin check. A spoofed Referer is cheap, so
+  // we also cap per-IP throughput. Mix V2 sends 1–3 requests per search;
+  // 60/min lets a user search ~1×/sec sustained, plenty for real use.
+  if (applyRateLimit(req, res, { scope: 'hotels-search', limit: 60, windowMs: 60_000 })) return;
 
   if (!RAPIDAPI_KEY) {
     return res.status(500).json({ error: 'Server is missing RAPIDAPI_KEY' });

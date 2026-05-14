@@ -10,6 +10,7 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
+import { applyRateLimit } from '../lib/rate-limit.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -27,6 +28,11 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'method_not_allowed' });
   }
+
+  // Per-IP rate limit. Legitimate users hit this 1–5x per trip page load;
+  // 30/min leaves generous headroom and caps enumeration attacks against
+  // the 64-bit tripId space at a per-instance throughput we can live with.
+  if (applyRateLimit(req, res, { scope: 'trip', limit: 30, windowMs: 60_000 })) return;
 
   const id = (req.query.id || '').toString().trim();
   // tripId is 16-char hex; reject anything else early to avoid Firestore probes
