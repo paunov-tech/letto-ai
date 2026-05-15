@@ -696,25 +696,6 @@
     .hero-eyebrow .text .byline { font-size: 22px; }
   }
 
-  /* M4 · hero h1 — replaces the decorative byline as the primary text hook.
-     `.hero-h1__pop` highlights the quantified benefit ("30% less") in gold. */
-  .hero-h1 {
-    font-family: 'Fraunces', serif;
-    font-weight: 500;
-    font-size: clamp(34px, 5.4vw, 56px);
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    color: var(--ink);
-    margin: 8px 0 4px;
-  }
-  .hero-h1__pop {
-    font-style: italic;
-    color: var(--gold-deep);
-  }
-  @media (max-width: 600px) {
-    .hero-h1 { font-size: clamp(28px, 8vw, 38px); }
-  }
-
   .hero-sub {
     font-family: 'Instrument Serif', serif;
     font-size: 18px;
@@ -3125,32 +3106,29 @@
       <div>
         <div class="hero-eyebrow">
           <div class="text">
-            <div class="eyebrow" data-en>SEQUERE SOLEM · FOLLOW THE SUN</div>
-            <div class="eyebrow" data-sr>SEQUERE SOLEM · PRATI SUNCE</div>
-            <!-- ALT h1 za Miroslav review (M4 iteracija — ovaj turn shipping prvu varijantu):
-                 - "12.000 ponuda dnevno. Jednom šaljemo onu koja vredi."
-                 - "Tvoj sledeći odmor — jeftiniji nego što misliš."
-                 - "Sequere Solem — Follow the Sun. 30% jeftinije." -->
-            <h1 class="hero-h1">
-              <span data-en>Pay <em class="hero-h1__pop">30% less</em> for the same trip.</span>
-              <span data-sr>Plati <em class="hero-h1__pop">30% manje</em> za isti odmor.</span>
-            </h1>
+            <div class="eyebrow" data-en>AFFORDABLE TRAVEL PACKAGES · SUMMER 2026</div>
+            <div class="eyebrow" data-sr>POVOLJNA PUTOVANJA · LETO 2026</div>
+            <div class="byline">Follow the Sun · <em>Sequere Solem</em></div>
           </div>
         </div>
 
         <p class="hero-sub">
           <span data-en>
-            We don't shop on price — we wait for the moment a fare drops <strong>30%+ below its 90-day median</strong>. Direct booking links to Wizz, Booking, Air Serbia. No commission, no spam.
+            We scan <strong>12,000+</strong> deals every day. We send you only the ones that are genuinely cheap.
+            <br>
+            No commission. No spam. Book direct.
           </span>
           <span data-sr>
-            Ne tražimo cenu — lovimo trenutak kad padne <strong>30%+ ispod 90-dnevnog mediana</strong>. Direktan link ka Wizz, Booking, Air Serbia. Bez provizije, bez spama.
+            Skeniramo <strong>12.000+</strong> ponuda dnevno. Šaljemo ti samo one koje su stvarno povoljne.
+            <br>
+            Bez provizije. Bez spama. Rezerviši direktno.
           </span>
         </p>
 
         <div class="hero-actions">
           <a href="#deals" class="btn-ink">
-            <span data-en>See today's 2 try-it deals (free) →</span>
-            <span data-sr>Vidi 2 try-it deala besplatno →</span>
+            <span data-en>Browse today's deals →</span>
+            <span data-sr>Pogledaj današnje dealove →</span>
           </a>
           <a href="#how" class="btn-outline">
             <span data-en>How it works</span>
