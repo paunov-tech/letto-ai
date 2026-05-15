@@ -65,7 +65,9 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     return res.redirect(303, session.url);
   } catch (err) {
-    console.error('[stripe-go] error:', err.message);
-    return res.status(500).send('checkout_failed: ' + err.message);
+    // Log full err for debugging; response stays generic — Stripe errors can
+    // include price/customer/account IDs that help attacker enumeration.
+    console.error('[stripe-go] error:', err);
+    return res.status(500).send('checkout_failed');
   }
 }

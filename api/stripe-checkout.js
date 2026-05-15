@@ -94,10 +94,13 @@ async function handler(req, res) {
 
     return res.status(200).json({ url: session.url, sessionId: session.id });
   } catch (err) {
-    console.error('Stripe checkout error:', err);
+    // Log full err for debugging in Vercel logs + Sentry (withSentry wrapper
+    // captures the throw). Response keeps a generic message — Stripe errors
+    // can include price IDs, customer IDs, "no such customer cus_XXX", etc.
+    console.error('[stripe-checkout] error:', err);
     return res.status(500).json({
-      error: 'Failed to create checkout session',
-      details: err.message
+      error: 'checkout_failed',
+      message: 'Could not create checkout session. Please try again or contact info@letto.live.'
     });
   }
 }
