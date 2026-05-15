@@ -4682,20 +4682,16 @@
       </div>
     </div>
 
-    <!-- Premium-only: booking CTAs (Air Serbia affiliate + Booking.com search) -->
+    <!-- Premium-only: booking CTAs -->
     <div class="modal-booking-cta premium-only" id="modalBookingCta">
       <a id="modalBookFlight" class="booking-btn primary" href="#" target="_blank" rel="noopener">
-        <span><span data-en>✈ Book flight — </span><span data-sr>✈ Rezerviši let — </span><strong id="modalBookFlightPartner">Air Serbia</strong></span>
+        <span><span data-en>✈ Book flight</span><span data-sr>✈ Rezerviši let</span></span>
         <span class="arrow">→</span>
       </a>
       <a id="modalBookHotel" class="booking-btn secondary" href="#" target="_blank" rel="noopener">
-        <span><span data-en>🏨 Search hotel on </span><span data-sr>🏨 Pretraži hotel na </span><strong>Booking.com</strong></span>
+        <span><span data-en>🏨 Book hotel</span><span data-sr>🏨 Rezerviši hotel</span></span>
         <span class="arrow">→</span>
       </a>
-      <div class="booking-note">
-        <span data-en>Affiliate links · LETTO earns small commission · price you see is what you pay</span>
-        <span data-sr>Affiliate linkovi · LETTO zarađuje malu proviziju · cena ostaje ista za tebe</span>
-      </div>
     </div>
 
     <!-- Top activities for destination (Viator) -->
@@ -5151,7 +5147,6 @@
 
     // Booking CTAs
     const flightBtn = document.getElementById('modalBookFlight');
-    const flightPartner = document.getElementById('modalBookFlightPartner');
     const hotelBtn = document.getElementById('modalBookHotel');
 
     // Flight: use flight.bookingUrl directly (CJ affiliate when matched, else aviasales redirect)
@@ -5161,7 +5156,6 @@
       if (flightUrl === '#') flightBtn.style.pointerEvents = 'none', flightBtn.style.opacity = '0.5';
       else flightBtn.style.pointerEvents = '', flightBtn.style.opacity = '';
     }
-    if (flightPartner) flightPartner.textContent = fl.bookingPartner || fl.airline || 'airline';
 
     // Hotel: prefer specific Booking.com property URL → search fallback
     const hoUrl = ho.bookingUrl || '';
