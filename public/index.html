@@ -256,50 +256,8 @@
     transform: translateY(-1px);
   }
 
-  /* ─── TOP BAR: ANNOUNCEMENT ─────────────── */
-  .announcement-bar {
-    background: var(--ink);
-    color: var(--ivory);
-    padding: 12px 0;
-    font-size: 12px;
-    letter-spacing: 0.05em;
-    text-align: center;
-    font-family: 'IBM Plex Sans', sans-serif;
-    overflow: hidden;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.3s ease;
-    user-select: none;
-  }
-  .announcement-bar:hover {
-    background: linear-gradient(90deg, var(--ink) 0%, #1F252D 50%, var(--ink) 100%);
-  }
-  .announcement-bar:hover .claim-arrow {
-    color: var(--paper);
-    transform: translateX(3px);
-  }
-  .announcement-bar .inner {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .claim-arrow {
-    margin-left: 8px;
-    color: var(--gold-light);
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    transition: transform 0.3s ease, color 0.3s ease;
-    display: inline-block;
-  }
-  .pulse-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--gold-light);
-    border-radius: 50%;
-    box-shadow: 0 0 0 3px rgba(217, 169, 74, 0.25);
-    animation: pulse-dot 2s ease-in-out infinite;
-    display: inline-block;
-  }
+  /* pulse-dot keyframes retained — still used by another element below
+     (the top promo bar that owned the .pulse-dot class was removed). */
   @keyframes pulse-dot { 50% { box-shadow: 0 0 0 6px rgba(217, 169, 74, 0); } }
 
   /* ─── NAVIGATION ───────────────────────── */
@@ -2958,17 +2916,6 @@
   </defs>
 </svg>
 
-
-<!-- ═══════════════════════════════════════════════ -->
-<!-- ANNOUNCEMENT BAR · click → Stripe Beta           -->
-<!-- ═══════════════════════════════════════════════ -->
-<div class="announcement-bar" data-stripe="premium" role="button" tabindex="0" aria-label="Subscribe to Letto Premium">
-  <div class="inner">
-    <span class="pulse-dot"></span>
-    <span data-en>LETTO Premium · Unlock all Mixes · <strong style="color: var(--gold-light);">€9.99 / month + VAT</strong> <span class="claim-arrow">Subscribe →</span></span>
-    <span data-sr>LETTO Premium · Otključaj sve Mix-ove · <strong style="color: var(--gold-light);">€9.99 / mesec + PDV</strong> <span class="claim-arrow">Pretplati se →</span></span>
-  </div>
-</div>
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- NAVIGATION                                       -->
