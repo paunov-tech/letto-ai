@@ -169,8 +169,15 @@ function enterApp() {
   setInterval(load, 60000);
 }
 
+// Same shape as admin-scraping.html / admin.html. Engine stats come from
+// /api/admin?action=engine-stats, which surfaces n8n event names and last-error
+// payloads — wrap every interpolation of untrusted data with escapeHtml().
+// `health` is a fixed enum from this file's own ternaries — never interpolated
+// from server data — so it stays raw; everything else gets escaped.
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
 function tile(num, label, sub, health) {
-  return `<div class="stat ${health ? 'health-' + health : ''}"><div class="stat-num">${num}</div><div class="stat-label">${label}</div>${sub ? `<div class="stat-sub">${sub}</div>` : ''}</div>`;
+  return `<div class="stat ${health ? 'health-' + health : ''}"><div class="stat-num">${escapeHtml(num)}</div><div class="stat-label">${escapeHtml(label)}</div>${sub ? `<div class="stat-sub">${escapeHtml(sub)}</div>` : ''}</div>`;
 }
 
 async function load() {
@@ -197,15 +204,19 @@ async function load() {
     const evRows = Object.entries(d.events).sort((a, b) => b[1] - a[1]);
     document.getElementById('events').innerHTML = evRows.length === 0
       ? '<div style="color:var(--muted);padding:8px 0;font-family:Fraunces,serif;font-style:italic;">No events recorded in last 24h. Either nothing happened, or n8n hasn\'t been activated yet.</div>'
-      : evRows.map(([k, v]) => `<div class="event-row"><span class="event-name">${k}</span><span class="event-count">${v}</span></div>`).join('');
+      : evRows.map(([k, v]) => `<div class="event-row"><span class="event-name">${escapeHtml(k)}</span><span class="event-count">${escapeHtml(v)}</span></div>`).join('');
 
     const errBox = document.getElementById('last-error-box');
     if (d.lastError) {
+      // <pre> preserves whitespace but does NOT make children safe — HTML inside
+      // is still parsed. JSON.stringify quotes string values, but the JSON output
+      // itself can still contain raw `<` / `>` / `&`. Escape the whole rendered
+      // string before innerHTML.
       errBox.innerHTML = `
         <h2 style="margin-top:24px;">Last engine error</h2>
         <div class="last-error">
-          <div class="ts">${d.lastError.ts} · workflow: ${d.lastError.workflow}</div>
-          <pre>${JSON.stringify(d.lastError.detail, null, 2).slice(0, 1500)}</pre>
+          <div class="ts">${escapeHtml(d.lastError.ts)} · workflow: ${escapeHtml(d.lastError.workflow)}</div>
+          <pre>${escapeHtml(JSON.stringify(d.lastError.detail, null, 2).slice(0, 1500))}</pre>
         </div>`;
     } else {
       errBox.innerHTML = '';

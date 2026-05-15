@@ -263,11 +263,17 @@ async function loadAll() {
   await Promise.all([loadStats(), loadPackages(), loadSubscribers()]);
 }
 
+// Same shape as the helper in admin-scraping.html. n8n / Firestore content
+// flows through innerHTML in several spots below — wrap every interpolation
+// of untrusted data with escapeHtml() to neutralise stored XSS from a
+// compromised or buggy workflow author.
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+
 function fmtTs(ts) {
   if (!ts) return '—';
   try {
     var d = new Date(ts);
-    if (isNaN(d.getTime())) return ts;
+    if (isNaN(d.getTime())) return escapeHtml(ts);
     var now = Date.now();
     var diffMs = now - d.getTime();
     if (diffMs < 60_000) return 'just now';
@@ -275,7 +281,7 @@ function fmtTs(ts) {
     if (diffMs < 86400_000) return Math.floor(diffMs / 3600_000) + ' h ago';
     if (diffMs < 7 * 86400_000) return Math.floor(diffMs / 86400_000) + ' d ago';
     return d.toISOString().slice(0, 10);
-  } catch (e) { return ts; }
+  } catch (e) { return escapeHtml(ts); }
 }
 
 function tierBadge(s) {
@@ -291,25 +297,27 @@ async function loadSubscribers() {
   try {
     var resp = await fetch('/api/admin?action=subscribers&limit=200', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
     if (!resp.ok) {
-      document.getElementById('subscribers-table').innerHTML = '<p style="color:var(--accent)">Greška: ' + resp.status + '</p>';
+      document.getElementById('subscribers-table').innerHTML = '<p style="color:var(--accent)">Greška: ' + escapeHtml(resp.status) + '</p>';
       return;
     }
     var data = await resp.json();
     var c = data.counts || {};
     document.getElementById('subs-stats').innerHTML =
-      '<div class="stat"><div class="stat-num">' + (c.total || 0) + '</div><div class="stat-label">Ukupno</div></div>' +
-      '<div class="stat"><div class="stat-num">' + (c.premium || 0) + '</div><div class="stat-label">Premium aktivnih</div></div>' +
-      '<div class="stat"><div class="stat-num">' + (c.aimixUnlocked || 0) + '</div><div class="stat-label">AI Mix unlock-ovi</div></div>' +
-      '<div class="stat"><div class="stat-num">' + (c.cancelled || 0) + '</div><div class="stat-label">Otkazano</div></div>';
+      '<div class="stat"><div class="stat-num">' + escapeHtml(c.total || 0) + '</div><div class="stat-label">Ukupno</div></div>' +
+      '<div class="stat"><div class="stat-num">' + escapeHtml(c.premium || 0) + '</div><div class="stat-label">Premium aktivnih</div></div>' +
+      '<div class="stat"><div class="stat-num">' + escapeHtml(c.aimixUnlocked || 0) + '</div><div class="stat-label">AI Mix unlock-ovi</div></div>' +
+      '<div class="stat"><div class="stat-num">' + escapeHtml(c.cancelled || 0) + '</div><div class="stat-label">Otkazano</div></div>';
 
     var rows = (data.subscribers || []).map(function (s) {
       var sid = s.stripeCustomerId ? s.stripeCustomerId.slice(0, 18) + '…' : '—';
       var src = s.source || s.aimixUnlocked && 'mix-stage3' || s.tier === 'premium' && 'subscribe' || '—';
+      // tierBadge() returns only constant-literal HTML — safe without wrapping.
+      // fmtTs() already escapes the fall-through (raw `ts`) paths.
       return '<tr>' +
-        '<td>' + (s.email || '?') + '</td>' +
+        '<td>' + escapeHtml(s.email || '?') + '</td>' +
         '<td>' + tierBadge(s) + '</td>' +
-        '<td class="mono" style="font-size:11px;">' + sid + '</td>' +
-        '<td>' + src + '</td>' +
+        '<td class="mono" style="font-size:11px;">' + escapeHtml(sid) + '</td>' +
+        '<td>' + escapeHtml(src) + '</td>' +
         '<td>' + fmtTs(s.createdAt) + '</td>' +
         '<td>' + fmtTs(s.lastActivity) + '</td>' +
         '</tr>';
@@ -327,7 +335,7 @@ async function loadSubscribers() {
         '</tr></thead><tbody>' + (rows || '<tr><td colspan="6" style="padding:24px;color:var(--muted);text-align:center;">Nema pretplatnika</td></tr>') + '</tbody></table>' +
         '<style>#subscribers-table td{padding:10px 14px;border-top:1px solid var(--border);}</style>';
   } catch (e) {
-    document.getElementById('subscribers-table').innerHTML = '<p style="color:var(--accent)">Greška: ' + e.message + '</p>';
+    document.getElementById('subscribers-table').innerHTML = '<p style="color:var(--accent)">Greška: ' + escapeHtml(e.message) + '</p>';
   }
 }
 
@@ -336,12 +344,12 @@ async function loadStats() {
     const resp = await fetch('/api/admin?action=stats', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
     const data = await resp.json();
     document.getElementById('stats').innerHTML = `
-      <div class="stat"><div class="stat-num">${data.packages.pending}</div><div class="stat-label">Pending review</div></div>
-      <div class="stat"><div class="stat-num">${data.packages.publishedPublic}</div><div class="stat-label">Public objavljeno</div></div>
-      <div class="stat"><div class="stat-num">${data.packages.publishedPremium}</div><div class="stat-label">Premium objavljeno</div></div>
-      <div class="stat"><div class="stat-num">${data.packages.rejected}</div><div class="stat-label">Odbijeno</div></div>
-      <div class="stat"><div class="stat-num">${data.subscribers.total}</div><div class="stat-label">Ukupno pretplatnika</div></div>
-      <div class="stat"><div class="stat-num">${data.subscribers.premium}</div><div class="stat-label">Premium (${data.subscribers.conversionRate})</div></div>
+      <div class="stat"><div class="stat-num">${escapeHtml(data.packages.pending)}</div><div class="stat-label">Pending review</div></div>
+      <div class="stat"><div class="stat-num">${escapeHtml(data.packages.publishedPublic)}</div><div class="stat-label">Public objavljeno</div></div>
+      <div class="stat"><div class="stat-num">${escapeHtml(data.packages.publishedPremium)}</div><div class="stat-label">Premium objavljeno</div></div>
+      <div class="stat"><div class="stat-num">${escapeHtml(data.packages.rejected)}</div><div class="stat-label">Odbijeno</div></div>
+      <div class="stat"><div class="stat-num">${escapeHtml(data.subscribers.total)}</div><div class="stat-label">Ukupno pretplatnika</div></div>
+      <div class="stat"><div class="stat-num">${escapeHtml(data.subscribers.premium)}</div><div class="stat-label">Premium (${escapeHtml(data.subscribers.conversionRate)})</div></div>
     `;
     document.getElementById('f-pending').textContent = data.packages.pending;
     document.getElementById('f-public').textContent = data.packages.publishedPublic;
@@ -361,11 +369,11 @@ function statusBadge(status) {
   if (status === 'published_public') return '<span class="badge badge-status-public">public</span>';
   if (status === 'published_premium') return '<span class="badge badge-status-premium">premium</span>';
   if (status === 'rejected') return '<span class="badge badge-status-rejected">rejected</span>';
-  return `<span class="badge">${status}</span>`;
+  return `<span class="badge">${escapeHtml(status)}</span>`;
 }
 
 function transportBadge(t) {
-  return `<span class="badge badge-transport">${t || 'flight'}</span>`;
+  return `<span class="badge badge-transport">${escapeHtml(t || 'flight')}</span>`;
 }
 
 function legIcon(kind, transport) {
@@ -376,16 +384,18 @@ function legIcon(kind, transport) {
 
 function renderLeg(kind, data, transport) {
   if (!data) return '';
+  // `title` is always one of four hard-coded literals — safe.
+  // Everything from `data.*` is Firestore/n8n content — escape each field.
   let title, detail;
   if (kind === 'outbound') {
     title = transport === 'bus' ? 'Polazni autobus' : 'Polazni let';
-    detail = `${data.airline || '?'} ${data.flightNumber || ''} · ${data.departureTime || '?'} → ${data.arrivalTime || '?'} · ${data.duration || ''} ${data.stops === 0 ? 'direct' : (data.stops + ' stop')}`;
+    detail = `${escapeHtml(data.airline || '?')} ${escapeHtml(data.flightNumber || '')} · ${escapeHtml(data.departureTime || '?')} → ${escapeHtml(data.arrivalTime || '?')} · ${escapeHtml(data.duration || '')} ${data.stops === 0 ? 'direct' : (escapeHtml(String(data.stops)) + ' stop')}`;
   } else if (kind === 'hotel') {
     title = 'Smeštaj';
-    detail = `${data.name || '?'} · ${data.rating || '?'}★ · ${data.location || ''} · €${data.pricePerNight || '?'}/noć × ${data.includes?.join(', ') || ''}`;
+    detail = `${escapeHtml(data.name || '?')} · ${escapeHtml(data.rating || '?')}★ · ${escapeHtml(data.location || '')} · €${escapeHtml(data.pricePerNight || '?')}/noć × ${escapeHtml(data.includes?.join(', ') || '')}`;
   } else if (kind === 'return') {
     title = transport === 'bus' ? 'Povratni autobus' : 'Povratni let';
-    detail = `${data.airline || '?'} ${data.flightNumber || ''} · ${data.departureTime || '?'} → ${data.arrivalTime || '?'} · ${data.duration || ''}`;
+    detail = `${escapeHtml(data.airline || '?')} ${escapeHtml(data.flightNumber || '')} · ${escapeHtml(data.departureTime || '?')} → ${escapeHtml(data.arrivalTime || '?')} · ${escapeHtml(data.duration || '')}`;
   }
   return `
     <div class="leg">
@@ -394,7 +404,7 @@ function renderLeg(kind, data, transport) {
         <div class="leg-title">${title}</div>
         <div class="leg-detail">${detail}</div>
       </div>
-      <div class="leg-price">€${kind === 'hotel' ? (data.totalPrice || 0) : (data.price || 0)}</div>
+      <div class="leg-price">€${escapeHtml(kind === 'hotel' ? (data.totalPrice || 0) : (data.price || 0))}</div>
     </div>
   `;
 }
@@ -405,7 +415,7 @@ async function loadPackages() {
     const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
     const data = await resp.json();
     if (!data.packages || data.packages.length === 0) {
-      document.getElementById('packages').innerHTML = `<div class="empty">Nema paketa u kategoriji "${CURRENT_FILTER}".<br>n8n scanner radi svaka 2h — vrati se kasnije.</div>`;
+      document.getElementById('packages').innerHTML = `<div class="empty">Nema paketa u kategoriji "${escapeHtml(CURRENT_FILTER)}".<br>n8n scanner radi svaka 2h — vrati se kasnije.</div>`;
       return;
     }
     document.getElementById('packages').innerHTML = data.packages.map(p => {
@@ -413,46 +423,53 @@ async function loadPackages() {
       const en = p.copy?.en || {};
       const isPending = p.status === 'pending_review';
       const isPublished = p.status === 'published_public' || p.status === 'published_premium';
+      // Every p.* and sr.* field is Firestore-stored, written by n8n. transportBadge,
+      // statusBadge, renderLeg already escape internally — call them raw.
+      // p.id is interpolated into onclick="...('${p.id}', ...)" — escapeHtml stops
+      // the obvious quote-break-out; real Firestore auto-IDs are alphanumeric so
+      // this is defensive (a refactor to data-* + delegation is the cleaner fix
+      // but out of scope per the commit spec — "ne diraj HTML strukturu").
+      const pid = escapeHtml(p.id);
       return `
-        <div class="pkg" data-id="${p.id}">
+        <div class="pkg" data-id="${pid}">
           <div>
             <div class="pkg-header">
-              <span class="pkg-title">${p.destination?.city || 'Unknown'}</span>
-              <span class="pkg-route">${p.origin?.code || 'BEG'} → ${p.destination?.code || '?'}</span>
-              <span class="badge badge-discount">−${p.pricing?.savingsPercent || '?'}%</span>
+              <span class="pkg-title">${escapeHtml(p.destination?.city || 'Unknown')}</span>
+              <span class="pkg-route">${escapeHtml(p.origin?.code || 'BEG')} → ${escapeHtml(p.destination?.code || '?')}</span>
+              <span class="badge badge-discount">−${escapeHtml(p.pricing?.savingsPercent || '?')}%</span>
               ${transportBadge(p.transport)}
               ${statusBadge(p.status)}
             </div>
             <div style="color: var(--muted); font-size: 12px; margin-bottom: 6px;">
-              ${p.dates?.departure || '?'} → ${p.dates?.return || '?'} · ${p.dates?.nights || '?'} noći · ${p.category || ''}
+              ${escapeHtml(p.dates?.departure || '?')} → ${escapeHtml(p.dates?.return || '?')} · ${escapeHtml(p.dates?.nights || '?')} noći · ${escapeHtml(p.category || '')}
             </div>
             <div class="legs">
               ${renderLeg('outbound', p.outbound, p.transport)}
               ${renderLeg('hotel', p.hotel, p.transport)}
               ${renderLeg('return', p.return, p.transport)}
             </div>
-            <div class="copy-box" contenteditable="true" id="copy-sr-${p.id}">
+            <div class="copy-box" contenteditable="true" id="copy-sr-${pid}">
               <div class="copy-lang">Copy (SR)</div>
-              ${sr.meta || ''} · ${sr.month || ''} · ${sr.stay || ''}
+              ${escapeHtml(sr.meta || '')} · ${escapeHtml(sr.month || '')} · ${escapeHtml(sr.stay || '')}
             </div>
           </div>
           <div>
             <div class="price-comparison">
-              <div class="price-row old"><span>Agencija</span><span>€${p.pricing?.agencyReference || 0}</span></div>
-              <div class="price-row new"><span>Via LETTO</span><span>€${p.pricing?.total || 0}</span></div>
-              <div class="price-row savings"><span>Savings</span><span>€${p.pricing?.savings || 0} (${p.pricing?.savingsPercent || 0}%)</span></div>
+              <div class="price-row old"><span>Agencija</span><span>€${escapeHtml(p.pricing?.agencyReference || 0)}</span></div>
+              <div class="price-row new"><span>Via LETTO</span><span>€${escapeHtml(p.pricing?.total || 0)}</span></div>
+              <div class="price-row savings"><span>Savings</span><span>€${escapeHtml(p.pricing?.savings || 0)} (${escapeHtml(p.pricing?.savingsPercent || 0)}%)</span></div>
             </div>
             <div class="actions">
               ${isPending ? `
-                <button class="btn-approve-public" onclick="approvePackage('${p.id}', 'public')">✓ Approve → Public</button>
-                <button class="btn-approve-premium" onclick="approvePackage('${p.id}', 'premium')">💎 Approve → Premium</button>
-                <button class="btn-reject" onclick="rejectPackage('${p.id}')">✗ Reject</button>
+                <button class="btn-approve-public" onclick="approvePackage('${pid}', 'public')">✓ Approve → Public</button>
+                <button class="btn-approve-premium" onclick="approvePackage('${pid}', 'premium')">💎 Approve → Premium</button>
+                <button class="btn-reject" onclick="rejectPackage('${pid}')">✗ Reject</button>
               ` : ''}
               ${isPublished ? `
-                <button class="btn-unpublish" onclick="unpublishPackage('${p.id}')">↺ Unpublish (back to review)</button>
+                <button class="btn-unpublish" onclick="unpublishPackage('${pid}')">↺ Unpublish (back to review)</button>
               ` : ''}
               ${p.status === 'rejected' ? `
-                <button class="btn-edit" onclick="unpublishPackage('${p.id}')">↺ Reopen for review</button>
+                <button class="btn-edit" onclick="unpublishPackage('${pid}')">↺ Reopen for review</button>
               ` : ''}
             </div>
           </div>
@@ -461,7 +478,7 @@ async function loadPackages() {
     }).join('');
   } catch (e) {
     console.error('Packages error:', e);
-    document.getElementById('packages').innerHTML = '<div class="empty">Greška: ' + e.message + '</div>';
+    document.getElementById('packages').innerHTML = '<div class="empty">Greška: ' + escapeHtml(e.message) + '</div>';
   }
 }
 
