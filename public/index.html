@@ -1411,39 +1411,62 @@
   }
   .deal-flight-airline { color: var(--ink); font-weight: 600; }
   .deal-flight-times { color: var(--muted); }
-  .deal-flight-book {
-    margin-left: auto;
-    color: var(--burgundy);
-    font-weight: 600;
-    text-decoration: none;
-    letter-spacing: 0.02em;
+  /* Booking action buttons — flight + hotel, one pair per card.
+     Active (try-it / premium) → real buttons, ink for flight, gold for
+     hotel, lift on hover. Locked (free) → both .is-locked: greyed, lock
+     glyph, not-allowed cursor, no hover. */
+  .deal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-soft);
   }
-  .deal-flight-book:hover { text-decoration: underline; }
-  /* Hotel Book row — sits directly under .deal-flight on unlocked cards. */
-  .deal-hotel-book-row {
+  .deal-book-btn {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-  }
-  .deal-hotel-book-name {
-    color: var(--muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 58%;
-  }
-  .deal-hotel-book {
-    margin-left: auto;
-    color: var(--burgundy);
+    justify-content: center;
+    gap: 7px;
+    padding: 10px 14px;
+    border-radius: 9px;
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    font-size: 12.5px;
     font-weight: 600;
+    letter-spacing: 0.01em;
     text-decoration: none;
-    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: transform 0.14s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  .deal-hotel-book:hover { text-decoration: underline; }
+  .deal-book-btn--flight {
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: 0 2px 8px rgba(10, 13, 17, 0.18);
+  }
+  .deal-book-btn--flight:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(10, 13, 17, 0.28);
+  }
+  .deal-book-btn--hotel {
+    background: linear-gradient(135deg, #f0c674 0%, #b8863b 100%);
+    color: #1f2226;
+    box-shadow: 0 2px 8px rgba(184, 134, 59, 0.32);
+  }
+  .deal-book-btn--hotel:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(184, 134, 59, 0.44);
+  }
+  .deal-book-btn.is-locked,
+  .deal-book-btn.is-locked:hover {
+    background: var(--line-soft);
+    color: var(--muted);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
+  }
+  .deal-book-btn__arrow { transition: transform 0.14s ease; }
+  .deal-book-btn:not(.is-locked):hover .deal-book-btn__arrow { transform: translateX(3px); }
   .unlock-strip {
     display: flex;
     align-items: center;
@@ -3300,38 +3323,31 @@
           ? '<div class="photo-credit">Photo: <a href="' + photographerUrl + '" target="_blank" rel="noopener">' + photographer + '</a> / Pexels</div>'
           : '';
 
-        // Flight row — only on unlocked cards (try-it or premium). Locked
-        // cards get the unlock-strip below instead.
-        // Flight row — only on unlocked cards (try-it / premium). The 4
-        // flight fields stay behind the paywall; locked cards get the
-        // unlock-strip instead.
-        var flightSection = '';
+        // Flight info row — airline + times. Unlocked cards only; the 4
+        // flight fields are scrubbed for free/locked.
+        var fl = p.flight || {};
+        var flightInfo = '';
         if (!locked) {
-          var fl = p.flight || {};
           var airline = esc(fl.airline || '');
           var depTime = esc(fl.departureTime || '');
           var arrTime = esc(fl.arrivalTime || '');
-          var bookingUrl = (fl.bookingUrl || '').replace(/[<>"']/g, '');
-          if (airline || depTime || arrTime || bookingUrl) {
-            flightSection = '<div class="deal-flight">' +
+          if (airline || depTime || arrTime) {
+            flightInfo = '<div class="deal-flight">' +
               (airline ? '<span class="deal-flight-airline">' + airline + '</span>' : '') +
               (depTime || arrTime ? '<span class="deal-flight-times">' + depTime + (depTime && arrTime ? ' → ' : '') + arrTime + '</span>' : '') +
-              (bookingUrl ? '<a class="deal-flight-book" href="' + bookingUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span data-en>Book →</span><span data-sr>Rezerviši →</span></a>' : '') +
             '</div>';
           }
         }
 
-        // Hotel Book row — renders for EVERY tier (2026-05-16:
-        // hotel.bookingUrl is no longer scrubbed — Booking is free, so a
-        // free visitor can book the hotel). Mirrors openDealModal's
-        // hotel-URL logic: a specific Booking.com property page gets
-        // checkin/checkout/group_adults appended so the dates pre-fill;
-        // anything else falls back to a Booking.com city search.
-        var hotelSection = '';
+        // Hotel booking href — built whenever the API gives a hotel
+        // bookingUrl. Mirrors openDealModal's hotel-URL logic: a specific
+        // Booking.com property page gets checkin/checkout/group_adults
+        // appended so dates pre-fill; otherwise a Booking.com city search.
+        // Only WIRED into an active button on unlocked cards (see below).
         var ho = p.hotel || {};
         var hoUrl = ho.bookingUrl || '';
+        var hotelHref = '';
         if (hoUrl) {
-          var finalHotelUrl;
           if (/booking\.com\/hotel\//i.test(hoUrl)) {
             try {
               var hu = new URL(hoUrl);
@@ -3339,8 +3355,8 @@
               if (p.dates && p.dates.return) hu.searchParams.set('checkout', p.dates.return);
               hu.searchParams.set('group_adults', '2');
               hu.searchParams.set('no_rooms', '1');
-              finalHotelUrl = hu.toString();
-            } catch (e) { finalHotelUrl = hoUrl; }
+              hotelHref = hu.toString();
+            } catch (e) { hotelHref = hoUrl; }
           } else {
             var hp = new URLSearchParams({
               ss: (p.destination && p.destination.city) || '',
@@ -3349,24 +3365,40 @@
               group_adults: '2',
               no_rooms: '1'
             });
-            finalHotelUrl = 'https://www.booking.com/searchresults.html?' + hp.toString();
+            hotelHref = 'https://www.booking.com/searchresults.html?' + hp.toString();
           }
-          var safeHotelUrl = finalHotelUrl.replace(/[<>"']/g, '');
-          var rawHotelName = (ho.name || '').toString();
-          var hotelNameShort = esc(rawHotelName.length > 34 ? rawHotelName.slice(0, 34) + '…' : rawHotelName);
-          hotelSection = '<div class="deal-hotel-book-row">' +
-            (hotelNameShort ? '<span class="deal-hotel-book-name">' + hotelNameShort + '</span>' : '') +
-            '<a class="deal-hotel-book" href="' + safeHotelUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' +
-              '<span data-en>Book hotel →</span><span data-sr>Rezerviši hotel →</span>' +
-            '</a>' +
-          '</div>';
+          hotelHref = hotelHref.replace(/[<>"']/g, '');
         }
+        var flightHref = (fl.bookingUrl || '').replace(/[<>"']/g, '');
 
-        // Unlock strip on locked cards — click scrolls to #pricing.
+        // Booking buttons · flight + hotel. locked → BOTH disabled (lock
+        // glyph, no click); the unlock-strip below covers both. unlocked
+        // (try-it / premium) → both active, link out. The lead-capture
+        // modal still intercepts the booking.com / aviasales click.
+        function dealBookBtn(kind, href, enLabel, srLabel, icon) {
+          if (locked || !href) {
+            return '<span class="deal-book-btn deal-book-btn--' + kind + ' is-locked" aria-disabled="true">' +
+              '<span aria-hidden="true">🔒</span>' +
+              '<span data-en>' + enLabel + '</span><span data-sr>' + srLabel + '</span>' +
+            '</span>';
+          }
+          return '<a class="deal-book-btn deal-book-btn--' + kind + '" href="' + href + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' +
+            '<span aria-hidden="true">' + icon + '</span>' +
+            '<span data-en>' + enLabel + '</span><span data-sr>' + srLabel + '</span>' +
+            '<span class="deal-book-btn__arrow" aria-hidden="true">→</span>' +
+          '</a>';
+        }
+        var actionsBlock = '<div class="deal-actions">' +
+          dealBookBtn('flight', flightHref, 'Book flight', 'Rezerviši let', '✈') +
+          dealBookBtn('hotel', hotelHref, 'Book hotel', 'Rezerviši hotel', '🏨') +
+        '</div>';
+
+        // Unlock strip on locked cards — covers BOTH flight + hotel, since
+        // both buttons above are disabled for free. Click scrolls to #pricing.
         var unlockStrip = locked
           ? '<a href="#pricing" class="unlock-strip" onclick="event.stopPropagation()">' +
-              '<span data-en>Unlock flight → €9.99/mo</span>' +
-              '<span data-sr>Otključaj let → €9.99/mes</span>' +
+              '<span data-en>Unlock flight and hotel → €9.99/mo</span>' +
+              '<span data-sr>Otključaj let i hotel → €9.99/mes</span>' +
             '</a>'
           : '';
 
@@ -3399,8 +3431,8 @@
                   '<div class="per" data-sr>po osobi</div>' +
                 '</div>' +
               '</div>' +
-              flightSection +
-              hotelSection +
+              flightInfo +
+              actionsBlock +
               creditLine +
             '</div>' +
             unlockStrip +
