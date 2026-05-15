@@ -49,6 +49,24 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const contentType = (req.headers['content-type'] || '').toLowerCase();
+  if (!contentType.includes('application/json')) {
+    return res.status(415).json({ error: 'content_type_required' });
+  }
+
+  const referer = req.headers.referer;
+  if (referer && !referer.startsWith('https://letto.live')) {
+    return res.status(403).json({ error: 'forbidden_origin' });
+  }
+
+  // Tier is a no-op post-66f0162 — only the 'premium' SKU exists. Hard-fail any
+  // explicit non-premium value so a future multi-tier reintroduction can't
+  // silently misroute, and probing clients can't spam default-tier sessions.
+  const tier = (req.body && req.body.tier) ?? 'premium';
+  if (tier !== 'premium') {
+    return res.status(400).json({ error: 'unknown_tier' });
+  }
+
   const { userEmail } = req.body || {};
   // F18 · pre-fill Stripe checkout email when the frontend has it. Limits the
   // Apple Pay / Express edge where wallet flows can omit email entirely.
@@ -58,10 +76,8 @@ async function handler(req, res) {
 
   const priceId = process.env.STRIPE_PREMIUM_PRICE_ID;
   if (!priceId) {
-    return res.status(500).json({
-      error: 'Price ID not configured',
-      details: 'Missing env var STRIPE_PREMIUM_PRICE_ID'
-    });
+    console.error('[stripe-checkout] Missing env var STRIPE_PREMIUM_PRICE_ID');
+    return res.status(500).json({ error: 'configuration_error' });
   }
 
   try {

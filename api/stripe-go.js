@@ -10,6 +10,7 @@
 // + VAT). The legacy `tier` form field is accepted but ignored.
 
 import Stripe from 'stripe';
+import { withSentry } from '../lib/sentry-backend.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia'
@@ -33,19 +34,39 @@ async function readForm(req) {
   return out;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).send('Method not allowed');
   }
 
+  const contentType = (req.headers['content-type'] || '').toLowerCase();
+  if (!contentType.includes('application/x-www-form-urlencoded')) {
+    return res.status(415).send('content_type_required');
+  }
+
+  const referer = req.headers.referer;
+  if (referer && !referer.startsWith('https://letto.live')) {
+    return res.status(403).send('forbidden_origin');
+  }
+
   const body = await readForm(req);
+
+  // Tier is a no-op post-66f0162 — only the 'premium' SKU exists.
+  const tier = (body && body.tier) ?? 'premium';
+  if (tier !== 'premium') {
+    return res.status(400).send('unknown_tier');
+  }
+
   const userEmail = (body.userEmail && typeof body.userEmail === 'string' && body.userEmail.includes('@'))
     ? body.userEmail.trim().toLowerCase()
     : undefined;
 
   const priceId = process.env.STRIPE_PREMIUM_PRICE_ID;
-  if (!priceId) return res.status(500).send('price_not_configured');
+  if (!priceId) {
+    console.error('[stripe-go] Missing env var STRIPE_PREMIUM_PRICE_ID');
+    return res.status(500).send('configuration_error');
+  }
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -71,3 +92,5 @@ export default async function handler(req, res) {
     return res.status(500).send('checkout_failed');
   }
 }
+
+export default withSentry('stripe-go', handler);
