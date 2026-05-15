@@ -225,8 +225,38 @@ async function handler(req, res) {
       }
     }
 
+    // Daily-try-it ids may be OLDER than the listing's newest-N slice (the
+    // listing is createdAt DESC; picker selects top-by-price among "created
+    // before today UTC"). When today's mining floods the newest-N with
+    // ineligible-but-recent docs, the picker's picks fall outside the
+    // listing window — front-end response shows try_it=0 despite the
+    // picker firing correctly. Fetch any picker ids that aren't already
+    // in the listing and prepend them so they always render.
+    const dailyTryItIds = await getDailyTryItIds();
+    const presentIds = new Set(packages.map(p => p.id));
+    const missingIds = [...dailyTryItIds].filter(id => !presentIds.has(id));
+    if (missingIds.length > 0) {
+      const fetched = await Promise.all(
+        missingIds.map(id => db.collection('letto_packages').doc(id).get())
+      );
+      const extras = fetched
+        .filter(s => s.exists)
+        .map(s => ({ id: s.id, ...s.data() }));
+      // Normalize booking URL on the extras too (same as the loop above).
+      for (const pkg of extras) {
+        if (!pkg.flight) pkg.flight = {};
+        if (pkg.flight.bookingUrl) {
+          pkg.flight.bookingUrl = cleanAviasalesUrl(pkg.flight.bookingUrl);
+        } else {
+          const synth = buildAviasalesUrl(pkg);
+          if (synth) pkg.flight.bookingUrl = synth;
+        }
+      }
+      packages = [...extras, ...packages];
+    }
+
     // Markers + shape selection.
-    //   daily_try_it · true iff this id is in today's global top-3-by-price
+    //   daily_try_it · true iff this id is in today's global top-N-by-price
     //                  (computed in getDailyTryItIds above). Unlocks the
     //                  card for free callers — try-it teaser.
     //   top_deal     · chip-only marker; flightDealRatio < 0.65 means the
@@ -238,7 +268,6 @@ async function handler(req, res) {
     //                 (full shape + labels). Otherwise → scrubToPreview
     //                 (masked shape + labels). passThroughFull keeps the
     //                 preview labels so the frontend renders one card.
-    const dailyTryItIds = await getDailyTryItIds();
     packages = packages.map(p => {
       const isDailyTryIt = dailyTryItIds.has(p.id);
       const isTopDeal = (p.deal?.flightDealRatio ?? 1) < 0.65;
