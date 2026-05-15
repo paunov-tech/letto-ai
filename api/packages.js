@@ -56,14 +56,22 @@ async function getDailyTryItIds() {
 
   try {
     const cutoffISO = startOfDay.toISOString();
+    // Use the (status, metadata.createdAt DESC) composite that listing mode
+    // already exercises — no new Firestore index needed (the (status,
+    // pricing.total) composite the previous variant required wasn't
+    // provisioned in prod, so the query graceful-failed and no try-it
+    // unlocks ever fired). Pull a wider 100-row window then sort by
+    // pricing.total in memory; catalog is well under 100 today, so this is
+    // effectively the global top-3 by price.
     const snap = await db.collection('letto_packages')
       .where('status', 'in', ['published_public', 'published_premium'])
-      .orderBy('pricing.total', 'desc')
-      .limit(20)
+      .orderBy('metadata.createdAt', 'desc')
+      .limit(100)
       .get();
     const eligible = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(p => (p.metadata?.createdAt || '') < cutoffISO);
+    eligible.sort((a, b) => (b.pricing?.total ?? 0) - (a.pricing?.total ?? 0));
     const ids = new Set(eligible.slice(0, 3).map(p => p.id));
     dailyTryItCache = { dateKey, ids };
     return ids;
