@@ -715,85 +715,6 @@
     .hero-h1 { font-size: clamp(28px, 8vw, 38px); }
   }
 
-  /* M4 · social-proof strip · between hero and #deals carousel. */
-  .social-proof {
-    padding: 40px 0 36px;
-    background: var(--paper);
-    border-top: 1px solid var(--line-soft);
-    border-bottom: 1px solid var(--line-soft);
-  }
-  .social-proof .container { display: flex; flex-direction: column; align-items: center; gap: 26px; }
-  .social-proof .stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 28px;
-    max-width: 780px;
-    width: 100%;
-    text-align: center;
-  }
-  .social-proof .stats > div { display: flex; flex-direction: column; gap: 6px; align-items: center; }
-  .social-proof .stats strong {
-    font-family: 'Fraunces', serif;
-    font-weight: 500;
-    font-size: clamp(30px, 4.5vw, 40px);
-    color: var(--gold-deep);
-    letter-spacing: -0.01em;
-    line-height: 1;
-  }
-  .social-proof .stats small {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10.5px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .social-proof .trust-badges {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    justify-content: center;
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 12.5px;
-    color: var(--ink-mid);
-  }
-  .social-proof .trust-badges span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: rgba(217, 169, 74, 0.08);
-    border: 1px solid rgba(217, 169, 74, 0.25);
-    border-radius: 99px;
-  }
-  .social-proof .testimonial-placeholder {
-    font-family: 'Instrument Serif', serif;
-    font-size: 16px;
-    color: var(--muted);
-    text-align: left;
-    max-width: 560px;
-    border-left: 3px solid var(--gold-light);
-    padding: 4px 0 4px 16px;
-    margin: 0;
-  }
-  .social-proof .testimonial-placeholder em { font-style: italic; }
-  @media (max-width: 600px) {
-    .social-proof .stats { grid-template-columns: 1fr; gap: 20px; }
-    .social-proof .trust-badges { flex-direction: column; align-items: center; gap: 8px; }
-  }
-
-  /* M4 · try-it urgency banner directly above the carousel. */
-  .try-it-banner {
-    text-align: center;
-    background: linear-gradient(135deg, rgba(240, 198, 116, 0.18) 0%, rgba(184, 134, 59, 0.12) 100%);
-    border-top: 1px solid rgba(217, 169, 74, 0.3);
-    border-bottom: 1px solid rgba(217, 169, 74, 0.3);
-    padding: 14px 20px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12.5px;
-    letter-spacing: 0.04em;
-    color: var(--ink);
-  }
-
   .hero-sub {
     font-family: 'Instrument Serif', serif;
     font-size: 18px;
@@ -3319,52 +3240,6 @@
     </div>
   </div>
 </section>
-
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- M4 · social-proof strip — quantified credibility + trust badges + -->
-<!-- placeholder testimonial. Sits between hero and the carousel so it  -->
-<!-- intercepts the first scroll-down beat.                             -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<section class="social-proof">
-  <div class="container">
-    <div class="stats">
-      <div>
-        <strong>12k+</strong>
-        <small data-en>deals scanned daily</small>
-        <small data-sr>ponuda skenirano dnevno</small>
-      </div>
-      <div>
-        <strong>30%+</strong>
-        <small data-en>below 90-day median</small>
-        <small data-sr>ispod 90-dnevnog mediana</small>
-      </div>
-      <div>
-        <strong>17+</strong>
-        <small data-en>destinations active</small>
-        <small data-sr>destinacija aktivno</small>
-      </div>
-    </div>
-    <div class="trust-badges">
-      <span data-en>🔒 Stripe payments</span>
-      <span data-sr>🔒 Plaćanje preko Stripe</span>
-      <span data-en>↩️ 14-day refund guarantee</span>
-      <span data-sr>↩️ 14-dana refund garancija</span>
-      <span data-en>🇪🇺 GDPR-compliant</span>
-      <span data-sr>🇪🇺 GDPR usklađeno</span>
-    </div>
-    <blockquote class="testimonial-placeholder">
-      <em data-en>"Try 2 of today's try-it deals — no registration, no payment. If it's worth it, subscribe."</em>
-      <em data-sr>"Probaj 2 today's try-it deala — bez registracije, bez plaćanja. Ako vredi, pretplati se."</em>
-    </blockquote>
-  </div>
-</section>
-
-<!-- M4 · try-it urgency banner — directly above the carousel.
-     Plain copy this commit; countdown timer is M5. -->
-<div class="try-it-banner">
-  <span data-en>⏰ Today: 2 try-it deals · expire at midnight (CET)</span>
-  <span data-sr>⏰ Danas: 2 try-it deala · ističu u ponoć (CET)</span>
-</div>
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- DEALS                                            -->
