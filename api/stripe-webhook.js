@@ -5,7 +5,7 @@
 import Stripe from 'stripe';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import PDFDocument from 'pdfkit';
 import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
 
@@ -752,6 +752,32 @@ async function handler(req, res) {
   }
 
   try {
+    // Idempotency guard. Stripe delivery is at-least-once: automatic retries
+    // (3h/6h/12h/24h backoff) fire if our 2xx is delayed by timeout or network
+    // drop, manual Dashboard replays exercise the same path, and a replayed
+    // signed payload also passes constructEvent above. Atomic .create() on
+    // stripe_processed_events/{event.id} succeeds exactly once per event;
+    // ALREADY_EXISTS (Firestore code 6) on the second arrival short-circuits
+    // back to Stripe with duplicate:true, BEFORE any side effects (premium
+    // grant, Slack ping, Telegram invite, audit log) run.
+    const eventId = event.id;
+    const processedRef = db.collection('stripe_processed_events').doc(eventId);
+    try {
+      await processedRef.create({
+        eventId,
+        eventType: event.type,
+        livemode: event.livemode,
+        processedAt: FieldValue.serverTimestamp(),
+      });
+    } catch (err) {
+      if (err.code === 6 || err.code === 'already-exists') {
+        console.log(`[webhook] Duplicate event ${eventId} (${event.type}), skipping`);
+        return res.status(200).json({ received: true, duplicate: true });
+      }
+      console.error('[webhook] Firestore create failed for', eventId, err);
+      throw err;
+    }
+
     switch (event.type) {
       // Subscription activated OR one-time AI Mix unlock
       case 'checkout.session.completed': {
