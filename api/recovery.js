@@ -32,6 +32,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 const FROM = process.env.RESEND_FROM || 'Letto <info@letto.live>';
 const PORTAL_RETURN = (process.env.VITE_SITE_URL || 'https://letto.live') + '/dobrodosao.html';
 
+// Exported so api/customer-portal.js can call the same email-delivery path
+// for its email branch (portal URL goes to the inbox owner, never returned
+// synchronously to the POSTer). When called with telegramInvite=null
+// (portal-only flow), the Telegram block is omitted from the rendered
+// HTML / text and only the Stripe Billing Portal link is sent.
 async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -42,10 +47,10 @@ async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
 <html><body style="font-family:system-ui,-apple-system,sans-serif;color:#1e293b;max-width:560px;margin:0 auto;padding:24px;">
   <h2 style="color:#0f766e;margin:0 0 16px;">Tvoji Letto Premium pristupni linkovi</h2>
   <p>Ako si izgubio prethodni email, evo aktivnih linkova za tvoju pretplatu:</p>
-  <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:16px;margin:20px 0;">
+  ${telegramInvite ? `<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:16px;margin:20px 0;">
     <p style="margin:0 0 8px;font-weight:600;">🔑 Premium Telegram kanal:</p>
     <p style="margin:0;"><a href="${telegramInvite}" style="color:#0f766e;word-break:break-all;">${telegramInvite}</a></p>
-  </div>
+  </div>` : ''}
   <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;">
     <p style="margin:0 0 8px;font-weight:600;">⚙️ Otkazivanje / promena podataka:</p>
     <p style="margin:0;"><a href="${portalUrl}" style="color:#b45309;word-break:break-all;">Stripe Billing Portal</a></p>
@@ -56,9 +61,7 @@ async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
   const text = [
     'Tvoji Letto Premium pristupni linkovi',
     '',
-    'Premium Telegram kanal:',
-    telegramInvite,
-    '',
+    ...(telegramInvite ? ['Premium Telegram kanal:', telegramInvite, ''] : []),
     'Otkazivanje / promena podataka (Stripe portal · link važi 30 min):',
     portalUrl,
     'Otkaži kad god · pretplata radi do kraja current perioda.',
@@ -153,5 +156,10 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'Greška. Pokušaj ponovo ili napiši na info@letto.live' });
   }
 }
+
+// Cross-route reuse — api/customer-portal.js imports this for its email branch.
+// Vercel bundler supports importing from another route file (same pattern as
+// api/stripe-webhook.js exporting sendMixConfirmationEmail / postSlackAlert).
+export { sendRecoveryEmail };
 
 export default withSentry('recovery', handler);
