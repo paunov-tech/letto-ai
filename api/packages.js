@@ -72,7 +72,10 @@ async function getDailyTryItIds() {
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(p => (p.metadata?.createdAt || '') < cutoffISO);
     eligible.sort((a, b) => (b.pricing?.total ?? 0) - (a.pricing?.total ?? 0));
-    const ids = new Set(eligible.slice(0, 3).map(p => p.id));
+    // Slice 2 (was 3) per 2026-05-15 spec — fewer try-it picks per day
+    // since the scrub is now narrow (locked cards still show price/hotel/
+    // dates/image, so the marketing pressure on the try-it set is lower).
+    const ids = new Set(eligible.slice(0, 2).map(p => p.id));
     dailyTryItCache = { dateKey, ids };
     return ids;
   } catch (e) {

@@ -1787,7 +1787,10 @@
     color: var(--muted);
     margin-top: 2px;
   }
-  .locked { filter: blur(5px); user-select: none; pointer-events: none; }
+  /* Post-2026-05-15 narrow scrub: locked cards don't blur — the API
+     returns every field except flight.airline/departureTime/arrivalTime/
+     flight.bookingUrl/hotel.bookingUrl. Visual "locked" signal comes
+     from null fields hiding the inline flight row, not a CSS blur. */
 
   /* ─── NUMBERS ──────────────────────── */
   .section-numbers {
@@ -5273,16 +5276,14 @@
       var dates = pkg.dates || {};
       var deal = pkg.deal || {};
 
-      // Universal catalog shape (2026-05-15): locked → preview labels in
-      // place of scrubbed raw fields; tryIt/topDeal/roundTrip → additive
-      // badges. pkg-card has no .deal-photo overlay, so TRY IT and
-      // ROUND-TRIP both flow inline; positioned by .pkg-card__route /
-      // .pkg-card__details siblings.
+      // 2026-05-15 narrow-scrub revision: every field is raw — locked
+      // cards only differ in fl.airline / fl.departureTime / fl.arrivalTime
+      // / fl.bookingUrl / hotel.bookingUrl being null. Dates, price, stops,
+      // route, deal ratio, hotel name + rating all stay visible.
       var locked = (pkg.locked === true);
       var tryIt = (pkg.daily_try_it === true);
       var hasTopDeal = (pkg.top_deal === true);
       var roundTrip = (pkg.round_trip === true);
-      var prev = pkg.preview || {};
 
       var ratio = parseFloat(deal.flightDealRatio);
       var pctBelow = (ratio > 0 && ratio < 1) ? Math.round((1 - ratio) * 100) : 0;
@@ -5299,30 +5300,22 @@
       else if (stopsNum === 1) stopsLabel = (l === 'en') ? '1 stop' : '1 presedanje';
       else if (stopsNum > 1) stopsLabel = stopsNum + (l === 'en' ? ' stops' : ' presedanja');
 
-      // Dates: locked → preview.dateLabel (Serbian-only, "Sredinom juna … · 10 noći");
-      // unlocked → existing fmtDateRange + nightsLabel composition.
-      var dateText;
-      if (locked) {
-        dateText = escapeHtml(prev.dateLabel || '');
-      } else {
-        var dateRange = fmtDateRange(dates.departure, dates.return, l);
-        var nights = dates.nights || 0;
-        var nightsLabel = nights ? (nights + ' ' + (l === 'en' ? (nights === 1 ? 'night' : 'nights') : 'noći')) : '';
-        dateText = escapeHtml(dateRange) + (nightsLabel ? ' · ' + escapeHtml(nightsLabel) : '');
-      }
+      var dateRange = fmtDateRange(dates.departure, dates.return, l);
+      var nights = dates.nights || 0;
+      var nightsLabel = nights ? (nights + ' ' + (l === 'en' ? (nights === 1 ? 'night' : 'nights') : 'noći')) : '';
+      var dateText = escapeHtml(dateRange) + (nightsLabel ? ' · ' + escapeHtml(nightsLabel) : '');
 
-      // Price: locked → preview.priceLabel ("od €1624"); unlocked → fl.totalPrice
-      var priceText = locked
-        ? escapeHtml(prev.priceLabel || '€—')
-        : '€' + Math.round(fl.totalPrice || 0);
+      var priceText = '€' + Math.round(fl.totalPrice || 0);
 
-      // Airline header: locked → preview.flightLabel ("direktan let · ~3h");
-      // unlocked → airline + flightNumber.
+      // Airline: scrubbed for locked → render placeholder. Free user sees
+      // the route + price + dates but not the carrier; unlock-strip below
+      // explains how to get it.
       var airlineHtml;
-      if (locked) {
-        airlineHtml = '<span class="pkg-card__airline">' + escapeHtml(prev.flightLabel || '') + '</span>';
+      if (locked || !fl.airline) {
+        airlineHtml = '<span class="pkg-card__airline pkg-card__airline--locked" data-en>Carrier — Premium</span>' +
+                      '<span class="pkg-card__airline pkg-card__airline--locked" data-sr>Aviokompanija — Premium</span>';
       } else {
-        airlineHtml = '<span class="pkg-card__airline">' + escapeHtml(fl.airline || '?') + (fl.flightNumber ? ' ' + escapeHtml(fl.flightNumber) : '') + '</span>';
+        airlineHtml = '<span class="pkg-card__airline">' + escapeHtml(fl.airline) + (fl.flightNumber ? ' ' + escapeHtml(fl.flightNumber) : '') + '</span>';
       }
 
       var isSelected = selectedId === pkg.id;

@@ -1426,31 +1426,58 @@
     color: var(--muted);
     margin-top: 2px;
   }
-  /* .locked — softer "tease" treatment (2026-05-15 spec):
-     - Image: subtle 2px blur + slight desaturate + 0.7 opacity → reads as
-       "preview, not broken". Was filter:blur(5px) on the whole card,
-       which made preview labels unreadable. Now image blurs, text stays
-       crisp.
-     - Gradient overlay strengthened on the bottom to keep .package-icons
-       legible against the softened image.
-     - .priceLabel gets the gold accent — it's the headline value teased
-       to the free user ("od €1624 · become Premium to see exact").
-     - pointer-events stays ENABLED so the locked card can still trigger
-       a paywall-modal click handler. user-select disabled to discourage
-       text-grabbing the priceLabel as a workaround. */
-  .locked { user-select: none; }
-  .locked .deal-photo .card-photo-img,
-  .locked .deal-photo .photo-scene {
-    filter: blur(2px) saturate(0.85);
-    opacity: 0.7;
+  /* 2026-05-15 narrow-scrub revision: no blur on locked cards. The scrub
+     is now field-level (flight.airline / departureTime / arrivalTime /
+     flight.bookingUrl / hotel.bookingUrl null on locked) so every other
+     visual element renders identically to an unlocked card. The "locked"
+     signal is the gold .unlock-strip glued to the card bottom. */
+  .deal-hotel {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    line-height: 1.3;
   }
-  .locked .deal-photo .gradient-overlay {
-    background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%);
+  .deal-hotel-name { font-weight: 500; color: var(--ink-mid); }
+  .deal-hotel-stars { color: var(--gold-light); font-size: 11px; margin-left: 4px; }
+  .deal-flight {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-soft);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
   }
-  .locked .deal-prices .total .value {
-    color: var(--gold-bright);
+  .deal-flight-airline { color: var(--ink); font-weight: 600; }
+  .deal-flight-times { color: var(--muted); }
+  .deal-flight-book {
+    margin-left: auto;
+    color: var(--burgundy);
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .deal-flight-book:hover { text-decoration: underline; }
+  .unlock-strip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0c674 0%, #b8863b 100%);
+    color: #1f2226;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
     font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 11px 14px;
+    text-decoration: none;
+    text-transform: uppercase;
+    border-top: 1px solid rgba(31, 34, 38, 0.12);
+    transition: background 0.15s ease;
   }
+  .unlock-strip:hover { background: linear-gradient(135deg, #f5d089 0%, #c79548 100%); }
 
   /* Full-catalog section · surfaces ALL packages below #pricing.
      Grid is responsive 1/2/3-col by viewport; cards reuse .deal-card. */
@@ -3239,17 +3266,18 @@
       };
 
       function renderCard(p) {
-        // Universal catalog wiring (2026-05-15). Card respects per-pkg
-        // shape from /api/packages: locked=true → preview labels + .locked
-        // class (drives blur via existing CSS); locked=false → raw fields.
-        // Three additive badges: daily_try_it → TRY IT ribbon top-left,
-        // top_deal → TOP DEAL sticker stacked into the top-right badge slot,
-        // round_trip → pill in the package-icons row (every package).
+        // 2026-05-15 narrow-scrub revision: every catalog field renders
+        // unblurred. Image, hotel.name, hotel.rating, dates.*, pricing.total,
+        // deal ratio, transport, top_deal/round_trip markers are visible to
+        // all tiers. Only flight.airline / departureTime / arrivalTime /
+        // flight.bookingUrl / hotel.bookingUrl are nulled for locked cards
+        // (free, non-try-it). Locked cards get a gold unlock-strip glued to
+        // the card bottom; try-it and premium cards render an inline flight
+        // row with airline + times + booking link.
         var locked = (p.locked === true);
         var tryIt = (p.daily_try_it === true);
         var hasTopDeal = (p.top_deal === true);
         var roundTrip = (p.round_trip === true);
-        var prev = p.preview || {};
 
         var id = String(p.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
         var code = String(p.destination && p.destination.code || '').toLowerCase();
@@ -3261,14 +3289,18 @@
         var month_sr = esc(p.copy && p.copy.sr && p.copy.sr.month || month_en);
         var nights = parseInt(p.dates && p.dates.nights, 10) || 0;
 
-        // Price: locked → preview.priceLabel ("od €1624"); unlocked → raw.
-        var priceHtml;
-        if (locked) {
-          priceHtml = '<div class="value">' + esc(prev.priceLabel || '€—') + '</div>';
-        } else {
-          var total = Math.round(parseFloat(p.pricing && p.pricing.total) || 0);
-          priceHtml = '<div class="value">€' + total.toLocaleString('en-US') + '</div>';
-        }
+        var total = Math.round(parseFloat(p.pricing && p.pricing.total) || 0);
+        var priceHtml = '<div class="value">€' + total.toLocaleString('en-US') + '</div>';
+
+        // Hotel — name + star rating visible to all tiers post-2026-05-15.
+        var hotelName = esc((p.hotel && p.hotel.name) || '');
+        var hotelStars = (p.hotel && p.hotel.rating > 0 && p.hotel.rating <= 5) ? '★'.repeat(p.hotel.rating) : '';
+        var hotelLine = (hotelName || hotelStars)
+          ? '<div class="deal-hotel">' +
+              (hotelName ? '<span class="deal-hotel-name">' + hotelName + '</span>' : '') +
+              (hotelStars ? '<span class="deal-hotel-stars">' + hotelStars + '</span>' : '') +
+            '</div>'
+          : '';
 
         var ratio = parseFloat(p.deal && p.deal.flightDealRatio);
         var hasDeal = ratio && ratio > 0 && ratio < 0.75;
@@ -3296,6 +3328,32 @@
           ? '<div class="photo-credit">Photo: <a href="' + photographerUrl + '" target="_blank" rel="noopener">' + photographer + '</a> / Pexels</div>'
           : '';
 
+        // Flight row — only on unlocked cards (try-it or premium). Locked
+        // cards get the unlock-strip below instead.
+        var flightSection = '';
+        if (!locked) {
+          var fl = p.flight || {};
+          var airline = esc(fl.airline || '');
+          var depTime = esc(fl.departureTime || '');
+          var arrTime = esc(fl.arrivalTime || '');
+          var bookingUrl = (fl.bookingUrl || '').replace(/[<>"']/g, '');
+          if (airline || depTime || arrTime || bookingUrl) {
+            flightSection = '<div class="deal-flight">' +
+              (airline ? '<span class="deal-flight-airline">' + airline + '</span>' : '') +
+              (depTime || arrTime ? '<span class="deal-flight-times">' + depTime + (depTime && arrTime ? ' → ' : '') + arrTime + '</span>' : '') +
+              (bookingUrl ? '<a class="deal-flight-book" href="' + bookingUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span data-en>Book →</span><span data-sr>Rezerviši →</span></a>' : '') +
+            '</div>';
+          }
+        }
+
+        // Unlock strip on locked cards — click scrolls to #pricing.
+        var unlockStrip = locked
+          ? '<a href="#pricing" class="unlock-strip" onclick="event.stopPropagation()">' +
+              '<span data-en>Unlock flight + booking → €9.99/mo</span>' +
+              '<span data-sr>Otključaj let i booking → €9.99/mes</span>' +
+            '</a>'
+          : '';
+
         var articleClass = 'deal-card' + (locked ? ' locked' : '');
 
         return '' +
@@ -3315,6 +3373,7 @@
                 '<span class="deal-nights" data-sr>' + esc(nightsSr(nights)) + '</span>' +
               '</div>' +
               '<div class="deal-name">' + cityName + '</div>' +
+              hotelLine +
               '<div class="deal-month" data-en>' + month_en + '</div>' +
               '<div class="deal-month" data-sr>' + month_sr + '</div>' +
               '<div class="deal-prices">' +
@@ -3324,22 +3383,20 @@
                   '<div class="per" data-sr>po osobi</div>' +
                 '</div>' +
               '</div>' +
+              flightSection +
               creditLine +
             '</div>' +
+            unlockStrip +
           '</article>';
       }
 
-      // Sort priority for both carousel and full grid (2026-05-15 spec):
+      // Sort priority for both carousel and full grid:
       //   1. daily_try_it === true  → top (free user's hero unlock)
       //   2. top_deal === true      → next (visibly best discount)
-      //   3. everything else        → by pricing.total DESC; locked pkgs
-      //      fall back to parsing "od €X" from preview.priceLabel.
-      function extractPreviewPrice(p) {
-        var label = (p && p.preview && p.preview.priceLabel) || '';
-        // "od €1624" → 1624. Strip non-digit thousand separators.
-        var m = label.match(/€\s*([\d.,]+)/);
-        return m ? parseFloat(m[1].replace(/[^\d.]/g, '')) : 0;
-      }
+      //   3. everything else        → by pricing.total DESC
+      // Post-2026-05-15 every locked pkg keeps pricing.total in the API
+      // response (narrow scrub), so the preview-label fallback that the
+      // previous variant needed is gone.
       function sortKey(p) {
         if (p && p.daily_try_it === true) return 0;
         if (p && p.top_deal === true) return 1;
@@ -3348,8 +3405,8 @@
       function sortPriorityDesc(a, b) {
         var sa = sortKey(a), sb = sortKey(b);
         if (sa !== sb) return sa - sb;
-        var pa = (a && a.pricing && a.pricing.total) || extractPreviewPrice(a) || 0;
-        var pb = (b && b.pricing && b.pricing.total) || extractPreviewPrice(b) || 0;
+        var pa = (a && a.pricing && a.pricing.total) || 0;
+        var pb = (b && b.pricing && b.pricing.total) || 0;
         return pb - pa;
       }
 
@@ -3435,10 +3492,9 @@
         </div>
 
         <ul class="features">
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>See <strong>which destinations</strong> have packages</span><span data-sr>Vidiš <strong>koje destinacije</strong> imaju pakete</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>See LETTO total per package</span><span data-sr>Vidiš LETTO ukupnu cenu paketa</span></span></li>
+          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>See <strong>every</strong> daily deal · photo, hotel, price, dates</span><span data-sr>Vidiš <strong>SVE</strong> dnevne dealove · slika, hotel, cena, datumi</span></span></li>
+          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>2 try-it deals daily with full booking detail (airline, times, links)</span><span data-sr>2 try-it deala dnevno sa punim detaljima (aviokompanija, vremena, linkovi)</span></span></li>
           <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>Weekly newsletter (Wednesday)</span><span data-sr>Newsletter nedeljno (sreda)</span></span></li>
-          <li style="opacity: 0.5;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-top: 4px; flex-shrink: 0;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span><span data-en>No airline names, hotel, or booking links</span><span data-sr>Bez imena aviokompanije, hotela ili linkova</span></span></li>
         </ul>
 
         <a href="mailto:info@letto.live?subject=LETTO%20Newsletter%20signup&body=Add%20me%20to%20the%20free%20weekly%20newsletter." class="btn-outline" style="text-align: center; text-decoration: none;">
