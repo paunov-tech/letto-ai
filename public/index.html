@@ -3493,10 +3493,25 @@
           grid.innerHTML = sorted.slice(0, 6).map(renderCard).join('');
           grid.dataset.loaded = 'true';
 
-          // Full-catalog grid below #pricing — same shape, all sorted pkgs.
-          var fullGrid = document.getElementById('full-deals-grid');
-          if (fullGrid) {
-            fullGrid.innerHTML = sorted.map(renderCard).join('');
+          // Full-catalog grid below #pricing — same renderCard, ALL sorted
+          // pkgs (not sliced). #full-deals-grid is parsed AFTER this inline
+          // <script>; when the fetch resolves fast (CDN-cached /api/packages,
+          // s-maxage=300) the .then can run BEFORE the parser reaches that
+          // element → the old `if (fullGrid)` silently no-op'd and anon saw
+          // an empty grid. Paint now if the element exists, and also paint
+          // on DOMContentLoaded so a late-parsed element still gets filled.
+          // The carousel #deals-grid never had this — its ref is captured
+          // synchronously before the fetch (line ~3268).
+          var fullGridHtml = sorted.map(renderCard).join('');
+          var fullGridPainted = false;
+          var paintFullGrid = function () {
+            if (fullGridPainted) return;
+            var fg = document.getElementById('full-deals-grid');
+            if (fg) { fg.innerHTML = fullGridHtml; fullGridPainted = true; }
+          };
+          paintFullGrid();
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', paintFullGrid);
           }
 
           // Expose ALL packages for openDealModal lookups (carousel + grid).
