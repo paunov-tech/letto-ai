@@ -55,22 +55,38 @@ async function getDailyTryItIds() {
   if (dailyTryItCache.dateKey === dateKey) return dailyTryItCache.ids;
 
   try {
-    const cutoffISO = startOfDay.toISOString();
+    const startOfDayMs = startOfDay.getTime();
     // Use the (status, metadata.createdAt DESC) composite that listing mode
-    // already exercises — no new Firestore index needed (the (status,
-    // pricing.total) composite the previous variant required wasn't
-    // provisioned in prod, so the query graceful-failed and no try-it
-    // unlocks ever fired). Pull a wider 100-row window then sort by
-    // pricing.total in memory; catalog is well under 100 today, so this is
-    // effectively the global top-3 by price.
+    // already exercises — no new Firestore index needed. Pull a wider
+    // 100-row window then sort by pricing.total in memory; catalog is well
+    // under 100 today, so this is effectively the global top-N by price.
     const snap = await db.collection('letto_packages')
       .where('status', 'in', ['published_public', 'published_premium'])
       .orderBy('metadata.createdAt', 'desc')
       .limit(100)
       .get();
+    // metadata.createdAt arrives from admin SDK as a Firestore Timestamp
+    // (toMillis()-bearing class instance, serialized as {_seconds,
+    // _nanoseconds} when JSON-stringified). Earlier code compared the
+    // Timestamp directly to an ISO string — JS coerced the object to
+    // "[object Object]", string-compared against "2026-…", returned
+    // false for every doc, eligible set was always empty, picker
+    // silently returned no try-it ids. Coerce to epoch ms here.
+    function tsToMs(ts) {
+      if (!ts) return null;
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+      if (typeof ts._seconds === 'number') return ts._seconds * 1000 + Math.floor((ts._nanoseconds || 0) / 1e6);
+      if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+      if (typeof ts === 'string') return new Date(ts).getTime();
+      return null;
+    }
     const eligible = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => (p.metadata?.createdAt || '') < cutoffISO);
+      .filter(p => {
+        const ms = tsToMs(p.metadata?.createdAt);
+        return ms != null && ms < startOfDayMs;
+      });
     eligible.sort((a, b) => (b.pricing?.total ?? 0) - (a.pricing?.total ?? 0));
     // Slice 2 (was 3) per 2026-05-15 spec — fewer try-it picks per day
     // since the scrub is now narrow (locked cards still show price/hotel/
