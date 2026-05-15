@@ -3302,8 +3302,10 @@
 
         // Flight row — only on unlocked cards (try-it or premium). Locked
         // cards get the unlock-strip below instead.
+        // Flight row — only on unlocked cards (try-it / premium). The 4
+        // flight fields stay behind the paywall; locked cards get the
+        // unlock-strip instead.
         var flightSection = '';
-        var hotelSection = '';
         if (!locked) {
           var fl = p.flight || {};
           var airline = esc(fl.airline || '');
@@ -3317,52 +3319,54 @@
               (bookingUrl ? '<a class="deal-flight-book" href="' + bookingUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span data-en>Book →</span><span data-sr>Rezerviši →</span></a>' : '') +
             '</div>';
           }
+        }
 
-          // Hotel Book row — mirrors openDealModal's hotel-URL logic
-          // (index.html ~5180): a specific Booking.com property page gets
-          // checkin/checkout/group_adults appended so the dates pre-fill;
-          // anything else falls back to a Booking.com city search. Locked
-          // cards skip this entirely (hotel.bookingUrl is null on scrub).
-          var ho = p.hotel || {};
-          var hoUrl = ho.bookingUrl || '';
-          if (hoUrl) {
-            var finalHotelUrl;
-            if (/booking\.com\/hotel\//i.test(hoUrl)) {
-              try {
-                var hu = new URL(hoUrl);
-                if (p.dates && p.dates.departure) hu.searchParams.set('checkin', p.dates.departure);
-                if (p.dates && p.dates.return) hu.searchParams.set('checkout', p.dates.return);
-                hu.searchParams.set('group_adults', '2');
-                hu.searchParams.set('no_rooms', '1');
-                finalHotelUrl = hu.toString();
-              } catch (e) { finalHotelUrl = hoUrl; }
-            } else {
-              var hp = new URLSearchParams({
-                ss: (p.destination && p.destination.city) || '',
-                checkin: (p.dates && p.dates.departure) || '',
-                checkout: (p.dates && p.dates.return) || '',
-                group_adults: '2',
-                no_rooms: '1'
-              });
-              finalHotelUrl = 'https://www.booking.com/searchresults.html?' + hp.toString();
-            }
-            var safeHotelUrl = finalHotelUrl.replace(/[<>"']/g, '');
-            var rawHotelName = (ho.name || '').toString();
-            var hotelNameShort = esc(rawHotelName.length > 34 ? rawHotelName.slice(0, 34) + '…' : rawHotelName);
-            hotelSection = '<div class="deal-hotel-book-row">' +
-              (hotelNameShort ? '<span class="deal-hotel-book-name">' + hotelNameShort + '</span>' : '') +
-              '<a class="deal-hotel-book" href="' + safeHotelUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' +
-                '<span data-en>Book hotel →</span><span data-sr>Rezerviši hotel →</span>' +
-              '</a>' +
-            '</div>';
+        // Hotel Book row — renders for EVERY tier (2026-05-16:
+        // hotel.bookingUrl is no longer scrubbed — Booking is free, so a
+        // free visitor can book the hotel). Mirrors openDealModal's
+        // hotel-URL logic: a specific Booking.com property page gets
+        // checkin/checkout/group_adults appended so the dates pre-fill;
+        // anything else falls back to a Booking.com city search.
+        var hotelSection = '';
+        var ho = p.hotel || {};
+        var hoUrl = ho.bookingUrl || '';
+        if (hoUrl) {
+          var finalHotelUrl;
+          if (/booking\.com\/hotel\//i.test(hoUrl)) {
+            try {
+              var hu = new URL(hoUrl);
+              if (p.dates && p.dates.departure) hu.searchParams.set('checkin', p.dates.departure);
+              if (p.dates && p.dates.return) hu.searchParams.set('checkout', p.dates.return);
+              hu.searchParams.set('group_adults', '2');
+              hu.searchParams.set('no_rooms', '1');
+              finalHotelUrl = hu.toString();
+            } catch (e) { finalHotelUrl = hoUrl; }
+          } else {
+            var hp = new URLSearchParams({
+              ss: (p.destination && p.destination.city) || '',
+              checkin: (p.dates && p.dates.departure) || '',
+              checkout: (p.dates && p.dates.return) || '',
+              group_adults: '2',
+              no_rooms: '1'
+            });
+            finalHotelUrl = 'https://www.booking.com/searchresults.html?' + hp.toString();
           }
+          var safeHotelUrl = finalHotelUrl.replace(/[<>"']/g, '');
+          var rawHotelName = (ho.name || '').toString();
+          var hotelNameShort = esc(rawHotelName.length > 34 ? rawHotelName.slice(0, 34) + '…' : rawHotelName);
+          hotelSection = '<div class="deal-hotel-book-row">' +
+            (hotelNameShort ? '<span class="deal-hotel-book-name">' + hotelNameShort + '</span>' : '') +
+            '<a class="deal-hotel-book" href="' + safeHotelUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' +
+              '<span data-en>Book hotel →</span><span data-sr>Rezerviši hotel →</span>' +
+            '</a>' +
+          '</div>';
         }
 
         // Unlock strip on locked cards — click scrolls to #pricing.
         var unlockStrip = locked
           ? '<a href="#pricing" class="unlock-strip" onclick="event.stopPropagation()">' +
-              '<span data-en>Unlock flight + booking → €9.99/mo</span>' +
-              '<span data-sr>Otključaj let i booking → €9.99/mes</span>' +
+              '<span data-en>Unlock flight → €9.99/mo</span>' +
+              '<span data-sr>Otključaj let → €9.99/mes</span>' +
             '</a>'
           : '';
 
