@@ -18,6 +18,7 @@ import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { cleanAviasalesUrl, buildAviasalesUrl } from '../lib/aviasales-url.js';
 import { verifyPremiumSession, getSessionIdFromRequest } from '../lib/auth.js';
+import { passThroughFull, scrubToPreview } from '../lib/package-shape.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -38,30 +39,75 @@ function shiftDateISO(iso, days) {
   return d.toISOString().slice(0, 10);
 }
 
+// Daily try-it picker · top 3 packages by pricing.total DESC, eligible set
+// fixed at startOfDayUTC so today's freshly-mined packages don't churn the
+// picks during the day (option C from product brief). Cached once per UTC
+// day per warm Lambda instance — Vercel may spawn multiple instances, but
+// each does at most 1 read/day for this. If the underlying query errors
+// (e.g. composite index not provisioned), free users see a fully-scrubbed
+// catalog for that instance/day instead of breaking the endpoint.
+let dailyTryItCache = { dateKey: null, ids: new Set() };
+
+async function getDailyTryItIds() {
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const dateKey = startOfDay.toISOString().slice(0, 10);
+  if (dailyTryItCache.dateKey === dateKey) return dailyTryItCache.ids;
+
+  try {
+    const cutoffISO = startOfDay.toISOString();
+    const snap = await db.collection('letto_packages')
+      .where('status', 'in', ['published_public', 'published_premium'])
+      .orderBy('pricing.total', 'desc')
+      .limit(20)
+      .get();
+    const eligible = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => (p.metadata?.createdAt || '') < cutoffISO);
+    const ids = new Set(eligible.slice(0, 3).map(p => p.id));
+    dailyTryItCache = { dateKey, ids };
+    return ids;
+  } catch (e) {
+    console.warn('[packages] daily_try_it query failed, free users see fully scrubbed catalog today:', e.message);
+    return new Set();
+  }
+}
+
 async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'method_not_allowed' });
   }
 
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-
-  // Premium tier requires a verified Stripe session — same check /api/me
-  // performs. Without this, anyone could call ?tier=premium and read the
-  // gated catalog. Per-user response, so disable shared caching.
   const wantsPremium = req.query.tier === 'premium';
-  if (wantsPremium) {
-    const sessionId = getSessionIdFromRequest(req);
-    const auth = await verifyPremiumSession(sessionId);
-    if (!auth.premium) {
-      res.setHeader('Cache-Control', 'private, no-store');
-      return res.status(401).json({ error: 'premium_required' });
-    }
+
+  // Silent auth check on every call — paid status determines RESPONSE SHAPE
+  // (passThroughFull vs scrubToPreview), not just access to the premium pool.
+  // Anonymous callers skip the Stripe round-trip.
+  const sessionId = getSessionIdFromRequest(req);
+  const auth = sessionId ? await verifyPremiumSession(sessionId) : { premium: false };
+
+  // Hard gate on ?tier=premium — preserves the 401 behaviour from 45524e1.
+  if (wantsPremium && !auth.premium) {
     res.setHeader('Cache-Control', 'private, no-store');
+    return res.status(401).json({ error: 'premium_required' });
+  }
+  const isPremium = auth.premium;
+
+  // Cache partition: ANY sessioned request is private. Only fully-anonymous
+  // calls hit the shared CDN cache. Stronger than relying on Vary: X-Letto-Session
+  // (CDN edges honour custom-header Vary inconsistently — that may have been
+  // the cross-tier-cache atomicity bug in the reverted e74d4da). With the
+  // session-bit-in-cache-key partition, a logged-in caller can never receive
+  // a CDN-cached scrubbed response, and an anon caller can never receive a
+  // cached premium response.
+  if (sessionId) {
+    res.setHeader('Cache-Control', 'private, no-store');
+  } else {
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
   }
 
   const tier = wantsPremium ? 'premium' : 'public';
-  const status = wantsPremium ? 'published_premium' : 'published_public';
   const limit = Math.min(parseInt(req.query.limit) || 20, 50);
 
   const origin = (req.query.origin || '').toUpperCase().slice(0, 3) || null;
@@ -76,7 +122,13 @@ async function handler(req, res) {
   const isSearch = !!(origin || dest || from || to || priceTier);
 
   try {
-    let q = db.collection('letto_packages').where('status', '==', status);
+    // ?tier=premium → premium pool only (auth already verified above).
+    // Default → BOTH pools so free callers see the full catalog width;
+    // response shape (scrubToPreview vs passThroughFull, applied below)
+    // gates the booking info per-card, not the query.
+    let q = wantsPremium
+      ? db.collection('letto_packages').where('status', '==', 'published_premium')
+      : db.collection('letto_packages').where('status', 'in', ['published_public', 'published_premium']);
     if (origin) q = q.where('origin.code', '==', origin);
     if (dest)   q = q.where('destination.code', '==', dest);
     if (priceTier) q = q.where('tier', '==', priceTier);
@@ -145,6 +197,31 @@ async function handler(req, res) {
         if (synth) pkg.flight.bookingUrl = synth;
       }
     }
+
+    // Markers + shape selection.
+    //   daily_try_it · true iff this id is in today's global top-3-by-price
+    //                  (computed in getDailyTryItIds above). Unlocks the
+    //                  card for free callers — try-it teaser.
+    //   top_deal     · chip-only marker; flightDealRatio < 0.65 means the
+    //                  flight is >35% under the route median. No unlock
+    //                  semantics — purely cosmetic.
+    //   round_trip   · universal badge — every catalog package is RT by
+    //                  definition (departure + return + nights).
+    // Unlock policy:  premium subscriber OR daily_try_it → passThroughFull
+    //                 (full shape + labels). Otherwise → scrubToPreview
+    //                 (masked shape + labels). passThroughFull keeps the
+    //                 preview labels so the frontend renders one card.
+    const dailyTryItIds = await getDailyTryItIds();
+    packages = packages.map(p => {
+      const isDailyTryIt = dailyTryItIds.has(p.id);
+      const isTopDeal = (p.deal?.flightDealRatio ?? 1) < 0.65;
+      const unlocked = isPremium || isDailyTryIt;
+      const out = unlocked ? passThroughFull(p) : scrubToPreview(p);
+      out.daily_try_it = isDailyTryIt;
+      out.top_deal = isTopDeal;
+      out.round_trip = true;
+      return out;
+    });
 
     return res.status(200).json({
       packages,
