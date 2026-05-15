@@ -9,6 +9,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { withSentry } from '../lib/sentry-backend.js';
 import { applyRateLimit, getClientIp } from '../lib/rate-limit.js';
+import { sendLeadDoiEmail } from '../lib/email-leads.js';
 import crypto from 'crypto';
 
 if (!getApps().length) {
@@ -59,15 +60,51 @@ async function handler(req, res) {
   const safeSource = (typeof source === 'string' && VALID_SOURCES.has(source)) ? source : 'unknown';
   const safeDealId = typeof dealId === 'string' ? dealId.slice(0, 120) : '';
 
+  const lowerEmail = email.toLowerCase().trim();
+
   try {
-    await db.collection('email_leads').add({
-      email: email.toLowerCase().trim(),
-      dealId: safeDealId,
-      source: safeSource,
-      createdAt: FieldValue.serverTimestamp(),
-      ipHash,
-    });
-    return res.status(200).json({ saved: true });
+    // Idempotency · if a pending DOI doc already exists for this email,
+    // reuse its confirmToken and re-send the email rather than create a
+    // new doc. Prevents token bloat from refresh / impatient resubmit,
+    // and guarantees the same email-confirmation link works regardless of
+    // which submission the user clicks. Equality-only query — no
+    // composite index needed; Firestore single-field indexes are auto.
+    const existing = await db.collection('email_leads')
+      .where('email', '==', lowerEmail)
+      .where('status', '==', 'pending')
+      .limit(1).get();
+
+    let confirmToken;
+    if (!existing.empty) {
+      confirmToken = existing.docs[0].data().confirmToken || crypto.randomUUID();
+      // If the legacy doc somehow lacks a token, patch one in for the resend.
+      if (!existing.docs[0].data().confirmToken) {
+        await existing.docs[0].ref.update({ confirmToken });
+      }
+    } else {
+      confirmToken = crypto.randomUUID();
+      await db.collection('email_leads').add({
+        email: lowerEmail,
+        dealId: safeDealId,
+        source: safeSource,
+        status: 'pending',
+        confirmToken,
+        confirmedAt: null,
+        createdAt: FieldValue.serverTimestamp(),
+        ipHash,
+      });
+    }
+
+    // Fire the DOI email · non-blocking failure. If Resend is down, the
+    // doc is written (or reused) and a manual cleanup / retry can run
+    // later. Don't surface send failure to the client — same-shape
+    // {sent:true} keeps the UX unaffected and the lead in the queue.
+    const send = await sendLeadDoiEmail(lowerEmail, confirmToken, safeDealId);
+    if (!send.ok) {
+      console.error('[lead-capture] DOI send failed for', lowerEmail, send);
+    }
+
+    return res.status(200).json({ sent: true });
   } catch (err) {
     console.error('[lead-capture] Firestore write failed:', err.message);
     return res.status(500).json({ error: 'write_failed' });
