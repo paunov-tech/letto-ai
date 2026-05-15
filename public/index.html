@@ -1271,6 +1271,54 @@
       0 4px 12px rgba(107, 26, 37, 0.22);
   }
   .badge-deal svg { stroke: #fff; }
+
+  /* Universal-catalog markers (universal catalog rollout 2026-05-15). */
+  .badge-try-it {
+    display: inline-block;
+    background: linear-gradient(135deg, #f0c674, #b8863b);
+    color: #1f2226;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    padding: 5px 11px;
+    border-radius: 99px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(184, 134, 59, 0.4);
+  }
+  /* On deal-card photo overlay: absolute top-left ribbon. */
+  .deal-photo .badge-try-it {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 3;
+  }
+  .badge-top-deal {
+    display: inline-block;
+    background: linear-gradient(135deg, #f0c674, #b8863b);
+    color: #1f2226;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    text-transform: uppercase;
+  }
+  .pill-round-trip {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    padding: 3px 8px;
+    margin-left: 8px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #1f2226;
+    border-radius: 99px;
+  }
   .deal-arrow {
     display: inline-flex;
     align-items: center;
@@ -3148,6 +3196,18 @@
       };
 
       function renderCard(p) {
+        // Universal catalog wiring (2026-05-15). Card respects per-pkg
+        // shape from /api/packages: locked=true → preview labels + .locked
+        // class (drives blur via existing CSS); locked=false → raw fields.
+        // Three additive badges: daily_try_it → TRY IT ribbon top-left,
+        // top_deal → TOP DEAL sticker stacked into the top-right badge slot,
+        // round_trip → pill in the package-icons row (every package).
+        var locked = (p.locked === true);
+        var tryIt = (p.daily_try_it === true);
+        var hasTopDeal = (p.top_deal === true);
+        var roundTrip = (p.round_trip === true);
+        var prev = p.preview || {};
+
         var id = String(p.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
         var code = String(p.destination && p.destination.code || '').toLowerCase();
         var scene = SCENE[code] || 'default';
@@ -3157,13 +3217,26 @@
         var month_en = esc(p.copy && p.copy.en && p.copy.en.month || '');
         var month_sr = esc(p.copy && p.copy.sr && p.copy.sr.month || month_en);
         var nights = parseInt(p.dates && p.dates.nights, 10) || 0;
-        var total = Math.round(parseFloat(p.pricing && p.pricing.total) || 0);
+
+        // Price: locked → preview.priceLabel ("od €1624"); unlocked → raw.
+        var priceHtml;
+        if (locked) {
+          priceHtml = '<div class="value">' + esc(prev.priceLabel || '€—') + '</div>';
+        } else {
+          var total = Math.round(parseFloat(p.pricing && p.pricing.total) || 0);
+          priceHtml = '<div class="value">€' + total.toLocaleString('en-US') + '</div>';
+        }
+
         var ratio = parseFloat(p.deal && p.deal.flightDealRatio);
         var hasDeal = ratio && ratio > 0 && ratio < 0.75;
         var pctBelow = hasDeal ? Math.round((1 - ratio) * 100) : 0;
-        var topRightBadge = hasDeal
+        var dealBadge = hasDeal
           ? '<span class="badge-deal"><svg width="11" height="14" viewBox="0 0 14 20" aria-hidden="true"><path d="M7 0 L7 16 M0 12 L7 20 L14 12" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>−' + pctBelow + '%</span>'
           : '<span class="badge-package">PACKAGE</span>';
+        var topDealSticker = hasTopDeal ? '<span class="badge-top-deal">TOP DEAL</span>' : '';
+        var tryItRibbon = tryIt ? '<span class="badge-try-it">TRY IT</span>' : '';
+        var roundTripPill = roundTrip ? '<span class="pill-round-trip" aria-label="round-trip">ROUND-TRIP ✈ ✈</span>' : '';
+
         var transport = p.transport === 'bus' ? 'bus' : 'flight';
         var aria = transport === 'bus' ? 'bus + hotel + bus' : 'flight + hotel + flight';
         var imgUrl = (p.imageUrl || '').replace(/[<>"']/g, '');
@@ -3180,13 +3253,16 @@
           ? '<div class="photo-credit">Photo: <a href="' + photographerUrl + '" target="_blank" rel="noopener">' + photographer + '</a> / Pexels</div>'
           : '';
 
+        var articleClass = 'deal-card' + (locked ? ' locked' : '');
+
         return '' +
-          '<article class="deal-card" data-deal="' + esc(id) + '">' +
+          '<article class="' + articleClass + '" data-deal="' + esc(id) + '">' +
             '<div class="deal-photo">' +
               photoLayer +
               '<div class="gradient-overlay"></div>' +
-              '<div class="badge-top-right">' + topRightBadge + '</div>' +
-              '<div class="package-icons" aria-label="' + aria + '">' + transportIcons(transport) + '</div>' +
+              tryItRibbon +
+              '<div class="badge-top-right">' + topDealSticker + dealBadge + '</div>' +
+              '<div class="package-icons" aria-label="' + aria + '">' + transportIcons(transport) + roundTripPill + '</div>' +
             '</div>' +
             '<div class="deal-body">' +
               '<div class="deal-meta-row">' +
@@ -3200,7 +3276,7 @@
               '<div class="deal-month" data-sr>' + month_sr + '</div>' +
               '<div class="deal-prices">' +
                 '<div class="total">' +
-                  '<div class="value">€' + total.toLocaleString('en-US') + '</div>' +
+                  priceHtml +
                   '<div class="per" data-en>per person</div>' +
                   '<div class="per" data-sr>po osobi</div>' +
                 '</div>' +

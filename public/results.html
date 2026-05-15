@@ -1635,6 +1635,51 @@
       0 4px 12px rgba(107, 26, 37, 0.22);
   }
   .badge-deal svg { stroke: #fff; }
+
+  /* Universal-catalog markers (universal catalog rollout 2026-05-15) —
+     mirrors public/index.html so results.html pkg-cards & deal-cards
+     render the same badges. */
+  .badge-try-it {
+    display: inline-block;
+    background: linear-gradient(135deg, #f0c674, #b8863b);
+    color: #1f2226;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    padding: 5px 11px;
+    border-radius: 99px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 8px rgba(184, 134, 59, 0.4);
+  }
+  .deal-photo .badge-try-it { position: absolute; top: 14px; left: 14px; z-index: 3; }
+  .badge-top-deal {
+    display: inline-block;
+    background: linear-gradient(135deg, #f0c674, #b8863b);
+    color: #1f2226;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    text-transform: uppercase;
+  }
+  .pill-round-trip {
+    display: inline-flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    padding: 3px 8px;
+    margin-left: 8px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #1f2226;
+    border-radius: 99px;
+  }
+
   .deal-arrow {
     display: inline-flex;
     align-items: center;
@@ -5228,11 +5273,25 @@
       var dates = pkg.dates || {};
       var deal = pkg.deal || {};
 
+      // Universal catalog shape (2026-05-15): locked → preview labels in
+      // place of scrubbed raw fields; tryIt/topDeal/roundTrip → additive
+      // badges. pkg-card has no .deal-photo overlay, so TRY IT and
+      // ROUND-TRIP both flow inline; positioned by .pkg-card__route /
+      // .pkg-card__details siblings.
+      var locked = (pkg.locked === true);
+      var tryIt = (pkg.daily_try_it === true);
+      var hasTopDeal = (pkg.top_deal === true);
+      var roundTrip = (pkg.round_trip === true);
+      var prev = pkg.preview || {};
+
       var ratio = parseFloat(deal.flightDealRatio);
       var pctBelow = (ratio > 0 && ratio < 1) ? Math.round((1 - ratio) * 100) : 0;
       var dealBadge = pctBelow >= 20
         ? '<span class="pkg-card__deal-badge">−' + pctBelow + '%</span>'
         : '';
+      var topDealSticker = hasTopDeal ? '<span class="badge-top-deal">TOP DEAL</span>' : '';
+      var tryItRibbon = tryIt ? '<span class="badge-try-it" style="margin-right:8px;">TRY IT</span>' : '';
+      var roundTripPill = roundTrip ? '<span class="pill-round-trip" aria-label="round-trip">ROUND-TRIP ✈ ✈</span>' : '';
 
       var stopsLabel = '';
       var stopsNum = parseInt(fl.stops, 10);
@@ -5240,11 +5299,32 @@
       else if (stopsNum === 1) stopsLabel = (l === 'en') ? '1 stop' : '1 presedanje';
       else if (stopsNum > 1) stopsLabel = stopsNum + (l === 'en' ? ' stops' : ' presedanja');
 
-      var dateRange = fmtDateRange(dates.departure, dates.return, l);
-      var nights = dates.nights || 0;
-      var nightsLabel = nights ? (nights + ' ' + (l === 'en' ? (nights === 1 ? 'night' : 'nights') : 'noći')) : '';
+      // Dates: locked → preview.dateLabel (Serbian-only, "Sredinom juna … · 10 noći");
+      // unlocked → existing fmtDateRange + nightsLabel composition.
+      var dateText;
+      if (locked) {
+        dateText = escapeHtml(prev.dateLabel || '');
+      } else {
+        var dateRange = fmtDateRange(dates.departure, dates.return, l);
+        var nights = dates.nights || 0;
+        var nightsLabel = nights ? (nights + ' ' + (l === 'en' ? (nights === 1 ? 'night' : 'nights') : 'noći')) : '';
+        dateText = escapeHtml(dateRange) + (nightsLabel ? ' · ' + escapeHtml(nightsLabel) : '');
+      }
 
-      var price = Math.round(fl.totalPrice || 0);
+      // Price: locked → preview.priceLabel ("od €1624"); unlocked → fl.totalPrice
+      var priceText = locked
+        ? escapeHtml(prev.priceLabel || '€—')
+        : '€' + Math.round(fl.totalPrice || 0);
+
+      // Airline header: locked → preview.flightLabel ("direktan let · ~3h");
+      // unlocked → airline + flightNumber.
+      var airlineHtml;
+      if (locked) {
+        airlineHtml = '<span class="pkg-card__airline">' + escapeHtml(prev.flightLabel || '') + '</span>';
+      } else {
+        airlineHtml = '<span class="pkg-card__airline">' + escapeHtml(fl.airline || '?') + (fl.flightNumber ? ' ' + escapeHtml(fl.flightNumber) : '') + '</span>';
+      }
+
       var isSelected = selectedId === pkg.id;
 
       // Date-match hint: when search date is far from package departure, show "± Nd" label
@@ -5255,24 +5335,29 @@
           '</span>';
       }
 
-      html += '<article class="pkg-card' + (isSelected ? ' is-selected' : '') + '" data-mix-pkg-id="' + escapeHtml(pkg.id) + '" tabindex="0" role="button" aria-pressed="' + isSelected + '">' +
+      var articleClass = 'pkg-card' + (isSelected ? ' is-selected' : '') + (locked ? ' locked' : '');
+
+      html += '<article class="' + articleClass + '" data-mix-pkg-id="' + escapeHtml(pkg.id) + '" tabindex="0" role="button" aria-pressed="' + isSelected + '">' +
         '<div class="pkg-card__head">' +
           '<div class="pkg-card__route">' +
-            '<span class="pkg-card__airline">' + escapeHtml(fl.airline || '?') + (fl.flightNumber ? ' ' + escapeHtml(fl.flightNumber) : '') + '</span>' +
+            tryItRibbon +
+            airlineHtml +
             '<span class="pkg-card__sep" aria-hidden="true">·</span>' +
             '<span class="pkg-card__iata">' + escapeHtml((origin.code || '') + ' → ' + (dest.code || '')) + '</span>' +
           '</div>' +
           '<div class="pkg-card__price">' +
-            '<span class="pkg-card__price-num">€' + price + '</span>' +
+            topDealSticker +
+            '<span class="pkg-card__price-num">' + priceText + '</span>' +
             dealBadge +
           '</div>' +
         '</div>' +
         '<div class="pkg-card__body">' +
-          '<div class="pkg-card__dates">' + escapeHtml(dateRange) + (nightsLabel ? ' · ' + escapeHtml(nightsLabel) : '') + matchHint + '</div>' +
+          '<div class="pkg-card__dates">' + dateText + matchHint + '</div>' +
           '<div class="pkg-card__details">' +
             (fl.departureTime ? '<span class="pkg-card__time">' + escapeHtml(fl.departureTime) + '</span> · ' : '') +
             (fl.duration ? '<span>' + escapeHtml(fl.duration) + '</span> · ' : '') +
             (stopsLabel ? '<span>' + stopsLabel + '</span>' : '') +
+            roundTripPill +
           '</div>' +
         '</div>' +
         '<div class="pkg-card__cta">' +
