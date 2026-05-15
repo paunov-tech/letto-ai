@@ -1426,7 +1426,50 @@
     color: var(--muted);
     margin-top: 2px;
   }
-  .locked { filter: blur(5px); user-select: none; pointer-events: none; }
+  /* .locked — softer "tease" treatment (2026-05-15 spec):
+     - Image: subtle 2px blur + slight desaturate + 0.7 opacity → reads as
+       "preview, not broken". Was filter:blur(5px) on the whole card,
+       which made preview labels unreadable. Now image blurs, text stays
+       crisp.
+     - Gradient overlay strengthened on the bottom to keep .package-icons
+       legible against the softened image.
+     - .priceLabel gets the gold accent — it's the headline value teased
+       to the free user ("od €1624 · become Premium to see exact").
+     - pointer-events stays ENABLED so the locked card can still trigger
+       a paywall-modal click handler. user-select disabled to discourage
+       text-grabbing the priceLabel as a workaround. */
+  .locked { user-select: none; }
+  .locked .deal-photo .card-photo-img,
+  .locked .deal-photo .photo-scene {
+    filter: blur(2px) saturate(0.85);
+    opacity: 0.7;
+  }
+  .locked .deal-photo .gradient-overlay {
+    background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%);
+  }
+  .locked .deal-prices .total .value {
+    color: var(--gold-bright);
+    font-weight: 700;
+  }
+
+  /* Full-catalog section · surfaces ALL packages below #pricing.
+     Grid is responsive 1/2/3-col by viewport; cards reuse .deal-card. */
+  .section-full-deals { padding: 64px 0 96px; background: var(--paper); }
+  .full-deals-head { text-align: center; margin-bottom: 40px; max-width: 720px; margin-left: auto; margin-right: auto; padding: 0 20px; }
+  .full-deals-head h2 { font-family: 'Fraunces', serif; font-weight: 400; font-size: clamp(28px, 5vw, 44px); letter-spacing: -0.02em; line-height: 1.05; margin: 12px 0 14px; color: var(--ink); }
+  .full-deals-head h2 .italic { font-style: italic; }
+  .full-deals-sub { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 17px; color: var(--muted); }
+  .full-deals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+  .full-deals-grid > .deal-card { width: 100%; flex: 0 0 auto; }
+  @media (max-width: 720px) { .full-deals-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 0 14px; } }
+  @media (max-width: 480px) { .full-deals-grid { grid-template-columns: 1fr; } }
 
   /* ─── NUMBERS ──────────────────────── */
   .section-numbers {
@@ -3286,7 +3329,33 @@
           '</article>';
       }
 
-      fetch('/api/packages?limit=12')
+      // Sort priority for both carousel and full grid (2026-05-15 spec):
+      //   1. daily_try_it === true  → top (free user's hero unlock)
+      //   2. top_deal === true      → next (visibly best discount)
+      //   3. everything else        → by pricing.total DESC; locked pkgs
+      //      fall back to parsing "od €X" from preview.priceLabel.
+      function extractPreviewPrice(p) {
+        var label = (p && p.preview && p.preview.priceLabel) || '';
+        // "od €1624" → 1624. Strip non-digit thousand separators.
+        var m = label.match(/€\s*([\d.,]+)/);
+        return m ? parseFloat(m[1].replace(/[^\d.]/g, '')) : 0;
+      }
+      function sortKey(p) {
+        if (p && p.daily_try_it === true) return 0;
+        if (p && p.top_deal === true) return 1;
+        return 2;
+      }
+      function sortPriorityDesc(a, b) {
+        var sa = sortKey(a), sb = sortKey(b);
+        if (sa !== sb) return sa - sb;
+        var pa = (a && a.pricing && a.pricing.total) || extractPreviewPrice(a) || 0;
+        var pb = (b && b.pricing && b.pricing.total) || extractPreviewPrice(b) || 0;
+        return pb - pa;
+      }
+
+      // API caps limit at 50. Fetch the cap so the full-catalog grid below
+      // #pricing has the full pool to display; carousel slices the top 6.
+      fetch('/api/packages?limit=50')
         .then(function (r) { return r.ok ? r.json() : Promise.reject('http_' + r.status); })
         .then(function (data) {
           var pkgs = (data && data.packages) || [];
@@ -3296,9 +3365,18 @@
               '<div class="deals-empty" data-sr>Novi deal-ovi stižu uskoro. Pretplati se za alert.</div>';
             return;
           }
-          grid.innerHTML = pkgs.map(renderCard).join('');
+          var sorted = pkgs.slice().sort(sortPriorityDesc);
+          // Carousel: top 6 (try-it picks lead, then top_deal, then by price).
+          grid.innerHTML = sorted.slice(0, 6).map(renderCard).join('');
           grid.dataset.loaded = 'true';
-          // Expose for openDealModal
+
+          // Full-catalog grid below #pricing — same shape, all sorted pkgs.
+          var fullGrid = document.getElementById('full-deals-grid');
+          if (fullGrid) {
+            fullGrid.innerHTML = sorted.map(renderCard).join('');
+          }
+
+          // Expose ALL packages for openDealModal lookups (carousel + grid).
           window.lettoPackages = window.lettoPackages || {};
           for (var i = 0; i < pkgs.length; i++) {
             var p = pkgs[i];
@@ -3404,6 +3482,30 @@
       <span data-en>Payment via Stripe · Cancel anytime · GDPR compliant · 14-day money-back guarantee</span>
       <span data-sr>Plaćanje preko Stripe · Otkazivanje kad god želiš · GDPR usklađeno · 14 dana garantovan povraćaj</span>
     </p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- Full catalog · surfaced below #pricing per 2026-05-15 spec.       -->
+<!-- Populated by the same /api/packages?limit=50 fetch as the hero    -->
+<!-- carousel above; renderCard is reused so locked/try-it/top-deal/   -->
+<!-- round-trip badges and softer .locked treatment all carry through. -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="section-full-deals" id="all-deals">
+  <div class="container">
+    <div class="full-deals-head">
+      <div class="eyebrow" data-en>FULL CATALOG</div>
+      <div class="eyebrow" data-sr>KOMPLETAN KATALOG</div>
+      <h2>
+        <span data-en>All <span class="italic gold-foil">today's deals.</span></span>
+        <span data-sr>Svi <span class="italic gold-foil">današnji deal-ovi.</span></span>
+      </h2>
+      <p class="full-deals-sub">
+        <span data-en>Premium unlocks every card. Try-it picks rotate daily.</span>
+        <span data-sr>Premium otključava svaki card. Try-it picks rotiraju svaki dan.</span>
+      </p>
+    </div>
+    <div id="full-deals-grid" class="full-deals-grid"></div>
   </div>
 </section>
 
