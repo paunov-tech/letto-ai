@@ -60,7 +60,9 @@ async function sendWelcomeEmailWithRetry(args) {
         firstName: args.firstName,
         inviteLink: args.inviteLink,
         amountLabel: args.amountLabel,
-        dateLabel: args.dateLabel
+        dateLabel: args.dateLabel,
+        stripeSessionId: args.stripeSessionId,
+        tripId: args.tripId
       });
     } catch (e) {
       res = { ok: false, reason: e.message };
@@ -756,15 +758,73 @@ async function handler(req, res) {
         const _now = new Date();
         const dateLabel = _now.getDate() + '.' + (_now.getMonth() + 1) + '.' + _now.getFullYear() + '.';
 
+        // ═══ Mix delivery · promote a saved pre-checkout Mix to a paid trip ═══
+        // If this checkout carried metadata.tripId (the user built a Mix in
+        // results.html and it was persisted via /api/save-mix), copy
+        // pending_mixes/{tripId} → purchasedMixes/{tripId} atomically and
+        // delete the pending doc, so the success_url /trip/{tripId} renders
+        // the user's exact Mix. All failures are non-fatal — the subscription
+        // is valid regardless; we just fall back to the /me welcome link.
+        let tripId = null;
+        if (session.metadata?.tripId) {
+          const mixTripId = String(session.metadata.tripId);
+          try {
+            const pendingRef = db.collection('pending_mixes').doc(mixTripId);
+            const pendingDoc = await pendingRef.get();
+            if (pendingDoc.exists) {
+              const pendingData = pendingDoc.data();
+              const batch = db.batch();
+              batch.set(db.collection('purchasedMixes').doc(mixTripId), {
+                ...pendingData.mix,
+                tripId: mixTripId,
+                userEmail: lowerEmail,
+                stripeSessionId: session.id,
+                stripeCustomerId: customerId,
+                stripeSubscriptionId: subscriptionId,
+                paidAt: new Date(),
+                status: 'paid',
+                source: 'subscription-mix'
+              });
+              batch.delete(pendingRef);
+              await batch.commit();
+              tripId = mixTripId;
+              console.log(`[webhook] purchasedMixes/${mixTripId} written, pending_mixes deleted`);
+
+              // Mix confirmation email (itinerary + PDF). Self-retrying and
+              // non-blocking — a failure must not fail the webhook or block
+              // the welcome email.
+              try {
+                const mixRes = await sendMixConfirmationEmail({
+                  ...pendingData.mix,
+                  tripId: mixTripId,
+                  userEmail: lowerEmail
+                });
+                if (!mixRes.ok) {
+                  console.warn('[webhook] sendMixConfirmationEmail not ok:', mixRes.reason || JSON.stringify(mixRes.lastError));
+                }
+              } catch (mixEmailErr) {
+                console.warn('[webhook] sendMixConfirmationEmail threw (non-blocking):', mixEmailErr.message);
+              }
+            } else {
+              console.warn(`[webhook] tripId ${mixTripId} in metadata but pending_mixes doc missing/expired`);
+            }
+          } catch (err) {
+            console.error('[webhook] pending → purchased mix copy failed:', err.message);
+          }
+        }
+
         // Welcome email through retry pipeline (Resend). Failures persist to
         // failed_email_sends with flow='premium_welcome' and ping Slack;
         // daily cron retries via /api/admin?action=retry-failed-emails.
+        // tripId (if a Mix was promoted) makes the welcome CTA deep-link to
+        // /trip/{tripId} instead of /me.
         const sg = await sendWelcomeEmailWithRetry({
           to: email,
           firstName,
           inviteLink,
           amountLabel,
           dateLabel,
+          tripId,
           stripeCustomerId: customerId,
           stripeSessionId: session.id,
           subscriptionId

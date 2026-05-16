@@ -287,6 +287,24 @@
   </div>
 
 <script>
+// Auto-claim ?session=cs_… from the URL (Stripe success_url after a Mix
+// purchase, or the welcome-email "Otvori svoj Mix" link) into localStorage
+// so premium gating elsewhere on the site unlocks for this browser — then
+// strip the param from the address bar. The trip render itself does NOT
+// need the session: api/trip.js treats the 16-char tripId as the bearer
+// token, so /trip/{id} loads cross-device without it.
+(function () {
+  try {
+    var url = new URL(window.location.href);
+    var s = url.searchParams.get('session');
+    if (s && s.indexOf('cs_') === 0) {
+      localStorage.setItem('letto_premium_session', s);
+      localStorage.setItem('letto_mix_session', s);
+      url.searchParams.delete('session');
+      window.history.replaceState({}, '', url.toString());
+    }
+  } catch (e) { console.warn('[trip] session auto-claim failed:', e); }
+})();
 (function () {
   function safe(s) {
     return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));

@@ -62,6 +62,13 @@ async function handler(req, res) {
     ? body.userEmail.trim().toLowerCase()
     : undefined;
 
+  // Optional tripId from the saved-Mix flow (hidden form field). No Firestore
+  // verify on this lean form-fallback path — the webhook validates
+  // pending_mixes/{tripId} before promoting it to a paid trip.
+  const tripId = (typeof body.tripId === 'string' && /^[a-f0-9]{16}$/.test(body.tripId))
+    ? body.tripId
+    : null;
+
   const priceId = process.env.STRIPE_PREMIUM_PRICE_ID;
   if (!priceId) {
     console.error('[stripe-go] Missing env var STRIPE_PREMIUM_PRICE_ID');
@@ -69,17 +76,24 @@ async function handler(req, res) {
   }
 
   try {
+    const successUrl = tripId
+      ? `${SITE_URL}/trip/${tripId}?session={CHECKOUT_SESSION_ID}`
+      : `${SITE_URL}/dobrodosao.html?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = tripId
+      ? `${SITE_URL}/results.html?cancelled=1&trip=${tripId}`
+      : `${SITE_URL}/?cancelled=1`;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { source: 'letto', origin: 'landing-form' },
+      metadata: { source: 'letto', origin: 'landing-form', ...(tripId ? { tripId } : {}) },
       subscription_data: { metadata: { source: 'letto' } },
       allow_promotion_codes: true,
       payment_method_collection: 'always',
       automatic_tax: { enabled: true },
       billing_address_collection: 'required',
-      success_url: `${SITE_URL}/dobrodosao.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${SITE_URL}/?cancelled=1`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       locale: 'auto',
       customer_email: userEmail
     });

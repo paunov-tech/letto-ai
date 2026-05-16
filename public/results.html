@@ -5558,10 +5558,14 @@
     } catch (e) {
       if (e && e.name === 'QuotaExceededError') {
         try {
-          // Cleanup other letto keys, then retry once
+          // Cleanup other letto keys, then retry once. Preserve
+          // letto_pending_trip_id — it links the in-flight checkout to the
+          // saved Mix and must survive a quota-pressure sweep.
           for (var i = localStorage.length - 1; i >= 0; i--) {
             var k = localStorage.key(i);
-            if (k && k.startsWith('letto_') && k !== STATE_KEY) localStorage.removeItem(k);
+            if (k && k.startsWith('letto_') && k !== STATE_KEY && k !== 'letto_pending_trip_id') {
+              localStorage.removeItem(k);
+            }
           }
           localStorage.setItem(STATE_KEY, JSON.stringify(s));
         } catch (_) { /* Phase 5 will offer email-backup fallback */ }
@@ -6703,26 +6707,46 @@
   //      creates the session server-side and replies 303 → Stripe. Used when
   //      the fetch/JSON path fails (popup blockers, mobile Safari async-gesture
   //      rules, network glitches, content blockers).
-  // C-1: when the user is unlocking a Mix (tier=aimix), capture the current
-  // state.flight.selected + state.hotel.selected + searchParams snapshot so
-  // the webhook can persist a purchasedMixes Firestore record after payment.
-  function lettoMixSnapshot() {
+  // Mix delivery · persist the in-progress Mix to /api/save-mix before the
+  // Stripe redirect. The returned tripId rides through checkout (metadata),
+  // so the webhook promotes pending_mixes → purchasedMixes and the buyer
+  // lands on /trip/{tripId}. Best-effort: any failure returns null and
+  // checkout proceeds as a plain subscription — no user-visible regression.
+  async function lettoSaveMixBeforeCheckout() {
     try {
-      if (typeof getState !== 'function') return null;
-      var s = getState();
-      if (!s) return null;
-      var sel = s.flight && s.flight.selected;
-      var tier = sel && (sel.tier === 'budget' || sel.tier === 'lux') ? sel.tier : 'value';
-      return {
-        tier: tier, // top-level denormalized for webhook robustness
-        flight: { selected: sel || null },
-        hotel:  { selected: s.hotel  && s.hotel.selected  || null },
-        searchParams: s.searchParams || null
-      };
-    } catch (_) { return null; }
+      var raw = localStorage.getItem('letto_mix_state_v2');
+      if (!raw) return null;
+      var state = JSON.parse(raw);
+      var complete = !!(state && state.flight && state.flight.selected
+                        && state.hotel && state.hotel.selected);
+      if (!complete) return null;
+      var resp = await fetch('/api/save-mix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mix: state })
+      });
+      if (!resp.ok) {
+        console.warn('[letto] save-mix returned ' + resp.status);
+        if (window.Sentry) Sentry.addBreadcrumb({
+          category: 'checkout', message: 'save-mix failed',
+          data: { status: resp.status }, level: 'warning'
+        });
+        return null;
+      }
+      var data = await resp.json();
+      if (data && data.tripId) {
+        try { localStorage.setItem('letto_pending_trip_id', data.tripId); } catch (_) {}
+        return data.tripId;
+      }
+      return null;
+    } catch (err) {
+      console.warn('[letto] save-mix error:', err && err.message);
+      if (window.Sentry) Sentry.captureException(err);
+      return null;
+    }
   }
 
-  function lettoFormFallback(tier) {
+  function lettoFormFallback(tier, tripId) {
     console.log('[letto] checkout fallback · form POST to /api/stripe-go · tier=' + tier);
     var form = document.createElement('form');
     form.method = 'POST';
@@ -6731,13 +6755,10 @@
     var i = document.createElement('input');
     i.type = 'hidden'; i.name = 'tier'; i.value = tier;
     form.appendChild(i);
-    if (tier === 'aimix') {
-      var snap = lettoMixSnapshot();
-      if (snap) {
-        var s = document.createElement('input');
-        s.type = 'hidden'; s.name = 'mixSnapshot'; s.value = JSON.stringify(snap);
-        form.appendChild(s);
-      }
+    if (tripId) {
+      var t = document.createElement('input');
+      t.type = 'hidden'; t.name = 'tripId'; t.value = tripId;
+      form.appendChild(t);
     }
     document.body.appendChild(form);
     form.submit();
@@ -6759,11 +6780,10 @@
       };
     }
 
+    // Persist the Mix first; tripId (if any) rides through to Stripe.
+    var tripId = await lettoSaveMixBeforeCheckout();
     var payload = { tier: tier };
-    if (tier === 'aimix') {
-      var snap = lettoMixSnapshot();
-      if (snap) payload.mixSnapshot = snap;
-    }
+    if (tripId) payload.tripId = tripId;
 
     try {
       var resp = await fetch('/api/stripe-checkout', {
@@ -6778,16 +6798,16 @@
         // (popup blockers / Safari async-gesture), retry via form POST
         // after a short delay so the page actually leaves.
         setTimeout(function () {
-          if (document.visibilityState !== 'hidden') lettoFormFallback(tier);
+          if (document.visibilityState !== 'hidden') lettoFormFallback(tier, tripId);
         }, 1200);
         return;
       }
       console.warn('[letto] /api/stripe-checkout returned no url, falling back to form');
-      lettoFormFallback(tier);
+      lettoFormFallback(tier, tripId);
       return;
     } catch (err) {
       console.warn('[letto] fetch path failed, falling back to form:', err.message);
-      lettoFormFallback(tier);
+      lettoFormFallback(tier, tripId);
       return;
     }
   }

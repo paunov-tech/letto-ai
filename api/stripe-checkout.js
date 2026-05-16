@@ -28,8 +28,7 @@ if (!getApps().length) {
     })
   });
 }
-// db left initialised in case future per-checkout Firestore writes appear; not used today.
-getFirestore();
+const db = getFirestore();
 
 const SITE_URL = process.env.VITE_SITE_URL || 'https://letto.live';
 const EXPECTED_CURRENCY = 'eur';
@@ -74,6 +73,22 @@ async function handler(req, res) {
     ? userEmail.trim().toLowerCase()
     : undefined;
 
+  // Optional tripId — a Mix persisted via /api/save-mix just before checkout.
+  // Verify it points at a live pending_mixes doc and reject early on a stale
+  // or bogus id, so we never mint a Stripe session whose success_url can't
+  // resolve to a real trip.
+  let tripId = (req.body && typeof req.body.tripId === 'string' && /^[a-f0-9]{16}$/.test(req.body.tripId))
+    ? req.body.tripId
+    : null;
+  if (tripId) {
+    const pendingDoc = await db.collection('pending_mixes').doc(tripId).get();
+    if (!pendingDoc.exists) return res.status(400).json({ error: 'mix_not_found' });
+    const pd = pendingDoc.data();
+    const exp = pd.expiresAt && typeof pd.expiresAt.toDate === 'function' ? pd.expiresAt.toDate() : null;
+    if (exp && exp < new Date()) return res.status(400).json({ error: 'mix_expired' });
+    if (pd.status && pd.status !== 'pending') return res.status(400).json({ error: 'mix_invalid_status' });
+  }
+
   const priceId = process.env.STRIPE_PREMIUM_PRICE_ID;
   if (!priceId) {
     console.error('[stripe-checkout] Missing env var STRIPE_PREMIUM_PRICE_ID');
@@ -89,10 +104,19 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Internal currency configuration error' });
     }
 
+    // With a tripId, land the buyer on their Mix (/trip/{tripId}); without
+    // one, the legacy direct-subscribe landing (/dobrodosao.html).
+    const successUrl = tripId
+      ? `${SITE_URL}/trip/${tripId}?session={CHECKOUT_SESSION_ID}`
+      : `${SITE_URL}/dobrodosao.html?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = tripId
+      ? `${SITE_URL}/results.html?cancelled=1&trip=${tripId}`
+      : `${SITE_URL}/?cancelled=1`;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { source: 'letto', origin: 'landing' },
+      metadata: { source: 'letto', origin: 'landing', ...(tripId ? { tripId } : {}) },
       subscription_data: { metadata: { source: 'letto' } },
       allow_promotion_codes: true,
       payment_method_collection: 'always',
@@ -102,8 +126,8 @@ async function handler(req, res) {
       automatic_tax: { enabled: true },
       // Stripe Tax requires billing address to compute VAT per jurisdiction.
       billing_address_collection: 'required',
-      success_url: `${SITE_URL}/dobrodosao.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${SITE_URL}/?cancelled=1`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       locale: 'auto',
       customer_email: customerEmail
     });
