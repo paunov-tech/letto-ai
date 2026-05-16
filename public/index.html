@@ -3060,6 +3060,22 @@
     </a>
   </div>
 </nav>
+<script>
+  // Nav CTA branches on a stored session: a returning subscriber sees
+  // "Moj nalog" → /me instead of "Pretplati se". Removing data-stripe
+  // detaches it from the Stripe-checkout click wireup so it's a plain link.
+  (function () {
+    try {
+      var sid = localStorage.getItem('letto_premium_session') || localStorage.getItem('letto_mix_session');
+      if (!sid) return;
+      var cta = document.querySelector('nav.main .btn-ink[data-stripe]');
+      if (!cta) return;
+      cta.removeAttribute('data-stripe');
+      cta.setAttribute('href', '/me');
+      cta.innerHTML = '<span data-en>My account →</span><span data-sr>Moj nalog →</span>';
+    } catch (e) {}
+  })();
+</script>
 
 
 <!-- ═══════════════════════════════════════════════ -->

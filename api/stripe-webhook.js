@@ -862,14 +862,63 @@ async function handler(req, res) {
         if (email) {
           await db.collection('letto_subscribers').doc(email.toLowerCase()).set({
             tier: 'free', // downgrade
+            subscribed: false,      // FIX · was left stale on cancel
+            aimixUnlocked: false,   // FIX · churned user kept the Mix-unlock flag
             premiumEndedAt: new Date().toISOString(),
-            stripeSubscriptionId: null
+            stripeSubscriptionId: null,
+            subscriptionStatus: 'canceled'
           }, { merge: true });
 
           // TODO: Kick user from premium Telegram channel via bot API
           // POST https://api.telegram.org/bot{token}/banChatMember
           console.log(`[LETTO] Premium canceled: ${email}`);
         }
+        break;
+      }
+
+      // Subscription state change — cancel-at-period-end toggle, plan change,
+      // payment failure (past_due / unpaid), pause. Previously unhandled.
+      case 'customer.subscription.updated': {
+        const sub = event.data.object;
+        // Shared Stripe account with jadran.ai — only touch letto subscriptions.
+        if (sub.metadata?.source && sub.metadata.source !== 'letto') {
+          console.log(`[LETTO] Skipping non-letto subscription.updated (source=${sub.metadata.source})`);
+          break;
+        }
+        let subEmail = sub.customer_email;
+        if (!subEmail && sub.customer) {
+          try {
+            const c = await stripe.customers.retrieve(sub.customer);
+            if (c && !c.deleted) subEmail = c.email;
+          } catch (e) {
+            console.warn('[webhook] subscription.updated customer retrieve failed:', e.message);
+          }
+        }
+        if (!subEmail) {
+          console.warn('[webhook] subscription.updated with no email — skipping');
+          break;
+        }
+        const update = {
+          subscriptionStatus: sub.status,
+          cancelAtPeriodEnd: sub.cancel_at_period_end || false,
+          currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+        };
+        if (sub.status === 'past_due' || sub.status === 'canceled' || sub.status === 'unpaid') {
+          // Payment failed or subscription ended — revoke access now.
+          update.subscribed = false;
+          update.aimixUnlocked = false;
+          update.tier = 'free';
+          update.premiumEndedAt = new Date().toISOString();
+        } else if (sub.status === 'active') {
+          // active — incl. cancel_at_period_end=true: access stays live until
+          // the period actually ends, when Stripe fires subscription.deleted.
+          update.subscribed = true;
+          update.aimixUnlocked = true;
+          update.tier = 'premium';
+        }
+        await db.collection('letto_subscribers').doc(subEmail.toLowerCase())
+          .set(update, { merge: true });
+        console.log(`[webhook] subscription.updated · ${subEmail} · ${sub.status} · cancelAtPeriodEnd=${sub.cancel_at_period_end}`);
         break;
       }
 

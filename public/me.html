@@ -143,6 +143,38 @@
     font-size: 13px;
   }
   .back:hover { background: #0C0E10; color: #F7F1E3; }
+
+  /* ── Account dashboard (2026-05-17) ─────────────────────────── */
+  /* Default view = recovery form. Controller adds a body class to swap. */
+  body.has-dashboard { align-items: flex-start; overflow: auto; }
+  #view-loading, #view-dashboard { display: none; }
+  body.view-loading #view-loading { display: block; }
+  body.view-dashboard #view-dashboard { display: block; }
+  body.view-loading #view-recovery,
+  body.view-dashboard #view-recovery { display: none; }
+
+  .dash { max-width: 560px; width: 100%; text-align: left; position: relative; z-index: 1; }
+  .dash__head { text-align: center; margin-bottom: 26px; }
+  .dash__email { font-family: monospace; font-size: 13px; color: #6B5E47; margin-top: 8px; }
+  .dash__status { display: inline-block; margin-top: 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.03em; padding: 5px 13px; border-radius: 999px; }
+  .dash__status--active { background: #DCEFE0; color: #1B7A3E; }
+  .dash__status--canceling { background: #FBEAD0; color: #8A5F1F; }
+  .dash__status--ended { background: #F4D5D8; color: #7C1E29; }
+  .dash section { background: white; border: 1px solid #D4C9AE; border-radius: 8px; padding: 22px 20px; margin-bottom: 16px; box-shadow: 0 12px 32px rgba(12,14,16,0.05); }
+  .dash h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 18px; margin-bottom: 14px; }
+  .mix-card { display: block; text-decoration: none; color: #0C0E10; border: 1px solid #E4D9BC; border-radius: 6px; padding: 12px 14px; margin-bottom: 8px; transition: border-color 0.15s ease, background 0.15s ease; }
+  .mix-card:last-child { margin-bottom: 0; }
+  .mix-card:hover { border-color: #B8863B; background: #FBF7EB; }
+  .mix-card__summary { font-weight: 600; font-size: 14px; }
+  .mix-card__dates { font-family: monospace; font-size: 11.5px; color: #6B5E47; margin-top: 3px; }
+  .mix-card__meta { font-size: 11px; color: #94865F; margin-top: 3px; }
+  .dash__empty { font-family: 'Instrument Serif', serif; font-size: 15px; color: #6B5E47; }
+  .dash__empty a { color: #B8863B; }
+  .dash__actions { display: flex; flex-direction: column; gap: 8px; }
+  .dash-btn { display: block; text-align: center; padding: 12px 18px; border-radius: 999px; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; border: none; font-family: 'Inter', sans-serif; }
+  .dash-btn--primary { background: linear-gradient(135deg,#8A5F1F,#B8863B,#8A5F1F); color: #F7F1E3; }
+  .dash-btn--secondary { background: #0C0E10; color: #F7F1E3; }
+  .dash-btn--ghost { background: transparent; border: 1px solid #D4C9AE; color: #6B5E47; }
 </style>
 <!-- Sentry · letto-prod (EU region) · GDPR-aware -->
 <script
@@ -171,7 +203,31 @@
 <script src="/consent.js" defer></script>
 </head>
 <body>
-  <div class="container">
+  <!-- Loading — shown while /api/me resolves a localStorage session. -->
+  <div id="view-loading" class="container">
+    <p class="lead">Učitavam tvoj nalog…</p>
+  </div>
+
+  <!-- Dashboard — authenticated (valid Stripe session). -->
+  <div id="view-dashboard" class="dash">
+    <div class="dash__head">
+      <h1>Tvoj <em>nalog</em></h1>
+      <div class="dash__email" id="dash-email"></div>
+      <div id="dash-status"></div>
+    </div>
+    <section>
+      <h2>Tvoji putevi (<span id="dash-mix-count">0</span>)</h2>
+      <div id="dash-mixes"></div>
+    </section>
+    <section>
+      <h2>Pretplata</h2>
+      <div class="dash__actions" id="dash-actions"></div>
+    </section>
+    <div style="text-align:center;"><a class="back" href="/">← nazad na letto.live</a></div>
+  </div>
+
+  <!-- Recovery — default view, shown when there is no valid session. -->
+  <div id="view-recovery" class="container">
     <h1>Već si <em>pretplaćen</em>?</h1>
     <p class="lead">Unesi email vezan za tvoju Letto Premium pretplatu i poslaćemo ti pristupne linkove (Telegram kanal + Stripe portal za otkazivanje).</p>
 
@@ -188,6 +244,107 @@
   </div>
 
 <script>
+  // Account dashboard controller. Claims ?session=cs_… from the URL (Stripe
+  // success_url / welcome-email link), resolves it via /api/me, and renders
+  // the dashboard. With no valid session the recovery form below stays as
+  // the default view.
+  (function () {
+    var sid = null;
+    try {
+      var url = new URL(window.location.href);
+      var qs = url.searchParams.get('session');
+      if (qs && qs.indexOf('cs_') === 0) {
+        localStorage.setItem('letto_premium_session', qs);
+        localStorage.setItem('letto_mix_session', qs);
+        url.searchParams.delete('session');
+        window.history.replaceState({}, '', url.toString());
+      }
+      sid = localStorage.getItem('letto_premium_session') || localStorage.getItem('letto_mix_session');
+    } catch (e) {}
+
+    if (!sid) return;  // no session → recovery form (default view)
+
+    document.body.className = 'has-dashboard view-loading';
+    fetch('/api/me', { method: 'GET', headers: { 'X-Letto-Session': sid } })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (data) {
+        if (!data || !data.authenticated) { document.body.className = ''; return; }
+        renderDashboard(data);
+        document.body.className = 'has-dashboard view-dashboard';
+      })
+      .catch(function () { document.body.className = ''; });
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+        return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c];
+      });
+    }
+    function fmtDate(iso) {
+      if (!iso) return '';
+      try {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear() + '.';
+      } catch (e) { return ''; }
+    }
+
+    function renderDashboard(data) {
+      document.getElementById('dash-email').textContent = data.email || '';
+
+      var sub = data.subscription || {};
+      var label, cls;
+      if (sub.tier === 'premium' && sub.cancelAtPeriodEnd) {
+        label = 'Otkazana — traje do ' + (fmtDate(sub.currentPeriodEnd) || 'kraja perioda');
+        cls = 'dash__status--canceling';
+      } else if (sub.tier === 'premium') {
+        label = 'Aktivna pretplata';
+        cls = 'dash__status--active';
+      } else {
+        label = 'Pretplata istekla';
+        cls = 'dash__status--ended';
+      }
+      document.getElementById('dash-status').innerHTML =
+        '<span class="dash__status ' + cls + '">' + esc(label) + '</span>';
+
+      var mixes = data.mixes || [];
+      document.getElementById('dash-mix-count').textContent = mixes.length;
+      var mixWrap = document.getElementById('dash-mixes');
+      if (mixes.length === 0) {
+        mixWrap.innerHTML = '<p class="dash__empty">Još nemaš sačuvanih putova. <a href="/results.html">Sastavi prvi →</a></p>';
+      } else {
+        mixWrap.innerHTML = mixes.map(function (m) {
+          var dep = m.dates && m.dates.depart;
+          var ret = m.dates && m.dates.return;
+          var dates = dep ? (fmtDate(dep) + (ret ? ' → ' + fmtDate(ret) : '')) : '';
+          var paid = fmtDate(m.paidAt);
+          return '<a class="mix-card" href="/trip/' + encodeURIComponent(m.tripId) + '">' +
+            '<div class="mix-card__summary">' + esc(m.summary) + '</div>' +
+            (dates ? '<div class="mix-card__dates">' + esc(dates) + '</div>' : '') +
+            (paid ? '<div class="mix-card__meta">Plaćeno ' + esc(paid) + '</div>' : '') +
+          '</a>';
+        }).join('');
+      }
+
+      var html = '';
+      if (data.billingPortalUrl) {
+        html += '<a class="dash-btn dash-btn--secondary" href="' + esc(data.billingPortalUrl) + '">Upravljaj pretplatom</a>';
+      }
+      if (sub.tier !== 'premium') {
+        html += '<a class="dash-btn dash-btn--primary" href="/#pricing">Reaktiviraj pretplatu →</a>';
+      }
+      html += '<button type="button" class="dash-btn dash-btn--ghost" id="dash-logout">Odjavi se</button>';
+      var actions = document.getElementById('dash-actions');
+      actions.innerHTML = html;
+      var lo = document.getElementById('dash-logout');
+      if (lo) lo.addEventListener('click', function () {
+        ['letto_premium_session', 'letto_mix_session', 'letto_pending_trip_id'].forEach(function (k) {
+          try { localStorage.removeItem(k); } catch (e) {}
+        });
+        window.location.href = '/';
+      });
+    }
+  })();
+
   (function () {
     var form = document.getElementById('recovery-form');
     var submitBtn = document.getElementById('submit');
