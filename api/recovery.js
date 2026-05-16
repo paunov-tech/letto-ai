@@ -3,6 +3,8 @@
 // Flow:
 //   POST { email } → if email maps to a Stripe customer with an active
 //   subscription, send a recovery email containing:
+//     - Dashboard magic-link  /me?session={aimixSessionId}  (primary; omitted
+//       for legacy subscribers that have no aimixSessionId on file)
 //     - Telegram invite link (from letto_subscribers/{email}.telegramInviteLink)
 //     - Stripe Billing Portal URL (one-shot, expires per Stripe defaults)
 //
@@ -37,7 +39,10 @@ const PORTAL_RETURN = (process.env.VITE_SITE_URL || 'https://letto.live') + '/do
 // synchronously to the POSTer). When called with telegramInvite=null
 // (portal-only flow), the Telegram block is omitted from the rendered
 // HTML / text and only the Stripe Billing Portal link is sent.
-async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
+// `sessionId` (the cs_... from letto_subscribers.aimixSessionId) renders the
+// primary dashboard magic-link; falsy → that block is omitted — covers legacy
+// subscribers and the customer-portal caller, which doesn't load the doc.
+async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl, sessionId) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('[recovery] RESEND_API_KEY missing — cannot send');
@@ -47,6 +52,11 @@ async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
 <html><body style="font-family:system-ui,-apple-system,sans-serif;color:#1e293b;max-width:560px;margin:0 auto;padding:24px;">
   <h2 style="color:#0f766e;margin:0 0 16px;">Tvoji Letto Premium pristupni linkovi</h2>
   <p>Ako si izgubio prethodni email, evo aktivnih linkova za tvoju pretplatu:</p>
+  ${sessionId ? `<div style="margin:20px 0 24px;">
+    <p style="margin:0 0 10px;font-weight:600;">🪙 Otvori svoj Letto nalog:</p>
+    <p style="margin:0;"><a href="https://letto.live/me?session=${sessionId}" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#8A5F1F,#B8863B,#8A5F1F);color:#F7F1E3;text-decoration:none;border-radius:999px;font-weight:500;">Otvori dashboard →</a></p>
+    <p style="margin:8px 0 0;font-size:12px;color:#6B5E47;">Vidi sve svoje putove, status pretplate i upravljaj nalogom.</p>
+  </div>` : ''}
   ${telegramInvite ? `<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:16px;margin:20px 0;">
     <p style="margin:0 0 8px;font-weight:600;">🔑 Premium Telegram kanal:</p>
     <p style="margin:0;"><a href="${telegramInvite}" style="color:#0f766e;word-break:break-all;">${telegramInvite}</a></p>
@@ -61,6 +71,12 @@ async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl) {
   const text = [
     'Tvoji Letto Premium pristupni linkovi',
     '',
+    ...(sessionId ? [
+      '🪙 OTVORI SVOJ LETTO NALOG:',
+      `https://letto.live/me?session=${sessionId}`,
+      'Vidi sve svoje putove, status pretplate i upravljaj nalogom.',
+      ''
+    ] : []),
     ...(telegramInvite ? ['Premium Telegram kanal:', telegramInvite, ''] : []),
     'Otkazivanje / promena podataka (Stripe portal · link važi 30 min):',
     portalUrl,
@@ -134,17 +150,24 @@ async function handler(req, res) {
     // Look up Telegram invite from Firestore. Doc ID is the email itself
     // (lowercased) per existing webhook write pattern.
     let telegramInvite = 'https://letto.live/me';
+    let sessionId = null;
     try {
       const sub = await db.collection('letto_subscribers').doc(lowerEmail).get();
       if (sub.exists) {
         const d = sub.data() || {};
         telegramInvite = d.telegramInviteLink || d.telegramInvite || telegramInvite;
+        sessionId = d.aimixSessionId || null;
+        if (!sessionId) {
+          // Legacy / manually-created subscriber predating the aimixSessionId
+          // write — drops to the two-link (Telegram + portal) email.
+          console.warn('[recovery] subscriber missing aimixSessionId:', lowerEmail);
+        }
       }
     } catch (e) {
       console.warn('[recovery] Firestore lookup failed:', e.message);
     }
 
-    const send = await sendRecoveryEmail(lowerEmail, telegramInvite, portal.url);
+    const send = await sendRecoveryEmail(lowerEmail, telegramInvite, portal.url, sessionId);
     if (!send.ok) {
       // Don't surface the failure to the client (don't leak existence). Log it.
       console.error('[recovery] send failed for confirmed subscriber', { email: lowerEmail, send });
