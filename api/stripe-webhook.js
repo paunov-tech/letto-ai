@@ -8,6 +8,7 @@ import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import PDFDocument from 'pdfkit';
 import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
+import { sendWelcomeEmail } from '../lib/email-welcome.js';
 
 // Init Firebase Admin
 if (!getApps().length) {
@@ -38,144 +39,29 @@ async function getRawBody(readable) {
   return Buffer.concat(chunks);
 }
 
-async function getTopDealWithActivities() {
-  // Fetches top public deal + its viator activities. Returns null on error / empty.
-  try {
-    const snap = await db.collection('letto_packages')
-      .where('status', '==', 'published_public')
-      .orderBy('metadata.createdAt', 'desc')
-      .limit(1).get();
-    if (snap.empty) return null;
-    const pkg = snap.docs[0].data();
-    return {
-      city: pkg.destination?.city,
-      country: pkg.destination?.country,
-      total: pkg.pricing?.total,
-      flightDealRatio: pkg.deal?.flightDealRatio,
-      activities: Array.isArray(pkg.activities) ? pkg.activities.slice(0, 3) : []
-    };
-  } catch (e) {
-    console.error('[stripe-webhook] top deal fetch failed:', e.message);
-    return null;
-  }
-}
-
-async function sendWelcomeEmail({ to, firstName, inviteLink }) {
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) return { ok: false, reason: 'no_api_key' };
-
-  const safeName = (firstName || 'putnik').replace(/[<>&]/g, '');
-  const safeLink = inviteLink || '';
-
-  const featured = await getTopDealWithActivities();
-
-  let activitiesHtml = '';
-  let activitiesText = '';
-  if (featured && featured.activities.length > 0) {
-    const items = featured.activities.map(a => {
-      const price = Number(a.fromPrice) ? `€${Math.round(a.fromPrice)}` : '€?';
-      const title = String(a.title || '').replace(/[<>&]/g, '').slice(0, 80);
-      const url = a.url || '#';
-      return `<li><a href="${url}" style="color:#0f766e;">${title}</a> — od <strong>${price}</strong></li>`;
-    }).join('');
-    const ratio = Number(featured.flightDealRatio);
-    const pctBelow = (ratio > 0 && ratio < 1) ? Math.round((1 - ratio) * 100) : null;
-    const dealLineHtml = pctBelow != null
-      ? `<p style="margin:6px 0 0;font-size:13px;color:#6B1A25;font-weight:600;">Avio karta ${pctBelow}% niža od redovne cene.</p>`
-      : '';
-    const dealLineText = pctBelow != null
-      ? `Avio karta ${pctBelow}% niža od redovne cene.\n`
-      : '';
-    activitiesHtml = `
-  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;">
-    <p style="margin:0 0 8px;font-weight:600;">🎯 Aktivnosti u ${featured.city}:</p>
-    <ul style="padding-left:20px;line-height:1.7;margin:0;">${items}</ul>
-    <p style="margin:8px 0 0;font-size:13px;color:#78716c;">Top deal danas: <strong>${featured.city}</strong> (€${Math.round(Number(featured.total) || 0)})</p>${dealLineHtml}
-  </div>`;
-    activitiesText = `\nAKTIVNOSTI U ${featured.city.toUpperCase()}:\n` +
-      featured.activities.map(a => `- ${a.title} — od €${Math.round(a.fromPrice || 0)} (${a.url})`).join('\n') + '\n' +
-      dealLineText;
-  }
-
-  const html = `<!doctype html>
-<html><body style="font-family:system-ui,-apple-system,sans-serif;color:#1e293b;max-width:560px;margin:0 auto;padding:24px;">
-  <h2 style="color:#0f766e;margin:0 0 16px;">Dobrodošao u LETTO Premium 🎉</h2>
-  <p>Zdravo <strong>${safeName}</strong>,</p>
-  <p>Tvoj LETTO Premium pristup je aktivan.</p>
-  <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:16px;margin:20px 0;">
-    <p style="margin:0 0 8px;font-weight:600;">🔑 Pristup Premium kanalu:</p>
-    <p style="margin:0;"><a href="${safeLink}" style="color:#0f766e;word-break:break-all;">${safeLink}</a></p>
-    <p style="margin:8px 0 0;font-size:13px;color:#475569;">Link važi 7 dana, jednokratan — sačuvaj ga.</p>
-  </div>
-  <p style="margin-top:24px;"><strong>Šta dobijaš:</strong></p>
-  <ul style="padding-left:20px;line-height:1.7;">
-    <li>Premium Telegram kanal — top deal-ovi sa najvećim popustima (45%+)</li>
-    <li>Daily picks svako jutro</li>
-    <li>Route alerts za tvoje izabrane destinacije</li>
-  </ul>${activitiesHtml}
-  <p style="font-size:14px;color:#64748b;">Ako ne vidiš link ili imaš problem, odgovori na ovaj email.</p>
-  <p style="margin-top:32px;">Srećan put,<br><strong>LETTO tim</strong><br><a href="https://letto.live" style="color:#0f766e;">letto.live</a></p>
-  <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
-  <p style="font-size:12px;color:#94a3b8;">Otkazivanje: jednim klikom u Stripe portal-u (link u potvrdi plaćanja).</p>
-</body></html>`;
-
-  const text = `Zdravo ${safeName},
-
-Tvoj LETTO Premium pristup je aktivan.
-
-PRISTUPI PREMIUM KANALU:
-${safeLink}
-
-Link važi 7 dana i može se iskoristiti samo jednom — sačuvaj ga.
-
-ŠTA DOBIJAŠ:
-- Premium Telegram kanal — top deal-ovi sa najvećim popustima (45%+)
-- Daily picks svako jutro
-- Route alerts za tvoje izabrane destinacije
-${activitiesText}
-Ako ne vidiš link ili imaš problem, odgovori na ovaj email.
-
-Srećan put,
-LETTO tim
-https://letto.live
-
----
-Otkazivanje: jednim klikom u Stripe portal-u (link u potvrdi plaćanja).
-`;
-
-  const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: 'noreply@letto.live', name: 'LETTO' },
-      reply_to: { email: 'info@letto.live', name: 'LETTO' },
-      subject: 'Dobrodošao u LETTO Premium 🎉',
-      content: [
-        { type: 'text/plain', value: text },
-        { type: 'text/html', value: html }
-      ]
-    })
-  });
-
-  if (r.status === 202) return { ok: true };
-  const body = await r.text();
-  return { ok: false, status: r.status, body: body.slice(0, 500) };
-}
-
 // FAZA B · premium welcome email parity with the mix retry pipeline.
 // 3 attempts × exp backoff (1s, 3s) before persisting to failed_email_sends
 // with flow='premium_welcome' and posting Slack. The daily retry cron picks
 // these up via the same /api/admin?action=retry-failed-emails handler.
+// 2026-05-16 · sendWelcomeEmail now sends via Resend (lib/email-welcome.js) —
+// SendGrid dropped (it rejected every send: noreply@letto.live was never a
+// verified Sender Identity). The retry + fallback machinery is unchanged.
 async function sendWelcomeEmailWithRetry(args) {
-  // args = { to, firstName, inviteLink, stripeCustomerId, stripeSessionId, subscriptionId }
+  // args = { to, firstName, inviteLink, amountLabel, dateLabel,
+  //          stripeCustomerId, stripeSessionId, subscriptionId }
   const backoffsMs = [1000, 3000];
   let lastErr = null;
   for (let i = 0; i < 3; i++) {
     if (i > 0) await sleep(backoffsMs[i - 1]);
     let res;
     try {
-      res = await sendWelcomeEmail({ to: args.to, firstName: args.firstName, inviteLink: args.inviteLink });
+      res = await sendWelcomeEmail({
+        to: args.to,
+        firstName: args.firstName,
+        inviteLink: args.inviteLink,
+        amountLabel: args.amountLabel,
+        dateLabel: args.dateLabel
+      });
     } catch (e) {
       res = { ok: false, reason: e.message };
     }
@@ -187,6 +73,7 @@ async function sendWelcomeEmailWithRetry(args) {
   // All 3 failed — persist + alert
   await db.collection('failed_email_sends').doc('welcome_' + args.to).set({
     flow: 'premium_welcome',
+    esp: 'resend',
     userEmail: args.to,
     inviteLink: args.inviteLink || null,
     stripeCustomerId: args.stripeCustomerId || null,
@@ -218,7 +105,7 @@ async function notifyAdminFallback({ email, inviteLink, reason }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
-      text: `⚠️ <b>SendGrid welcome email failed</b>\nSubscriber: <code>${email}</code>\nReason: <code>${reason}</code>\nManual invite: ${inviteLink}`,
+      text: `⚠️ <b>Welcome email failed (Resend)</b>\nSubscriber: <code>${email}</code>\nReason: <code>${reason}</code>\nManual invite: ${inviteLink}`,
       parse_mode: 'HTML',
       disable_web_page_preview: true
     })
@@ -860,13 +747,24 @@ async function handler(req, res) {
           telegramInviteIssued: new Date().toISOString()
         }, { merge: true });
 
-        // Welcome email through retry pipeline. Failures persist to
+        // Receipt summary for the welcome email — amount from the checkout
+        // session (cents → major units), date is today. Both optional;
+        // sendWelcomeEmail renders the receipt block only if present.
+        const amountLabel = (typeof session.amount_total === 'number')
+          ? (session.amount_total / 100).toFixed(2) + ' ' + String(session.currency || 'eur').toUpperCase()
+          : null;
+        const _now = new Date();
+        const dateLabel = _now.getDate() + '.' + (_now.getMonth() + 1) + '.' + _now.getFullYear() + '.';
+
+        // Welcome email through retry pipeline (Resend). Failures persist to
         // failed_email_sends with flow='premium_welcome' and ping Slack;
         // daily cron retries via /api/admin?action=retry-failed-emails.
         const sg = await sendWelcomeEmailWithRetry({
           to: email,
           firstName,
           inviteLink,
+          amountLabel,
+          dateLabel,
           stripeCustomerId: customerId,
           stripeSessionId: session.id,
           subscriptionId
