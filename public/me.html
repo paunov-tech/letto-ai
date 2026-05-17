@@ -175,6 +175,33 @@
   .dash-btn--primary { background: linear-gradient(135deg,#8A5F1F,#B8863B,#8A5F1F); color: #F7F1E3; }
   .dash-btn--secondary { background: #0C0E10; color: #F7F1E3; }
   .dash-btn--ghost { background: transparent; border: 1px solid #D4C9AE; color: #6B5E47; }
+
+  /* ── Language (2026-05-18) ─────────────────────────────── */
+  [data-en], [data-sr] { display: none; }
+  body.lang-en [data-en], body.lang-sr [data-sr] { display: revert; }
+  .lang-toggle {
+    position: absolute;
+    top: 18px; right: 18px;
+    z-index: 5;
+    display: flex; gap: 2px;
+    background: rgba(255,255,255,0.72);
+    border: 1px solid #D4C9AE;
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .lang-toggle button {
+    width: auto;
+    padding: 5px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 600;
+    color: #6B5E47;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .lang-toggle button.active { background: #0C0E10; color: #F7F1E3; }
 </style>
 <!-- Sentry · letto-prod (EU region) · GDPR-aware -->
 <script
@@ -202,45 +229,83 @@
 </script>
 <script src="/consent.js" defer></script>
 </head>
-<body>
+<body class="lang-sr">
+  <div class="lang-toggle" role="group" aria-label="Language">
+    <button type="button" id="lang-en-btn" data-set-lang="en">EN</button>
+    <button type="button" id="lang-sr-btn" data-set-lang="sr">SR</button>
+  </div>
+  <script>
+    function lettoSetLang(l) {
+      var b = document.body;
+      b.classList.remove('lang-en', 'lang-sr');
+      b.classList.add('lang-' + l);
+      document.documentElement.lang = l === 'sr' ? 'sr-Latn' : 'en';
+      try { localStorage.setItem('letto-lang', l); } catch (e) {}
+      document.title = l === 'en' ? 'Your account · LETTO' : 'Tvoj nalog · LETTO';
+      var be = document.getElementById('lang-en-btn'), bs = document.getElementById('lang-sr-btn');
+      if (be) be.classList.toggle('active', l === 'en');
+      if (bs) bs.classList.toggle('active', l === 'sr');
+      document.querySelectorAll('[data-' + l + '-placeholder]').forEach(function (el) {
+        el.placeholder = el.getAttribute('data-' + l + '-placeholder');
+      });
+      window.dispatchEvent(new CustomEvent('letto:lang-changed', { detail: { lang: l } }));
+    }
+    function lettoLang() { return document.body.classList.contains('lang-en') ? 'en' : 'sr'; }
+    (function () {
+      var saved = 'sr';
+      try { var s = localStorage.getItem('letto-lang'); if (s === 'en' || s === 'sr') saved = s; } catch (e) {}
+      lettoSetLang(saved);
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('[data-set-lang]');
+        if (btn) lettoSetLang(btn.getAttribute('data-set-lang'));
+      });
+    })();
+  </script>
+
   <!-- Loading — shown while /api/me resolves a localStorage session. -->
   <div id="view-loading" class="container">
-    <p class="lead">Učitavam tvoj nalog…</p>
+    <p class="lead"><span data-en>Loading your account…</span><span data-sr>Učitavam tvoj nalog…</span></p>
   </div>
 
   <!-- Dashboard — authenticated (valid Stripe session). -->
   <div id="view-dashboard" class="dash">
     <div class="dash__head">
-      <h1>Tvoj <em>nalog</em></h1>
+      <h1><span data-en>Your <em>account</em></span><span data-sr>Tvoj <em>nalog</em></span></h1>
       <div class="dash__email" id="dash-email"></div>
       <div id="dash-status"></div>
     </div>
     <section>
-      <h2>Tvoji putevi (<span id="dash-mix-count">0</span>)</h2>
+      <h2><span data-en>Your trips</span><span data-sr>Tvoji putevi</span> (<span id="dash-mix-count">0</span>)</h2>
       <div id="dash-mixes"></div>
     </section>
     <section>
-      <h2>Pretplata</h2>
+      <h2><span data-en>Subscription</span><span data-sr>Pretplata</span></h2>
       <div class="dash__actions" id="dash-actions"></div>
     </section>
-    <div style="text-align:center;"><a class="back" href="/">← nazad na letto.live</a></div>
+    <div style="text-align:center;"><a class="back" href="/"><span data-en>← back to letto.live</span><span data-sr>← nazad na letto.live</span></a></div>
   </div>
 
   <!-- Recovery — default view, shown when there is no valid session. -->
   <div id="view-recovery" class="container">
-    <h1>Već si <em>pretplaćen</em>?</h1>
-    <p class="lead">Unesi email vezan za tvoju Letto Premium pretplatu i poslaćemo ti pristupne linkove (Telegram kanal + Stripe portal za otkazivanje).</p>
+    <h1><span data-en>Already <em>subscribed</em>?</span><span data-sr>Već si <em>pretplaćen</em>?</span></h1>
+    <p class="lead">
+      <span data-en>Enter the email tied to your Letto Premium subscription and we'll send your access links (Telegram channel + Stripe portal to cancel).</span>
+      <span data-sr>Unesi email vezan za tvoju Letto Premium pretplatu i poslaćemo ti pristupne linkove (Telegram kanal + Stripe portal za otkazivanje).</span>
+    </p>
 
     <form id="recovery-form" novalidate>
-      <label for="email">Email adresa</label>
-      <input type="email" id="email" name="email" required autocomplete="email" placeholder="ti@gmail.com">
+      <label for="email"><span data-en>Email address</span><span data-sr>Email adresa</span></label>
+      <input type="email" id="email" name="email" required autocomplete="email" placeholder="ti@gmail.com" data-en-placeholder="you@gmail.com" data-sr-placeholder="ti@gmail.com">
       <button type="submit" id="submit">Pošalji pristupne linkove</button>
-      <p class="hint">Ako tvoj email ima aktivnu pretplatu, dobićeš email za ~30 sekundi.</p>
+      <p class="hint">
+        <span data-en>If your email has an active subscription, you'll get an email in ~30 seconds.</span>
+        <span data-sr>Ako tvoj email ima aktivnu pretplatu, dobićeš email za ~30 sekundi.</span>
+      </p>
     </form>
 
     <div id="result" class="result"></div>
 
-    <a class="back" href="/">← nazad na letto.live</a>
+    <a class="back" href="/"><span data-en>← back to letto.live</span><span data-sr>← nazad na letto.live</span></a>
   </div>
 
 <script>
@@ -264,15 +329,25 @@
 
     if (!sid) return;  // no session → recovery form (default view)
 
-    document.body.className = 'has-dashboard view-loading';
+    function setView(v) {
+      document.body.classList.remove('has-dashboard', 'view-loading', 'view-dashboard');
+      if (v) document.body.classList.add('has-dashboard', 'view-' + v);
+    }
+    var lastData = null;
+    setView('loading');
     fetch('/api/me', { method: 'GET', headers: { 'X-Letto-Session': sid } })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (data) {
-        if (!data || !data.authenticated) { document.body.className = ''; return; }
+        if (!data || !data.authenticated) { setView(''); return; }
+        lastData = data;
         renderDashboard(data);
-        document.body.className = 'has-dashboard view-dashboard';
+        setView('dashboard');
       })
-      .catch(function () { document.body.className = ''; });
+      .catch(function () { setView(''); });
+
+    window.addEventListener('letto:lang-changed', function () {
+      if (lastData) renderDashboard(lastData);
+    });
 
     function esc(s) {
       return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
@@ -289,18 +364,20 @@
     }
 
     function renderDashboard(data) {
+      var en = lettoLang() === 'en';
       document.getElementById('dash-email').textContent = data.email || '';
 
       var sub = data.subscription || {};
       var label, cls;
       if (sub.tier === 'premium' && sub.cancelAtPeriodEnd) {
-        label = 'Otkazana — traje do ' + (fmtDate(sub.currentPeriodEnd) || 'kraja perioda');
+        var until = fmtDate(sub.currentPeriodEnd) || (en ? 'period end' : 'kraja perioda');
+        label = (en ? 'Canceled — active until ' : 'Otkazana — traje do ') + until;
         cls = 'dash__status--canceling';
       } else if (sub.tier === 'premium') {
-        label = 'Aktivna pretplata';
+        label = en ? 'Active subscription' : 'Aktivna pretplata';
         cls = 'dash__status--active';
       } else {
-        label = 'Pretplata istekla';
+        label = en ? 'Subscription ended' : 'Pretplata istekla';
         cls = 'dash__status--ended';
       }
       document.getElementById('dash-status').innerHTML =
@@ -310,29 +387,35 @@
       document.getElementById('dash-mix-count').textContent = mixes.length;
       var mixWrap = document.getElementById('dash-mixes');
       if (mixes.length === 0) {
-        mixWrap.innerHTML = '<p class="dash__empty">Još nemaš sačuvanih putova. <a href="/results.html">Sastavi prvi →</a></p>';
+        mixWrap.innerHTML = en
+          ? '<p class="dash__empty">No saved trips yet. <a href="/results.html">Build your first →</a></p>'
+          : '<p class="dash__empty">Još nemaš sačuvanih putova. <a href="/results.html">Sastavi prvi →</a></p>';
       } else {
         mixWrap.innerHTML = mixes.map(function (m) {
           var dep = m.dates && m.dates.depart;
           var ret = m.dates && m.dates.return;
           var dates = dep ? (fmtDate(dep) + (ret ? ' → ' + fmtDate(ret) : '')) : '';
           var paid = fmtDate(m.paidAt);
+          var paidLabel = en ? 'Paid ' : 'Plaćeno ';
           return '<a class="mix-card" href="/trip/' + encodeURIComponent(m.tripId) + '">' +
             '<div class="mix-card__summary">' + esc(m.summary) + '</div>' +
             (dates ? '<div class="mix-card__dates">' + esc(dates) + '</div>' : '') +
-            (paid ? '<div class="mix-card__meta">Plaćeno ' + esc(paid) + '</div>' : '') +
+            (paid ? '<div class="mix-card__meta">' + paidLabel + esc(paid) + '</div>' : '') +
           '</a>';
         }).join('');
       }
 
       var html = '';
       if (data.billingPortalUrl) {
-        html += '<a class="dash-btn dash-btn--secondary" href="' + esc(data.billingPortalUrl) + '">Upravljaj pretplatom</a>';
+        html += '<a class="dash-btn dash-btn--secondary" href="' + esc(data.billingPortalUrl) + '">' +
+          (en ? 'Manage subscription' : 'Upravljaj pretplatom') + '</a>';
       }
       if (sub.tier !== 'premium') {
-        html += '<a class="dash-btn dash-btn--primary" href="/#pricing">Reaktiviraj pretplatu →</a>';
+        html += '<a class="dash-btn dash-btn--primary" href="/#pricing">' +
+          (en ? 'Reactivate subscription →' : 'Reaktiviraj pretplatu →') + '</a>';
       }
-      html += '<button type="button" class="dash-btn dash-btn--ghost" id="dash-logout">Odjavi se</button>';
+      html += '<button type="button" class="dash-btn dash-btn--ghost" id="dash-logout">' +
+        (en ? 'Log out' : 'Odjavi se') + '</button>';
       var actions = document.getElementById('dash-actions');
       actions.innerHTML = html;
       var lo = document.getElementById('dash-logout');
@@ -351,35 +434,51 @@
     var result = document.getElementById('result');
     if (!form) return;
 
+    function setBtnIdle() {
+      submitBtn.textContent = lettoLang() === 'en' ? 'Send access links' : 'Pošalji pristupne linkove';
+    }
+    setBtnIdle();
+    window.addEventListener('letto:lang-changed', function () {
+      if (!submitBtn.disabled) setBtnIdle();
+    });
+
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
+      var en = lettoLang() === 'en';
       var email = (document.getElementById('email').value || '').trim();
       if (!email || email.indexOf('@') === -1) {
-        showResult('Unesi validan email.', true);
+        showResult(en ? 'Enter a valid email.' : 'Unesi validan email.', true);
         return;
       }
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Šaljem...';
+      submitBtn.textContent = en ? 'Sending…' : 'Šaljem...';
       result.classList.remove('shown', 'error');
 
       try {
         var res = await fetch('/api/recovery', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email })
+          body: JSON.stringify({ email: email, locale: lettoLang() })
         });
         var data = await res.json().catch(function () { return {}; });
         if (res.ok && data.sent) {
-          showResult('Ako tvoj email ima aktivnu Letto Premium pretplatu, poslali smo ti pristupne linkove. Proveri inbox + spam folder za narednih nekoliko minuta.', false);
+          showResult(en
+            ? 'If your email has an active Letto Premium subscription, we’ve sent your access links. Check your inbox + spam folder over the next few minutes.'
+            : 'Ako tvoj email ima aktivnu Letto Premium pretplatu, poslali smo ti pristupne linkove. Proveri inbox + spam folder za narednih nekoliko minuta.', false);
           form.reset();
         } else {
-          showResult('Greška: ' + (data.error || ('HTTP ' + res.status)) + '. Pokušaj ponovo ili napiši na info@letto.live.', true);
+          var detail = (data.error || ('HTTP ' + res.status));
+          showResult(en
+            ? ('Error: ' + detail + '. Try again or email info@letto.live.')
+            : ('Greška: ' + detail + '. Pokušaj ponovo ili napiši na info@letto.live.'), true);
         }
       } catch (err) {
-        showResult('Mreža nedostupna. Pokušaj ponovo za par sekundi.', true);
+        showResult(en
+          ? 'Network unavailable. Try again in a few seconds.'
+          : 'Mreža nedostupna. Pokušaj ponovo za par sekundi.', true);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Pošalji pristupne linkove';
+        setBtnIdle();
       }
     });
 

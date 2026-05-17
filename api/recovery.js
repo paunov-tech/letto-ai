@@ -42,47 +42,75 @@ const PORTAL_RETURN = (process.env.VITE_SITE_URL || 'https://letto.live') + '/do
 // `sessionId` (the cs_... from letto_subscribers.aimixSessionId) renders the
 // primary dashboard magic-link; falsy → that block is omitted — covers legacy
 // subscribers and the customer-portal caller, which doesn't load the doc.
-async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl, sessionId) {
+async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl, sessionId, locale) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('[recovery] RESEND_API_KEY missing — cannot send');
     return { ok: false, reason: 'no_resend_key' };
   }
+  const en = locale === 'en';
+  const T = en ? {
+    subject: 'Your Letto Premium access links',
+    heading: 'Your Letto Premium access links',
+    intro: 'Lost the earlier email? Here are the active links for your subscription:',
+    acct: '🪙 Open your Letto account:',
+    acctBtn: 'Open dashboard →',
+    acctHint: 'See all your trips, subscription status and manage your account.',
+    tg: '🔑 Premium Telegram channel:',
+    cancel: '⚙️ Cancel / change details:',
+    cancelHint: 'Cancel anytime via the Stripe portal · your subscription stays active until the end of the current period. This link expires in 30 minutes — if it does, request again at',
+    footer: "If you didn't request this email, ignore it. Nobody got access to your account.",
+    cancelTextLine: 'Cancel / change details (Stripe portal · link expires in 30 min):',
+    cancelTextHint: 'Cancel anytime · subscription stays active until the end of the current period.'
+  } : {
+    subject: 'Tvoji Letto Premium pristupni linkovi',
+    heading: 'Tvoji Letto Premium pristupni linkovi',
+    intro: 'Ako si izgubio prethodni email, evo aktivnih linkova za tvoju pretplatu:',
+    acct: '🪙 Otvori svoj Letto nalog:',
+    acctBtn: 'Otvori dashboard →',
+    acctHint: 'Vidi sve svoje putove, status pretplate i upravljaj nalogom.',
+    tg: '🔑 Premium Telegram kanal:',
+    cancel: '⚙️ Otkazivanje / promena podataka:',
+    cancelHint: 'Otkaži kad god kroz Stripe portal · pretplata radi do kraja tekućeg perioda. Link važi 30 minuta. Ako istekne, pošalji ponovo zahtev na',
+    footer: 'Ako nisi tražio ovaj email, ignoriši ga. Niko nije dobio pristup tvom nalogu.',
+    cancelTextLine: 'Otkazivanje / promena podataka (Stripe portal · link važi 30 min):',
+    cancelTextHint: 'Otkaži kad god · pretplata radi do kraja tekućeg perioda.'
+  };
   const html = `<!doctype html>
 <html><body style="font-family:system-ui,-apple-system,sans-serif;color:#1e293b;max-width:560px;margin:0 auto;padding:24px;">
-  <h2 style="color:#0f766e;margin:0 0 16px;">Tvoji Letto Premium pristupni linkovi</h2>
-  <p>Ako si izgubio prethodni email, evo aktivnih linkova za tvoju pretplatu:</p>
+  <h2 style="color:#0f766e;margin:0 0 16px;">${T.heading}</h2>
+  <p>${T.intro}</p>
   ${sessionId ? `<div style="margin:20px 0 24px;">
-    <p style="margin:0 0 10px;font-weight:600;">🪙 Otvori svoj Letto nalog:</p>
-    <p style="margin:0;"><a href="https://letto.live/me?session=${sessionId}" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#8A5F1F,#B8863B,#8A5F1F);color:#F7F1E3;text-decoration:none;border-radius:999px;font-weight:500;">Otvori dashboard →</a></p>
-    <p style="margin:8px 0 0;font-size:12px;color:#6B5E47;">Vidi sve svoje putove, status pretplate i upravljaj nalogom.</p>
+    <p style="margin:0 0 10px;font-weight:600;">${T.acct}</p>
+    <p style="margin:0;"><a href="https://letto.live/me?session=${sessionId}" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#8A5F1F,#B8863B,#8A5F1F);color:#F7F1E3;text-decoration:none;border-radius:999px;font-weight:500;">${T.acctBtn}</a></p>
+    <p style="margin:8px 0 0;font-size:12px;color:#6B5E47;">${T.acctHint}</p>
   </div>` : ''}
   ${telegramInvite ? `<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:16px;margin:20px 0;">
-    <p style="margin:0 0 8px;font-weight:600;">🔑 Premium Telegram kanal:</p>
+    <p style="margin:0 0 8px;font-weight:600;">${T.tg}</p>
     <p style="margin:0;"><a href="${telegramInvite}" style="color:#0f766e;word-break:break-all;">${telegramInvite}</a></p>
   </div>` : ''}
   <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin:20px 0;">
-    <p style="margin:0 0 8px;font-weight:600;">⚙️ Otkazivanje / promena podataka:</p>
+    <p style="margin:0 0 8px;font-weight:600;">${T.cancel}</p>
     <p style="margin:0;"><a href="${portalUrl}" style="color:#b45309;word-break:break-all;">Stripe Billing Portal</a></p>
-    <p style="margin:8px 0 0;font-size:13px;color:#475569;">Otkaži kad god kroz Stripe portal · pretplata radi do kraja current perioda. Link važi 30 minuta. Ako istekne, pošalji ponovo zahtev na <a href="https://letto.live/me">letto.live/me</a>.</p>
+    <p style="margin:8px 0 0;font-size:13px;color:#475569;">${T.cancelHint} <a href="https://letto.live/me">letto.live/me</a>.</p>
   </div>
-  <p style="font-size:13px;color:#94a3b8;margin-top:32px;">Ako nisi tražio ovaj email, ignoriši ga. Niko nije dobio pristup tvom nalogu.</p>
+  <p style="font-size:13px;color:#94a3b8;margin-top:32px;">${T.footer}</p>
 </body></html>`;
   const text = [
-    'Tvoji Letto Premium pristupni linkovi',
+    T.heading,
     '',
     ...(sessionId ? [
-      '🪙 OTVORI SVOJ LETTO NALOG:',
+      T.acct,
       `https://letto.live/me?session=${sessionId}`,
-      'Vidi sve svoje putove, status pretplate i upravljaj nalogom.',
+      T.acctHint,
       ''
     ] : []),
-    ...(telegramInvite ? ['Premium Telegram kanal:', telegramInvite, ''] : []),
-    'Otkazivanje / promena podataka (Stripe portal · link važi 30 min):',
+    ...(telegramInvite ? [T.tg, telegramInvite, ''] : []),
+    T.cancelTextLine,
     portalUrl,
-    'Otkaži kad god · pretplata radi do kraja current perioda.',
+    T.cancelTextHint,
     '',
-    'Ako nisi tražio ovaj email, ignoriši ga.'
+    T.footer
   ].join('\n');
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -91,7 +119,7 @@ async function sendRecoveryEmail(toEmail, telegramInvite, portalUrl, sessionId) 
       body: JSON.stringify({
         from: FROM,
         to: [toEmail],
-        subject: 'Tvoji Letto Premium pristupni linkovi',
+        subject: T.subject,
         html,
         text,
         tags: [{ name: 'flow', value: 'recovery' }]
@@ -115,11 +143,12 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'POST only' });
   }
 
-  const { email } = req.body || {};
+  const { email, locale } = req.body || {};
   if (!email || typeof email !== 'string' || !email.includes('@')) {
-    return res.status(400).json({ error: 'Validan email obavezan' });
+    return res.status(400).json({ error: 'Invalid email' });
   }
   const lowerEmail = email.toLowerCase().trim();
+  const loc = locale === 'en' ? 'en' : 'sr';
 
   // Always return the same shape so the existence of the email isn't leaked
   // by HTTP status / response body.
@@ -167,7 +196,7 @@ async function handler(req, res) {
       console.warn('[recovery] Firestore lookup failed:', e.message);
     }
 
-    const send = await sendRecoveryEmail(lowerEmail, telegramInvite, portal.url, sessionId);
+    const send = await sendRecoveryEmail(lowerEmail, telegramInvite, portal.url, sessionId, loc);
     if (!send.ok) {
       // Don't surface the failure to the client (don't leak existence). Log it.
       console.error('[recovery] send failed for confirmed subscriber', { email: lowerEmail, send });
@@ -176,7 +205,7 @@ async function handler(req, res) {
     return res.status(200).json({ sent: true });
   } catch (err) {
     console.error('[recovery]', err.message);
-    return res.status(500).json({ error: 'Greška. Pokušaj ponovo ili napiši na info@letto.live' });
+    return res.status(500).json({ error: 'Server error' });
   }
 }
 
