@@ -80,6 +80,43 @@
 
     /* Ivory — text on dark */
     --ivory: #F5E9D0;
+
+    /* Letto polish v1 · added 2026-05-17 */
+    --sand-warm: #EBD5A4;
+    --sea-bright: #5C8FA8;
+    --paper-light: #FAF6E8;
+    --gold-action: #C9963E;  /* search button accent — vedrije od burgundy */
+
+    /* Spacing skala (8px baseline) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* Type skala */
+    --text-xs: 11px;
+    --text-sm: 13px;
+    --text-base: 14px;
+    --text-md: 16px;
+    --text-lg: 20px;
+    --text-xl: 26px;
+    --text-2xl: 36px;
+    --text-3xl: 52px;
+
+    /* Transitions */
+    --transition-fast: 160ms ease-out;
+    --transition-base: 240ms ease;
+
+    /* Z-index skala */
+    --z-base: 0;
+    --z-overlay: 10;
+    --z-sticky: 50;
+    --z-modal: 100;
+    --z-toast: 1000;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
@@ -2739,6 +2776,98 @@
     .solari-board { width: 100%; margin-top: 16px; }
   }
 
+  /* ─── LETTO POLISH v1 · Hero + Ticker · 2026-05-17 ─── */
+  .letto-hero {
+    position: relative;
+    padding: var(--space-8) var(--space-6);
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .letto-hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background:
+      linear-gradient(rgba(27,58,75,0.35), rgba(27,58,75,0.55)),
+      linear-gradient(115deg, var(--sea-bright) 0%, var(--ocean) 30%, var(--gold-mid) 65%, var(--sand-warm) 100%);
+    background-size: 100% 100%, 220% 100%;
+    animation: lettoSunPan 32s ease-in-out infinite;
+  }
+  @keyframes lettoSunPan {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .letto-hero-compass {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 280px;
+    height: 280px;
+    margin: -140px 0 0 -140px;
+    opacity: 0.12;
+    color: #FFFFFF;
+    z-index: -1;
+    pointer-events: none;
+    animation: lettoCompassRotate 120s linear infinite;
+  }
+  @keyframes lettoCompassRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .letto-hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .letto-hero-title {
+    font-size: var(--text-xl);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: 0.14em;
+    color: #FFFFFF;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    margin: 0 0 var(--space-6);
+  }
+  .hero-sep { color: var(--gold-bright); }
+
+  .letto-ticker {
+    background: var(--ocean);
+    overflow: hidden;
+    height: 32px;
+    display: flex;
+    align-items: center;
+  }
+  .letto-ticker-track {
+    display: flex;
+    gap: var(--space-8);
+    white-space: nowrap;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--gold-bright);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding-left: var(--space-4);
+    animation: lettoTickerScroll 42s linear infinite;
+  }
+  @keyframes lettoTickerScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .ticker-item { flex: 0 0 auto; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .letto-hero-bg,
+    .letto-hero-compass,
+    .letto-ticker-track { animation: none; }
+  }
+  @media (max-width: 768px) {
+    .letto-hero { padding: var(--space-6) var(--space-4); }
+    .letto-hero-title { font-size: var(--text-md); letter-spacing: 0.1em; }
+    .letto-hero-compass { width: 180px; height: 180px; margin: -90px 0 0 -90px; }
+  }
+
 </style>
 
 <!-- ─────────── Structured data (JSON-LD) ─────────── -->
@@ -3081,81 +3210,31 @@
 <!-- ═══════════════════════════════════════════════ -->
 <!-- HERO                                             -->
 <!-- ═══════════════════════════════════════════════ -->
-<section class="hero grain">
+<!-- LETTO POLISH v1 · Hero — restyle, Mix search preserved · 2026-05-17 -->
+<section class="letto-hero" aria-labelledby="hero-title">
+  <div class="letto-hero-bg" aria-hidden="true"></div>
+  <div class="letto-hero-compass" aria-hidden="true">
+    <svg viewBox="0 0 100 100" stroke="currentColor" fill="none" stroke-width="0.3">
+      <circle cx="50" cy="50" r="48"/>
+      <circle cx="50" cy="50" r="36"/>
+      <line x1="50" y1="2" x2="50" y2="98"/>
+      <line x1="2" y1="50" x2="98" y2="50"/>
+      <line x1="15" y1="15" x2="85" y2="85"/>
+      <line x1="85" y1="15" x2="15" y2="85"/>
+      <polygon points="50,2 47,50 50,30 53,50" fill="currentColor"/>
+      <polygon points="50,98 47,50 50,70 53,50" fill="currentColor"/>
+      <polygon points="2,50 50,47 30,50 50,53" fill="currentColor"/>
+      <polygon points="98,50 50,47 70,50 50,53" fill="currentColor"/>
+    </svg>
+  </div>
 
-  <svg class="hero-watermark" viewBox="0 0 200 200"><use href="#compassRose"/></svg>
+  <div class="letto-hero-content">
+    <h1 id="hero-title" class="letto-hero-title">
+      <span data-en>AFFORDABLE TRAVEL PACKAGES <span class="hero-sep">·</span> SUMMER 2026</span>
+      <span data-sr>POVOLJNA PUTOVANJA <span class="hero-sep">·</span> LETO 2026</span>
+    </h1>
 
-  <div class="container">
-    <div class="hero-grid">
-
-      <!-- LEFT COLUMN -->
-      <div>
-        <div class="hero-eyebrow">
-          <div class="text">
-            <div class="eyebrow" data-en>AFFORDABLE TRAVEL PACKAGES · SUMMER 2026</div>
-            <div class="eyebrow" data-sr>POVOLJNA PUTOVANJA · LETO 2026</div>
-            <div class="byline">Follow the Sun · <em>Sequere Solem</em></div>
-          </div>
-        </div>
-
-        <p class="hero-sub">
-          <span data-en>
-            We scan <strong>12,000+</strong> deals every day. We send you only the ones that are genuinely cheap.
-            <br>
-            No commission. No spam. Book direct.
-          </span>
-          <span data-sr>
-            Skeniramo <strong>12.000+</strong> ponuda dnevno. Šaljemo ti samo one koje su stvarno povoljne.
-            <br>
-            Bez provizije. Bez spama. Rezerviši direktno.
-          </span>
-        </p>
-
-        <div class="hero-actions">
-          <a href="#deals" class="btn-ink">
-            <span data-en>Browse today's deals →</span>
-            <span data-sr>Pogledaj današnje dealove →</span>
-          </a>
-          <a href="#how" class="btn-outline">
-            <span data-en>How it works</span>
-            <span data-sr>Kako radi</span>
-          </a>
-        </div>
-
-      </div>
-
-      <!-- RIGHT COLUMN — Solari split-flap board -->
-      <div class="hero-right">
-        <div class="solari-board">
-
-          <div class="solari-board__header">
-            <div class="solari-board__title">
-              <span class="solari-board__lamp"></span>
-              <span>LETTO BOARD</span>
-              <span class="solari-board__lamp solari-board__lamp--green"></span>
-            </div>
-            <div class="solari-board__time" id="solari-clock">--:--</div>
-          </div>
-
-          <div class="solari-board__cols">
-            <span>DEST</span>
-            <span>DEAL</span>
-            <span>CENA</span>
-            <span>−%</span>
-          </div>
-
-          <div class="solari-board__rows" id="solari-rows"></div>
-
-          <div class="solari-board__footer">
-            <span class="solari-board__pulse"></span>
-            <span>LIVE · ažurirano sada</span>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- LETTO MIX search bar -->
+    <!-- LETTO MIX search bar — preserved verbatim from the original hero -->
     <div class="letto-search">
 
       <div class="letto-search__toggle">
@@ -3229,6 +3308,20 @@
     </div>
   </div>
 </section>
+
+<!-- LETTO POLISH v1 · Ticker strip · 2026-05-17 -->
+<div class="letto-ticker" role="region" aria-label="Aktuelne informacije">
+  <div class="letto-ticker-track" aria-live="off">
+    <span class="ticker-item">🔥 <span data-en>Top deals sell out within hours</span><span data-sr>Najjači dealovi se prodaju za par sati</span></span>
+    <span class="ticker-item">💰 <span data-en>Save up to 80% on hotels</span><span data-sr>Uštedi do 80% na hotelima</span></span>
+    <span class="ticker-item">✈ <span data-en>Flight + hotel from €198 per person</span><span data-sr>Let + hotel od €198 po osobi</span></span>
+    <span class="ticker-item">🔔 <span data-en>Premium gets deals 4 h before everyone</span><span data-sr>Premium ti šalje deal 4 sata pre svih</span></span>
+    <span class="ticker-item">🔥 <span data-en>Top deals sell out within hours</span><span data-sr>Najjači dealovi se prodaju za par sati</span></span>
+    <span class="ticker-item">💰 <span data-en>Save up to 80% on hotels</span><span data-sr>Uštedi do 80% na hotelima</span></span>
+    <span class="ticker-item">✈ <span data-en>Flight + hotel from €198 per person</span><span data-sr>Let + hotel od €198 po osobi</span></span>
+    <span class="ticker-item">🔔 <span data-en>Premium gets deals 4 h before everyone</span><span data-sr>Premium ti šalje deal 4 sata pre svih</span></span>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- DEALS                                            -->
