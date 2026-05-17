@@ -2886,47 +2886,6 @@
     border-radius: 4px !important;
   }
 
-  /* Interactive chips */
-  .letto-chips {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: var(--space-4);
-  }
-  .chips-label {
-    font-size: var(--text-xs);
-    color: rgba(10,13,17,0.7);
-    padding: 6px 0;
-    letter-spacing: 0.05em;
-  }
-  .chip {
-    background: rgba(255,255,255,0.85);
-    border: 1px solid rgba(255,255,255,0.4);
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: var(--text-sm);
-    color: var(--ink);
-    cursor: pointer;
-    transition: transform var(--transition-fast), background var(--transition-fast);
-  }
-  .chip:hover { background: #FFFFFF; transform: translateY(-1px); }
-  .chip:active { transform: scale(0.97); }
-  .chip-featured {
-    background: #FFFFFF;
-    border: 1px solid var(--gold-mid);
-    color: var(--gold-deep);
-    font-weight: 500;
-    animation: chipPulse 4s ease-in-out infinite;
-  }
-  .chip-deal { color: var(--burgundy); font-weight: 500; margin-left: 4px; }
-  @keyframes chipPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(201,150,62,0.5); }
-    50% { box-shadow: 0 0 0 6px rgba(201,150,62,0); }
-  }
-
   /* Ticker — polish v2: gold background, ink text */
   .letto-ticker {
     background: var(--gold-action);
@@ -3037,8 +2996,7 @@
   @media (prefers-reduced-motion: reduce) {
     .letto-hero-video-wrap { animation: none; background-position: 50% 50%; }
     .letto-hero-compass,
-    .letto-ticker-track,
-    .chip-featured { animation: none; }
+    .letto-ticker-track { animation: none; }
   }
   @media (max-width: 768px) {
     .letto-hero { padding: var(--space-6) var(--space-4); min-height: 280px; }
@@ -3050,8 +3008,6 @@
       grid-column: 1 / -1;
       padding: var(--space-3) !important;
     }
-    .letto-chips { gap: 6px; }
-    .chips-label { width: 100%; text-align: center; }
   }
 
 </style>
@@ -3495,17 +3451,6 @@
 
     </div>
   </div>
-
-  <!-- LETTO POLISH v2 · Interactive destination chips -->
-  <div class="letto-chips" role="navigation" aria-label="Brzi izbor destinacija">
-    <span class="chips-label">Brzi izbor:</span>
-    <button class="chip chip-featured" data-country="GR">Grčka</button>
-    <button class="chip" data-country="ME">Crna Gora</button>
-    <button class="chip" data-country="IT">Italija</button>
-    <button class="chip" data-country="TR">Turska <span class="chip-deal">−51%</span></button>
-    <button class="chip" data-country="IT-SI">Sicilija</button>
-    <button class="chip" data-country="MA">Maroko <span class="chip-deal">−38%</span></button>
-  </div>
 </section>
 
 <!-- LETTO POLISH v2 · Ticker strip · 2026-05-17 -->
@@ -3607,24 +3552,6 @@
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     start();
   };
-
-  // Destination chips → drive the existing #mix-search-form (hidden name="to"
-  // takes an IATA code). country→primary-airport map per Miroslav's spec.
-  var COUNTRY_TO_IATA = { GR: 'SKG', ME: 'TGD', IT: 'NAP', TR: 'AYT', 'IT-SI': 'CTA', MA: 'RAK' };
-  document.querySelectorAll('.letto-chips .chip').forEach(function (chip) {
-    chip.addEventListener('click', function () {
-      var iata = COUNTRY_TO_IATA[chip.dataset.country];
-      var form = document.getElementById('mix-search-form');
-      if (!form || !iata) return;
-      var hiddenInput = form.querySelector('input[name="to"]');
-      var comboInput = form.querySelector('[data-combo="to"] .letto-combo__input');
-      var label = (chip.childNodes[0] && chip.childNodes[0].textContent || chip.textContent).trim();
-      if (hiddenInput) hiddenInput.value = iata;
-      if (comboInput) comboInput.value = label;
-      if (form.requestSubmit) form.requestSubmit();
-      else form.dispatchEvent(new Event('submit', { cancelable: true }));
-    });
-  });
 })();
 </script>
 
