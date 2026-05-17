@@ -2915,86 +2915,118 @@
   /* Mini-billboard — sits in the deals carousel as slot 3 */
   .letto-billboard {
     position: relative;
-    background: linear-gradient(135deg, var(--sky-deep) 0%, var(--sea-shallow) 100%);
+    background-color: #1a2c3a;
+    background-size: cover;
+    background-position: center;
     color: #FFFFFF;
-    border-radius: 8px;
-    padding: 16px 14px 14px;
+    border-radius: 12px;
+    padding: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    min-height: 240px;
+    justify-content: flex-end;
+    min-height: 280px;
+    isolation: isolate;
+  }
+  .letto-billboard::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      transparent 30%,
+      rgba(10, 13, 17, 0.5) 60%,
+      rgba(10, 13, 17, 0.92) 100%
+    );
   }
   .deal-grid > .letto-billboard { flex: 0 0 calc((100% - 72px) / 3.3); }
   @media (min-width: 1025px) {
     .deal-grid > .letto-billboard { flex: 0 0 calc((100% - 72px) / 3.3); }
   }
-  .bb-slide { display: none; flex: 1; flex-direction: column; }
+  .bb-slide {
+    position: relative;
+    z-index: 1;
+    padding: 16px 18px 18px;
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 280px;
+    background-size: cover;
+    background-position: center;
+  }
   .bb-slide-active { display: flex; animation: bbFadeIn 600ms ease-out; }
   @keyframes bbFadeIn {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
   .bb-eyebrow {
-    font-size: var(--text-xs);
-    color: var(--gold-bright);
-    letter-spacing: 0.18em;
+    font-size: 11px;
+    color: #FFE082;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
   .bb-title {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 17px;
-    font-weight: 500;
-    line-height: 1.18;
-    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.1;
+    margin: 0 0 6px;
+    color: #FFFFFF;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
   }
   .bb-body {
     font-size: 12px;
-    line-height: 1.45;
-    opacity: 0.92;
+    line-height: 1.4;
     margin: 0 0 12px;
-    flex: 1;
+    color: rgba(255,255,255,0.92);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
   .bb-cta {
-    background: #FFFFFF;
-    color: var(--ocean);
-    padding: 8px 14px;
-    border-radius: 3px;
-    font-size: var(--text-xs);
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--gold-action, #C9963E);
+    color: #1a1a1a;
+    padding: 9px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: none;
     text-decoration: none;
-    text-align: center;
-    display: block;
-    transition: transform var(--transition-fast);
+    align-self: flex-start;
+    transition: transform var(--transition-fast), background var(--transition-fast);
   }
-  .bb-cta:hover { transform: translateY(-1px); }
-  .bb-dots { display: flex; justify-content: center; gap: 4px; margin-top: 10px; }
+  .bb-cta::after {
+    content: "→";
+    font-weight: bold;
+  }
+  .bb-cta:hover { transform: translateX(2px); background: #d9a648; }
+  .bb-dots {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
+  }
   .bb-dot {
-    width: 8px;
-    height: 3px;
+    width: 6px;
+    height: 6px;
     background: rgba(255,255,255,0.4);
     border: none;
-    border-radius: 2px;
-    cursor: pointer;
-    transition: background var(--transition-fast), width var(--transition-fast);
+    border-radius: 50%;
     padding: 0;
+    cursor: pointer;
   }
-  .bb-dot-active { background: #FFFFFF; width: 16px; }
-  .bb-counter {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    background: rgba(10,13,17,0.4);
-    color: var(--gold-bright);
-    font-size: 9px;
-    font-weight: 500;
-    padding: 2px 6px;
-    border-radius: 3px;
-    letter-spacing: 0.1em;
-  }
+  .bb-dot-active { background: #FFFFFF; }
+  .bb-counter { display: none; }
 
   @media (prefers-reduced-motion: reduce) {
     .letto-hero-video-wrap { animation: none; background-position: 50% 50%; }
@@ -3479,41 +3511,41 @@
   // /api/packages render callback. Emoji eyebrows (Tabler Icons not loaded).
   window.LETTO_BILLBOARD_HTML = `
     <aside class="letto-billboard" data-rotate-ms="6000" role="region" aria-label="Letto info">
-      <div class="bb-slide bb-slide-active" data-slide="1">
+      <div class="bb-slide bb-slide-active" data-slide="1" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1601581875309-fafbf2d3ed3a?w=800&q=80');">
         <div class="bb-eyebrow">🇸🇮 Iz Slovenije</div>
         <h3 class="bb-title">Mali tim. Pravi dealovi.</h3>
         <p class="bb-body">SIAL Consulting iz Slovenije. Skeniramo 12.000+ destinacija i biramo samo dealove koje bismo i sami iskoristili. Bez sponzorisanih hotela.</p>
-        <a href="/about" class="bb-cta">O nama →</a>
+        <a href="/about" class="bb-cta">O nama</a>
       </div>
-      <div class="bb-slide" data-slide="2">
+      <div class="bb-slide" data-slide="2" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1583265627959-fb7042f5133b?w=800&q=80');">
         <div class="bb-eyebrow">⛰ Slovenija</div>
         <h3 class="bb-title">Biser Evrope.</h3>
         <p class="bb-body">Alpe, Mediteran i pećine u krugu od 200 km. 60% Slovenije pod šumom. Voda iz česme bolja nego flaširana. Mi smo odavde — biramo dealove sa tim ukusom.</p>
-        <a href="/about#slovenija" class="bb-cta">Otkrij Sloveniju →</a>
+        <a href="/about#slovenija" class="bb-cta">Otkrij Sloveniju</a>
       </div>
-      <div class="bb-slide" data-slide="3">
+      <div class="bb-slide" data-slide="3" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1535827841776-24afc1e255ac?w=800&q=80');">
         <div class="bb-eyebrow">👑 Premium</div>
         <h3 class="bb-title">Premium ti šalje deal pre nego što stigne ovde.</h3>
         <p class="bb-body">€9.99/mes. Neograničeni mix-evi. Telegram alerti instant. Prekini kad god — bez ugovora, bez SMS-ova.</p>
-        <a href="#pricing" class="bb-cta">Premium →</a>
+        <a href="#pricing" class="bb-cta">Premium</a>
       </div>
-      <div class="bb-slide" data-slide="4">
+      <div class="bb-slide" data-slide="4" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80');">
         <div class="bb-eyebrow">🔍 Kako biramo</div>
         <h3 class="bb-title">Skeniramo sve. Biramo 1%.</h3>
         <p class="bb-body">Algoritam plus ljudski filter. Hoteli nam ne plaćaju za bolju poziciju. Ako deal nije vredan tvojih para, ne stigne ovde.</p>
-        <a href="/about#filter" class="bb-cta">Naš filter →</a>
+        <a href="/about#filter" class="bb-cta">Naš filter</a>
       </div>
-      <div class="bb-slide" data-slide="5">
+      <div class="bb-slide" data-slide="5" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&q=80');">
         <div class="bb-eyebrow">📨 Telegram</div>
         <h3 class="bb-title">Telegram putnici dobijaju deal 4 sata pre svih.</h3>
         <p class="bb-body">5.000+ ljudi. Bez spam-a, bez promocija. Samo dealovi koji se prodaju u istom danu.</p>
-        <a href="https://t.me/lettolive_bot" class="bb-cta" target="_blank" rel="noopener">@lettolive_bot →</a>
+        <a href="https://t.me/lettolive_bot" class="bb-cta" target="_blank" rel="noopener">@lettolive_bot</a>
       </div>
-      <div class="bb-slide" data-slide="6">
+      <div class="bb-slide" data-slide="6" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1541278107931-e006523892df?w=800&q=80');">
         <div class="bb-eyebrow">🎮 Bundle</div>
         <h3 class="bb-title">Igraj dok putuješ.</h3>
         <p class="bb-body">Letto Premium pretplatnici dobijaju Bluff bez doplate. Avion, hotel, kafić čekajući let — Bluff je u tvom džepu. €9.99/mes oba.</p>
-        <a href="#pricing" class="bb-cta">Saznaj više →</a>
+        <a href="#pricing" class="bb-cta">Saznaj više</a>
       </div>
       <div class="bb-dots" role="tablist">
         <button class="bb-dot bb-dot-active" data-goto="1" aria-label="Slide 1"></button>
