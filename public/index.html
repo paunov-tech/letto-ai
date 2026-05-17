@@ -2519,42 +2519,43 @@
   .paywall-gate {
     position: relative;
     overflow: hidden;
-    min-height: 660px;
+    min-height: 400px;
   }
   .paywall-blur-zone {
-    filter: blur(12px);
+    filter: blur(6px);
     pointer-events: none;
     user-select: none;
-    opacity: 0.45;
-    transform: scale(1.02);
+    opacity: 0.65;
+    transform: scale(1.01);
   }
   .paywall-overlay {
     position: absolute;
     inset: 0;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    padding: 32px;
+    padding: 24px;
     background: linear-gradient(180deg,
-      rgba(245, 239, 224, 0.3) 0%,
-      rgba(245, 239, 224, 0.85) 12%,
-      rgba(245, 239, 224, 0.96) 24%,
-      rgba(245, 239, 224, 1) 40%);
+      transparent 0%,
+      transparent 20%,
+      rgba(245, 239, 224, 0.55) 28%,
+      rgba(245, 239, 224, 0.92) 45%,
+      rgba(245, 239, 224, 1) 60%);
     z-index: 2;
   }
   .paywall-card {
-    max-width: 540px;
+    max-width: 420px;
     width: 100%;
     text-align: center;
-    padding: 36px 40px 32px;
+    padding: 22px 28px 20px;
     background: var(--paper);
     border: 1px solid var(--gold);
-    border-radius: 16px;
+    border-radius: 12px;
     position: relative;
     box-shadow:
       0 2px 0 rgba(10, 13, 17, 0.03),
-      0 30px 60px -15px rgba(10, 13, 17, 0.22),
-      0 12px 30px -10px rgba(161, 116, 51, 0.25);
+      0 18px 40px -12px rgba(10, 13, 17, 0.18),
+      0 8px 22px -8px rgba(161, 116, 51, 0.2);
   }
   .paywall-card::before {
     content: '';
@@ -2565,9 +2566,9 @@
     pointer-events: none;
   }
   .paywall-mark {
-    width: 56px;
-    height: 56px;
-    margin: 0 auto 14px;
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 10px;
     animation: slowRotate 120s linear infinite;
     padding: 4px;
     background: radial-gradient(circle, var(--paper-warm) 0%, var(--paper) 60%, transparent 100%);
@@ -2585,11 +2586,11 @@
   }
   .paywall-title {
     font-family: 'Fraunces', serif;
-    font-size: 28px;
-    line-height: 1.1;
+    font-size: 19px;
+    line-height: 1.25;
     letter-spacing: -0.025em;
     font-weight: 400;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
   .paywall-title em {
     font-style: italic;
@@ -2708,8 +2709,8 @@
     .included-bar { padding: 22px 24px; }
     .included-items { grid-template-columns: 1fr; gap: 18px; }
     .paywall-overlay { padding: 16px; }
-    .paywall-card { padding: 32px 24px; }
-    .paywall-title { font-size: 24px; }
+    .paywall-card { padding: 20px 22px 18px; }
+    .paywall-title { font-size: 18px; }
     .price-main { font-size: 48px; }
     .paywall-assurance { flex-wrap: wrap; }
   }
@@ -3878,9 +3879,9 @@
       </div>
       <div class="bb-slide" data-slide="3" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1566073771259-6a8506099945?w=900&q=80');">
         <div class="bb-eyebrow">PREMIUM</div>
-        <h3 class="bb-title">Premium ti šalje deal pre nego što stigne ovde.</h3>
-        <p class="bb-body">€9.99/mes. Neograničeni mix-evi. Telegram alerti instant. Prekini kad god — bez ugovora, bez SMS-ova.</p>
-        <a href="#pricing" class="bb-cta">Premium</a>
+        <h3 class="bb-title">Premium = 4h prednost.</h3>
+        <p class="bb-body">Pogledaj cene — biraj šta ti odgovara.</p>
+        <a href="#pricing" class="bb-cta" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth',block:'start'});return false;">Pogledaj cene</a>
       </div>
       <div class="bb-slide" data-slide="4" style="background-image: linear-gradient(180deg, transparent 30%, rgba(10,13,17,0.85) 100%), url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=900&q=80');">
         <div class="bb-eyebrow">KAKO BIRAMO</div>
@@ -5665,9 +5666,13 @@
           <div class="paywall-eyebrow" data-en>UNLOCK FULL PACKAGE</div>
           <div class="paywall-eyebrow" data-sr>OTKLJUČAJ PAKET</div>
           <h3 class="paywall-title">
-            <span data-en>See <em>exactly</em> which airline, hotel &amp; times.</span>
-            <span data-sr>Vidi <em>tačno</em> koja aviokompanija, hotel i vremena.</span>
+            <span data-en>Premium shows you <em>exactly</em> which flight, hotel &amp; times.</span>
+            <span data-sr>Premium ti pokazuje <em>tačno</em> let, hotel i vreme.</span>
           </h3>
+          <p class="paywall-sub" style="font-size:13px;color:var(--muted);font-family:'Instrument Serif',serif;font-style:italic;margin:6px 0 14px;">
+            <span data-en>Free preview shows route, dates and price range.</span>
+            <span data-sr>Free pregled pokazuje rutu, datume i cenovni opseg.</span>
+          </p>
           <p class="paywall-body">
             <span data-en>Book the outbound with <strong>Air Serbia</strong>, stay at a named hotel, return with <strong>Turkish</strong> — each confirmed directly with the partner. Every detail revealed so you can book yourself in 10 minutes.</span>
             <span data-sr>Outbound rezerviši kod <strong>Air Serbia</strong>, odsedni u imenovanom hotelu, vrati se sa <strong>Turkish</strong> — sve direktno kod partnera. Svaki detalj otključan da rezervišeš sam za 10 minuta.</span>
