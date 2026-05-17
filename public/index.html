@@ -651,19 +651,6 @@
     .dropdown-motto { padding: 12px 20px; font-size: 11.5px; }
   }
 
-  nav .nav-links {
-    display: flex;
-    gap: 32px;
-    font-size: 13.5px;
-    font-weight: 500;
-  }
-  nav .nav-links a {
-    color: var(--ink-mid);
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-  nav .nav-links a:hover { color: var(--gold-deep); }
-
   nav .nav-actions {
     display: flex;
     align-items: center;
@@ -701,12 +688,17 @@
     color: var(--paper);
   }
 
-  @media (max-width: 900px) {
-    nav .nav-links { display: none; }
+  @media (max-width: 768px) {
+    nav .nav-actions .btn-ink {
+      display: inline-flex;
+      padding: 9px 14px;
+      font-size: 12px;
+      gap: 6px;
+    }
+    nav .nav-actions { gap: 10px; }
   }
   @media (max-width: 600px) {
     nav.main { padding: 18px 20px; }
-    nav .nav-actions .btn-ink { display: none; }
     .logo-mark { width: 56px; height: 56px; }
     .logo-text { font-size: 40px; }
     .logo-chevron { width: 18px; height: 18px; }
@@ -1746,7 +1738,38 @@
     margin: 0 auto;
   }
   @media (max-width: 768px) {
-    .pricing-grid { grid-template-columns: 1fr; }
+    .pricing-grid {
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: 10px;
+      max-width: 100%;
+    }
+    .tier { padding: 18px 14px; border-radius: 10px; }
+    .tier.free { transform: scale(0.95); transform-origin: left center; }
+    .tier.premium { transform: scale(1); }
+    .tier .eyebrow { font-size: 9px; letter-spacing: 0.18em; margin-bottom: 10px; }
+    .tier .price-main { font-size: 28px; line-height: 1; margin-bottom: 4px; }
+    .tier .price-annual { font-size: 11px; margin-left: 3px; }
+    .tier .price-cap { font-size: 11px; margin-bottom: 14px; line-height: 1.3; }
+    .tier ul.features { margin-bottom: 16px; }
+    .tier ul.features li {
+      font-size: 11.5px;
+      padding: 5px 0;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .tier .check-icon { width: 12px; height: 12px; flex-shrink: 0; margin-top: 2px; }
+    .tier .ribbon {
+      font-size: 8px;
+      padding: 4px 9px;
+      top: -10px;
+      letter-spacing: 0.16em;
+    }
+    .tier button,
+    .tier .btn-outline,
+    .tier a.btn-outline {
+      padding: 9px 10px;
+      font-size: 12px;
+    }
   }
 
   .tier {
@@ -2273,6 +2296,8 @@
   /* Premium gate — toggle by body.letto-premium */
   body:not(.letto-premium) .premium-only { display: none !important; }
   body.letto-premium .paywall-gate { display: none !important; }
+  body.letto-premium .section-pricing { display: none; }
+  body.letto-premium .dropdown-link[href="#pricing"] { display: none; }
 
   /* Modal blurb — Claude narrative below pricing */
   .modal-blurb {
@@ -3054,6 +3079,16 @@
   @media (min-width: 1025px) {
     .deal-grid > .letto-billboard { flex: 0 0 calc((100% - 72px) / 3.3); }
   }
+  @media (max-width: 768px) {
+    .deal-grid > .letto-billboard { flex: 0 0 calc((100% - 36px) / 2.2); }
+    .letto-billboard { min-height: 240px; }
+    .bb-slide { min-height: 240px; padding: 14px 16px 16px; }
+    .bb-title { font-size: 18px; }
+    .bb-body { font-size: 11px; }
+  }
+  @media (max-width: 600px) {
+    .deal-grid > .letto-billboard { flex: 0 0 88%; }
+  }
   .bb-slide {
     position: relative;
     z-index: 1;
@@ -3640,21 +3675,11 @@
     </div>
   </div>
 
-  <div class="nav-links">
-    <a href="#deals" data-en>Deals</a><a href="#deals" data-sr>Dealovi</a>
-    <a href="#how" data-en>How it works</a><a href="#how" data-sr>Kako radi</a>
-    <a href="#pricing" data-en>Pricing</a><a href="#pricing" data-sr>Cena</a>
-    <a href="/about.html" data-en>About</a><a href="/about.html" data-sr>O nama</a>
-  </div>
-
   <div class="nav-actions">
     <div class="lang-toggle">
       <button class="active" onclick="setLang('en')" id="btn-en">EN</button>
       <button onclick="setLang('sr')" id="btn-sr">SR</button>
     </div>
-    <a href="/me" class="nav-already" style="font-size:13px;color:var(--muted);text-decoration:none;margin-right:14px;white-space:nowrap;">
-      <span data-en>Already subscribed?</span><span data-sr>Već si pretplaćen?</span>
-    </a>
     <a href="#" class="btn-ink" data-stripe="premium">
       <span data-en>Premium · €9.99/mo →</span>
       <span data-sr>Premium · €9.99/mes →</span>
@@ -4320,8 +4345,8 @@
         <div class="eyebrow">PREMIUM</div>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;">
           <span class="price-main mono">€9.99</span>
-          <span class="price-annual" data-en>/ month + VAT</span>
-          <span class="price-annual" data-sr>/ mesec + PDV</span>
+          <span class="price-annual" data-en>/ mo</span>
+          <span class="price-annual" data-sr>/ mes</span>
         </div>
         <div class="price-cap">
           <span data-en>Auto-renew · cancel anytime · runs to the end of the current period</span>
