@@ -121,14 +121,16 @@ async function handler(req, res) {
   }
   const isPremium = auth.premium;
 
-  // Cache partition: ANY sessioned request is private. Only fully-anonymous
-  // calls hit the shared CDN cache. Stronger than relying on Vary: X-Letto-Session
-  // (CDN edges honour custom-header Vary inconsistently — that may have been
-  // the cross-tier-cache atomicity bug in the reverted e74d4da). With the
-  // session-bit-in-cache-key partition, a logged-in caller can never receive
-  // a CDN-cached scrubbed response, and an anon caller can never receive a
-  // cached premium response.
-  if (sessionId) {
+  // Cache partition: a sessioned request — OR any request carrying the
+  // ?auth=1 marker the frontend appends for logged-in callers — is
+  // private/no-store. Only fully-anonymous calls to the plain URL hit the
+  // shared CDN cache. The partition is by URL cache KEY (?auth=1), which is
+  // reliable. Vary: X-Letto-Session is deliberately NOT used — CDN edges
+  // honour custom-header Vary inconsistently (the cross-tier-cache atomicity
+  // bug behind the reverted e74d4da). Forcing no-store whenever ?auth is
+  // present also stops an anonymous hit to the ?auth=1 URL from poisoning
+  // that key with a cacheable scrubbed response.
+  if (sessionId || req.query.auth) {
     res.setHeader('Cache-Control', 'private, no-store');
   } else {
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
