@@ -3276,6 +3276,49 @@
     .made-in-mark { width: 70px; height: 70px; }
   }
 
+  /* ─── LETTO POLISH v11 · mobile show-more ─── */
+  .show-more-wrap {
+    display: none;
+    text-align: center;
+    margin-top: 32px;
+    padding: 0 var(--space-4) 8px;
+  }
+  @media (max-width: 768px) {
+    .show-more-wrap { display: block; }
+  }
+  .show-more-btn {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    padding: 12px 32px;
+    background: transparent;
+    border: 1px solid var(--gold-deep);
+    border-radius: 8px;
+    color: var(--gold-deep);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+  }
+  .show-more-btn:hover,
+  .show-more-btn:focus-visible {
+    background: var(--gold-deep);
+    color: var(--paper);
+    transform: translateY(-1px);
+  }
+  .show-more-meta {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 10px 0 0;
+  }
+  @media (max-width: 768px) {
+    .full-deals-grid > .deal-card:nth-child(n+7) { display: none; }
+    .full-deals-grid.is-expanded-1 > .deal-card:nth-child(n+7):nth-child(-n+12) { display: flex; }
+    .full-deals-grid.is-expanded-2 > .deal-card:nth-child(n+7):nth-child(-n+18) { display: flex; }
+    .full-deals-grid.is-expanded-3 > .deal-card:nth-child(n+7) { display: flex; }
+  }
+
 </style>
 
 <!-- ─────────── Structured data (JSON-LD) ─────────── -->
@@ -3613,8 +3656,8 @@
       <span data-en>Already subscribed?</span><span data-sr>Već si pretplaćen?</span>
     </a>
     <a href="#" class="btn-ink" data-stripe="premium">
-      <span data-en>Subscribe →</span>
-      <span data-sr>Pretplati se →</span>
+      <span data-en>Premium · €9.99/mo →</span>
+      <span data-sr>Premium · €9.99/mes →</span>
     </a>
   </div>
 </nav>
@@ -4037,8 +4080,8 @@
         // both buttons above are disabled for free. Click scrolls to #pricing.
         var unlockStrip = locked
           ? '<a href="#pricing" class="unlock-strip" onclick="event.stopPropagation()">' +
-              '<span data-en>Unlock flight and hotel → €9.99/mo</span>' +
-              '<span data-sr>Otključaj let i hotel → €9.99/mes</span>' +
+              '<span data-en>Unlock with Premium · €9.99/mo</span>' +
+              '<span data-sr>Otključaj sa Premium · €9.99/mes</span>' +
             '</a>'
           : '';
 
@@ -4296,8 +4339,8 @@
 
         <div>
           <button class="btn-gold" data-stripe="premium" style="width: 100%; justify-content: center; padding: 16px 28px;">
-            <span data-en>Subscribe · €9.99 / month + VAT →</span>
-            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
+            <span data-en>Premium · €9.99/mo →</span>
+            <span data-sr>Premium · €9.99/mes →</span>
           </button>
         </div>
       </div>
@@ -4331,8 +4374,59 @@
       </p>
     </div>
     <div id="full-deals-grid" class="full-deals-grid"></div>
+
+    <!-- LETTO POLISH v11 · mobile show-more -->
+    <div class="show-more-wrap" id="showMoreWrap">
+      <button type="button" class="show-more-btn" id="showMoreBtn">
+        <span class="show-more-btn-text">
+          <span data-en>Show more</span>
+          <span data-sr>Prikaži još</span>
+        </span>
+      </button>
+      <p class="show-more-meta" id="showMoreMeta"></p>
+    </div>
   </div>
 </section>
+<script>
+(function () {
+  var grid = document.querySelector('.full-deals-grid');
+  var wrap = document.getElementById('showMoreWrap');
+  var btn  = document.getElementById('showMoreBtn');
+  var meta = document.getElementById('showMoreMeta');
+  if (!grid || !btn || !wrap || !meta) return;
+
+  var STEP = 6, INITIAL = 6, stage = 0;
+  function isMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+  function getTotal() { return grid.querySelectorAll('.deal-card').length; }
+  function getLang() { return document.body.classList.contains('lang-en') ? 'en' : 'sr'; }
+
+  function update() {
+    if (!isMobile()) {
+      wrap.style.display = 'none';
+      grid.classList.remove('is-expanded-1', 'is-expanded-2', 'is-expanded-3');
+      return;
+    }
+    var total = getTotal();
+    if (total <= INITIAL) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    grid.classList.remove('is-expanded-1', 'is-expanded-2', 'is-expanded-3');
+    if (stage >= 1) grid.classList.add('is-expanded-' + Math.min(stage, 3));
+    var visible = Math.min(INITIAL + stage * STEP, total);
+    var left = total - visible;
+    if (left <= 0) { wrap.style.display = 'none'; return; }
+    var nextChunk = Math.min(STEP, left);
+    btn.querySelector('[data-en]').textContent = 'Show ' + nextChunk + ' more';
+    btn.querySelector('[data-sr]').textContent = 'Prikaži još ' + nextChunk;
+    meta.textContent = getLang() === 'sr' ? (left + ' još za prikaz') : (left + ' more to view');
+  }
+
+  btn.addEventListener('click', function () { stage += 1; update(); });
+  new MutationObserver(function () { update(); }).observe(grid, { childList: true });
+  window.addEventListener('resize', update);
+  window.addEventListener('letto:lang-changed', update);
+  update();
+})();
+</script>
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- v9.1 — Compact bottom: Numbers + How + FAQ      -->
@@ -5532,8 +5626,8 @@
             <span data-sr>Jedan otključan paket se obično isplati više puta od cene pretplate.</span>
           </div>
           <a href="#" class="paywall-cta" data-stripe="premium">
-            <span data-en>Subscribe · €9.99 / month + VAT →</span>
-            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
+            <span data-en>Premium · €9.99/mo →</span>
+            <span data-sr>Premium · €9.99/mes →</span>
           </a>
           <div class="paywall-assurance">
             <span data-en>Cancel anytime</span><span data-sr>Otkaži kad god</span>
@@ -5571,6 +5665,8 @@
     document.querySelectorAll('[data-' + lang + '-placeholder]').forEach(el => {
       el.placeholder = el.getAttribute('data-' + lang + '-placeholder');
     });
+
+    window.dispatchEvent(new CustomEvent('letto:lang-changed', { detail: { lang: lang } }));
   }
 
   // Load saved preference
