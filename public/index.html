@@ -3051,6 +3051,127 @@
     }
   }
 
+  /* ─── LETTO POLISH v8 · Trust row + Made-in-Slovenia banner ─── */
+  .trust-row {
+    padding: 28px 0 32px;
+    background: var(--paper);
+    border-top: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .trust-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .trust-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: var(--paper-warm);
+    border: 1px solid rgba(203, 191, 157, 0.5);
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease,
+                box-shadow 0.3s ease;
+  }
+  .trust-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(161, 116, 51, 0.4);
+    box-shadow:
+      0 4px 12px rgba(10, 13, 17, 0.04),
+      0 12px 28px -10px rgba(161, 116, 51, 0.18);
+  }
+  .trust-icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper);
+    border-radius: 50%;
+    border: 1px solid var(--line-soft);
+    color: var(--gold-deep);
+  }
+  .trust-icon svg { width: 20px; height: 20px; }
+  .trust-body { flex: 1; min-width: 0; }
+  .trust-title {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0 0 2px;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  .trust-sub {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.3;
+  }
+  .made-in-banner {
+    padding: 72px 0;
+    background: linear-gradient(135deg, var(--paper-warm) 0%, var(--paper-deep) 100%);
+    border-top: 1px solid var(--line);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .made-in-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .made-in-mark {
+    width: 90px;
+    height: 90px;
+    opacity: 0.85;
+    animation: compass-rotate 180s linear infinite;
+    color: var(--gold);
+  }
+  .made-in-title {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(28px, 4.2vw, 46px);
+    font-weight: 400;
+    letter-spacing: -0.028em;
+    color: var(--ink);
+    margin: 0;
+    line-height: 1.05;
+  }
+  .made-in-title em {
+    font-style: normal;
+    color: var(--gold-deep);
+    padding: 0 6px;
+    font-weight: 300;
+  }
+  .made-in-sub {
+    font-family: 'Instrument Serif', serif;
+    font-size: 16px;
+    font-style: italic;
+    color: var(--muted);
+    margin: 0;
+    letter-spacing: 0.04em;
+  }
+  @media (max-width: 768px) {
+    .trust-grid { grid-template-columns: 1fr; gap: 8px; }
+    .trust-card { padding: 12px 16px; }
+    .trust-title { font-size: 14px; }
+    .made-in-banner { padding: 56px 0; }
+    .made-in-mark { width: 70px; height: 70px; }
+  }
+
 </style>
 
 <!-- ─────────── Structured data (JSON-LD) ─────────── -->
@@ -3922,6 +4043,66 @@
         <span data-en>See all today's deals →</span>
         <span data-sr>Pogledaj sve današnje deal-ove →</span>
       </a>
+    </div>
+  </div>
+</section>
+
+<!-- LETTO POLISH v8 · Trust row -->
+<section class="trust-row" aria-label="Zašto Letto">
+  <div class="container">
+    <div class="trust-grid">
+
+      <div class="trust-card">
+        <span class="trust-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </span>
+        <div class="trust-body">
+          <h3 class="trust-title">
+            <span data-en>We're here for you</span>
+            <span data-sr>Tu smo za tebe</span>
+          </h3>
+          <p class="trust-sub">
+            <span data-en>Reply in the same day</span>
+            <span data-sr>Odgovor u istom danu</span>
+          </p>
+        </div>
+      </div>
+
+      <a class="trust-card" href="https://t.me/letto_live_deals" target="_blank" rel="noopener">
+        <span class="trust-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M21.5 4.5L2.5 11.8c-.9.3-.9 1.5 0 1.8l4.7 1.6 1.8 5.8c.2.7 1.1.9 1.6.3l2.7-3 5 3.7c.6.4 1.4.1 1.6-.6l3.4-15.2c.2-1-.7-1.9-1.8-1.7z"/>
+          </svg>
+        </span>
+        <div class="trust-body">
+          <h3 class="trust-title">5.000+ <span data-en>travelers</span><span data-sr>putnika</span></h3>
+          <p class="trust-sub">
+            <span data-en>on our Telegram channel</span>
+            <span data-sr>na Telegram kanalu</span>
+          </p>
+        </div>
+      </a>
+
+      <a class="trust-card" href="#how">
+        <span class="trust-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </span>
+        <div class="trust-body">
+          <h3 class="trust-title">
+            <span data-en>Found it here? Book it here.</span>
+            <span data-sr>Pronašao ovde? Rezerviši ovde.</span>
+          </h3>
+          <p class="trust-sub">
+            <span data-en>3 reasons how we work</span>
+            <span data-sr>3 razloga kako radimo</span>
+          </p>
+        </div>
+      </a>
+
     </div>
   </div>
 </section>
@@ -4965,6 +5146,23 @@
   </div>
 </section>
 
+<!-- LETTO POLISH v8 · Made in Slovenia banner -->
+<section class="made-in-banner" aria-label="Made in Slovenia">
+  <div class="container">
+    <div class="made-in-wrap">
+      <svg class="made-in-mark" viewBox="0 0 200 200" aria-hidden="true"><use href="#compassRose"/></svg>
+      <h2 class="made-in-title">
+        <span data-en>Made in Slovenia <em>·</em> for world travelers</span>
+        <span data-sr>Pravljeno u Sloveniji <em>·</em> za svetske putnike</span>
+      </h2>
+      <p class="made-in-sub">
+        <span data-en>SIAL Consulting d.o.o. · Brežice · since 2025</span>
+        <span data-sr>SIAL Consulting d.o.o. · Brežice · od 2025.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════════════════ -->
 <!-- FOOTER                                           -->
 <!-- ═══════════════════════════════════════════════ -->
@@ -5015,10 +5213,6 @@
 
     <div class="footer-bottom">
       <div>© 2026 SIAL Consulting d.o.o. · Brežice, Slovenia</div>
-      <div class="italic">
-        <span data-en>Built in Slovenia · for world travelers</span>
-        <span data-sr>Pravljeno u Sloveniji · za svetske putnike</span>
-      </div>
     </div>
   </div>
 </footer>
