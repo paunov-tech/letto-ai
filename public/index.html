@@ -3436,22 +3436,24 @@
 
       <div class="letto-search__toggle">
         <button type="button" class="letto-toggle-btn is-active" data-mode="mix">
-          Sastavi sam <em>· unbundled holiday</em>
+          <span data-en>Build your own</span><span data-sr>Sastavi sam</span> <em>· unbundled holiday</em>
         </button>
         <button type="button" class="letto-toggle-btn" data-mode="curated">
-          Pravljeno po meri
+          <span data-en>Curated for you</span><span data-sr>Pravljeno po meri</span>
         </button>
       </div>
 
       <form class="letto-search__form" id="mix-search-form">
         <div class="letto-field letto-combo" data-combo="from">
-          <span class="letto-field__label">Odakle</span>
+          <span class="letto-field__label"><span data-en>From</span><span data-sr>Odakle</span></span>
           <input type="text"
                  class="letto-combo__input"
                  placeholder="Beograd"
+                 data-en-placeholder="Belgrade"
+                 data-sr-placeholder="Beograd"
                  autocomplete="off"
                  spellcheck="false"
-                 aria-label="Odakle (origin)"
+                 aria-label="Origin"
                  aria-haspopup="listbox"
                  aria-expanded="false">
           <input type="hidden" name="from" value="BEG">
@@ -3459,13 +3461,15 @@
         </div>
 
         <div class="letto-field letto-combo" data-combo="to">
-          <span class="letto-field__label">Kuda</span>
+          <span class="letto-field__label"><span data-en>To</span><span data-sr>Kuda</span></span>
           <input type="text"
                  class="letto-combo__input"
                  placeholder="grad ili IATA"
+                 data-en-placeholder="city or IATA"
+                 data-sr-placeholder="grad ili IATA"
                  autocomplete="off"
                  spellcheck="false"
-                 aria-label="Kuda (destination)"
+                 aria-label="Destination"
                  aria-haspopup="listbox"
                  aria-expanded="false">
           <input type="hidden" name="to" value="">
@@ -3473,31 +3477,33 @@
         </div>
 
         <label class="letto-field">
-          <span class="letto-field__label">Datumi</span>
+          <span class="letto-field__label"><span data-en>Dates</span><span data-sr>Datumi</span></span>
           <input type="text"
                  class="letto-dates-input"
                  placeholder="izaberi datume"
+                 data-en-placeholder="pick dates"
+                 data-sr-placeholder="izaberi datume"
                  name="dates"
                  readonly
                  autocomplete="off"
-                 aria-label="Datumi putovanja">
+                 aria-label="Travel dates">
         </label>
 
         <label class="letto-field letto-field--pax">
-          <span class="letto-field__label">Putnici</span>
+          <span class="letto-field__label"><span data-en>Travelers</span><span data-sr>Putnici</span></span>
           <span class="letto-pax-display" data-pax-display>2 putnika</span>
-          <select name="pax" class="letto-pax-select" aria-label="Broj putnika">
-            <option value="1">1 putnik</option>
-            <option value="2" selected>2 putnika</option>
-            <option value="3">3 putnika</option>
-            <option value="4">4 putnika</option>
-            <option value="5">5 putnika</option>
-            <option value="6">6 putnika</option>
+          <select name="pax" class="letto-pax-select" aria-label="Travelers">
+            <option value="1" data-label-en="1 traveler" data-label-sr="1 putnik">1 putnik</option>
+            <option value="2" selected data-label-en="2 travelers" data-label-sr="2 putnika">2 putnika</option>
+            <option value="3" data-label-en="3 travelers" data-label-sr="3 putnika">3 putnika</option>
+            <option value="4" data-label-en="4 travelers" data-label-sr="4 putnika">4 putnika</option>
+            <option value="5" data-label-en="5 travelers" data-label-sr="5 putnika">5 putnika</option>
+            <option value="6" data-label-en="6 travelers" data-label-sr="6 putnika">6 putnika</option>
           </select>
         </label>
 
         <button type="submit" class="letto-search__submit">
-          <span>Traži</span>
+          <span><span data-en>Search</span><span data-sr>Traži</span></span>
           <span class="letto-search__arrow">→</span>
         </button>
       </form>
@@ -5915,7 +5921,7 @@
       function renderOptions(results) {
         lastResults = results;
         if (!results.length) {
-          dropdown.innerHTML = '<div class="letto-combo__empty">Nema rezultata</div>';
+          dropdown.innerHTML = '<div class="letto-combo__empty"><span data-en>No results</span><span data-sr>Nema rezultata</span></div>';
           return;
         }
         var html = '';
@@ -6054,9 +6060,19 @@
         var opt = paxSelect.options[paxSelect.selectedIndex];
         paxDisplay.textContent = opt ? opt.textContent : '';
       }
+      function applyLang() {
+        var lang = document.body.classList.contains('lang-en') ? 'en' : 'sr';
+        for (var i = 0; i < paxSelect.options.length; i++) {
+          var o = paxSelect.options[i];
+          var t = o.getAttribute('data-label-' + lang);
+          if (t) o.textContent = t;
+        }
+        sync();
+      }
       paxSelect.addEventListener('change', sync);
       paxSelect.addEventListener('input', sync);
-      sync();
+      window.addEventListener('letto:lang-changed', applyLang);
+      applyLang();
     })();
 
     // ── DATUMI — clicking anywhere in the label opens flatpickr ────
@@ -6112,20 +6128,21 @@
       var dest = (form.to.value || '').toUpperCase();
       var dates = parseDateRange(form.dates.value);
       var pax = parseInt(form.pax.value, 10) || 2;
+      var L = document.body.classList.contains('lang-en') ? 'en' : 'sr';
 
       if (!/^[A-Z]{3}$/.test(dest)) {
-        showToast('Izaberi odredište iz liste');
+        showToast(L === 'en' ? 'Pick a destination from the list' : 'Izaberi odredište iz liste');
         form.querySelector('.letto-combo[data-combo="to"] .letto-combo__input').focus();
         return;
       }
       if (!dates[0] || !dates[1]) {
-        showToast('Izaberi datume polaska i povratka');
+        showToast(L === 'en' ? 'Pick departure and return dates' : 'Izaberi datume polaska i povratka');
         var altInput = form.querySelector('input.letto-dates-input').nextElementSibling;
         if (altInput && altInput.tagName === 'INPUT') altInput.focus();
         return;
       }
       if (dates[0] >= dates[1]) {
-        showToast('Datum povratka mora biti posle datuma polaska');
+        showToast(L === 'en' ? 'Return date must be after departure' : 'Datum povratka mora biti posle datuma polaska');
         return;
       }
 
