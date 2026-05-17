@@ -2768,7 +2768,7 @@
     text-transform: uppercase;
     font-weight: 700;
     color: var(--gold-deep);
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
   .paywall-title {
     font-family: 'Fraunces', serif;
@@ -2783,28 +2783,20 @@
     font-weight: 300;
     color: var(--burgundy);
   }
-  .paywall-body {
+  .paywall-sub {
     font-family: 'Instrument Serif', serif;
-    font-size: 15.5px;
-    line-height: 1.5;
-    color: var(--ink-mid);
-    margin-bottom: 22px;
-  }
-  .paywall-body strong {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-weight: 600;
-    color: var(--ink);
-    font-style: normal;
+    font-style: italic;
+    font-size: 13.5px;
+    line-height: 1.4;
+    color: var(--muted);
+    margin: 0 0 16px;
   }
   .paywall-price {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 12px;
-    margin-bottom: 10px;
-    padding: 16px 0 14px;
-    border-top: 1px solid var(--line-soft);
-    border-bottom: 1px solid var(--line-soft);
+    gap: 6px;
+    margin: 2px 0 16px;
   }
   .price-main {
     font-family: 'Fraunces', serif;
@@ -2826,21 +2818,12 @@
     font-family: 'IBM Plex Sans', sans-serif;
     font-style: normal;
   }
-  .paywall-math {
-    font-family: 'Instrument Serif', serif;
+  .paywall-price .price-main {
+    font-size: 30px;
+    line-height: 1;
+  }
+  .paywall-price .price-period {
     font-size: 14px;
-    line-height: 1.5;
-    color: var(--ink-mid);
-    margin-bottom: 20px;
-  }
-  .paywall-math em {
-    color: var(--gold-deep);
-    font-style: italic;
-  }
-  .paywall-math strong {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-weight: 600;
-    font-style: normal;
   }
   .paywall-cta {
     display: inline-flex;
@@ -2870,7 +2853,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 7px 10px;
     margin-top: 14px;
     font-size: 11px;
     color: var(--muted);
@@ -4512,42 +4496,32 @@
             <span data-en>See <em>your</em> Mix · flight + stay together.</span>
             <span data-sr>Vidi <em>svoj</em> Mix · let i smeštaj zajedno.</span>
           </h3>
-          <p class="paywall-body">
-            <span data-en>Subscribe to LETTO Premium and every Mix is unlocked: chosen <strong>flight</strong>, chosen <strong>hotel</strong>, totals, and direct booking links to each partner.</span>
-            <span data-sr>Pretplati se na LETTO Premium i svaki Mix je otključan: izabran <strong>let</strong>, izabran <strong>hotel</strong>, ukupna cena i direktni linkovi za rezervaciju kod svakog partnera.</span>
+          <p class="paywall-sub">
+            <span data-en>Free preview shows your route, dates and total.</span>
+            <span data-sr>Besplatan pregled pokazuje rutu, datume i ukupnu cenu.</span>
           </p>
           <div class="paywall-price">
-            <div style="display:flex; align-items:baseline; justify-content:center; gap:14px; flex-wrap:wrap;">
-              <div class="price-main" style="color: var(--burgundy);">€9.99</div>
-            </div>
-            <div class="price-period" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:6px;">
-              <span data-en>per <strong>month</strong> + VAT</span>
-              <span data-sr>po <strong>mesecu</strong> + PDV</span>
-            </div>
-          </div>
-          <div class="paywall-math">
-            <span data-en>One unlocked package usually pays the subscription back several times over.</span>
-            <span data-sr>Jedan otključan paket se obično isplati više puta od cene pretplate.</span>
+            <span class="price-main">€9.99</span>
+            <span class="price-period">
+              <span data-en>/ month + VAT</span>
+              <span data-sr>/ mesec + PDV</span>
+            </span>
           </div>
           <a href="#" class="paywall-cta" data-stripe="premium">
-            <span data-en>Subscribe · €9.99 / month + VAT →</span>
-            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
+            <span data-en>Get Premium →</span>
+            <span data-sr>Aktiviraj Premium →</span>
           </a>
           <button type="button" class="mix-copy-free" id="mix-copy-free">
             <span data-en>Or copy your Mix as text — free</span>
             <span data-sr>Ili kopiraj svoj Mix kao tekst — besplatno</span>
           </button>
           <div class="paywall-assurance">
-            <span data-en>Secure checkout · Stripe</span><span data-sr>Sigurno plaćanje · Stripe</span>
+            <span data-en>Auto-renews monthly</span><span data-sr>Mesečna obnova</span>
             <span class="dot">·</span>
             <span data-en>Cancel anytime</span><span data-sr>Otkaži kad god</span>
             <span class="dot">·</span>
-            <span>GDPR</span>
+            <span data-en>14-day refund</span><span data-sr>14 dana povraćaj</span>
           </div>
-          <p class="paywall-fineprint" style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:10px;text-align:center;line-height:1.5;">
-            <span data-en>Auto-renew · cancel anytime — subscription stays active until the end of the current period.</span>
-            <span data-sr>Auto-obnova · otkaži bilo kada — pretplata radi do kraja current perioda.</span>
-          </p>
         </div>
       </div>
 
@@ -6767,42 +6741,28 @@
             <span data-en>Premium shows you <em>exactly</em> which flight, hotel &amp; times.</span>
             <span data-sr>Premium ti pokazuje <em>tačno</em> let, hotel i vreme.</span>
           </h3>
-          <p class="paywall-sub" style="font-size:13px;color:var(--muted);font-family:'Instrument Serif',serif;font-style:italic;margin:6px 0 14px;">
+          <p class="paywall-sub">
             <span data-en>Free preview shows route, dates and price range.</span>
-            <span data-sr>Free pregled pokazuje rutu, datume i cenovni opseg.</span>
-          </p>
-          <p class="paywall-body">
-            <span data-en>Book the outbound with <strong>Air Serbia</strong>, stay at a named hotel, return with <strong>Turkish</strong> — each confirmed directly with the partner. Every detail revealed so you can book yourself in 10 minutes.</span>
-            <span data-sr>Outbound rezerviši kod <strong>Air Serbia</strong>, odsedni u imenovanom hotelu, vrati se sa <strong>Turkish</strong> — sve direktno kod partnera. Svaki detalj otključan da rezervišeš sam za 10 minuta.</span>
+            <span data-sr>Besplatan pregled pokazuje rutu, datume i cenovni opseg.</span>
           </p>
           <div class="paywall-price">
-            <div style="display: flex; align-items: baseline; justify-content: center; gap: 14px; flex-wrap: wrap;">
-              <div class="price-main" style="color: var(--burgundy);">€9.99</div>
-            </div>
-            <div class="price-period" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:6px;">
-              <span data-en>per <strong>month</strong> + VAT</span>
-              <span data-sr>po <strong>mesecu</strong> + PDV</span>
-            </div>
-          </div>
-          <div class="paywall-math">
-            <span data-en>One unlocked package usually pays the subscription back several times over.</span>
-            <span data-sr>Jedan otključan paket se obično isplati više puta od cene pretplate.</span>
+            <span class="price-main">€9.99</span>
+            <span class="price-period">
+              <span data-en>/ month + VAT</span>
+              <span data-sr>/ mesec + PDV</span>
+            </span>
           </div>
           <a href="#" class="paywall-cta" data-stripe="premium">
-            <span data-en>Subscribe · €9.99 / month + VAT →</span>
-            <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
+            <span data-en>Get Premium →</span>
+            <span data-sr>Aktiviraj Premium →</span>
           </a>
           <div class="paywall-assurance">
+            <span data-en>Auto-renews monthly</span><span data-sr>Mesečna obnova</span>
+            <span class="dot">·</span>
             <span data-en>Cancel anytime</span><span data-sr>Otkaži kad god</span>
             <span class="dot">·</span>
-            <span data-en>14-day full refund</span><span data-sr>14 dana povraćaj</span>
-            <span class="dot">·</span>
-            <span>GDPR</span>
+            <span data-en>14-day refund</span><span data-sr>14 dana povraćaj</span>
           </div>
-          <p class="paywall-fineprint" style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:10px;text-align:center;line-height:1.5;">
-            <span data-en>Auto-renew · cancel anytime — subscription stays active until the end of the current period.</span>
-            <span data-sr>Auto-obnova · otkaži bilo kada — pretplata radi do kraja current perioda.</span>
-          </p>
         </div>
       </div>
     </div>
@@ -7349,18 +7309,6 @@
 
     // Build "What's in this package" items
     const isBus = data.transport === 'bus';
-
-    // Paywall body — dynamic based on transport mode
-    const paywallBodyEn = isBus
-      ? 'Book the bus with the named operator, stay at a named hotel, return the same way — each booked directly. Every detail revealed so you can book yourself in 10 minutes.'
-      : 'Book the outbound with the named airline, stay at a named hotel, return with the named carrier — each confirmed directly with the partner. Every detail revealed so you can book yourself in 10 minutes.';
-    const paywallBodySr = isBus
-      ? 'Rezerviši autobus kod imenovanog prevoznika, odsedni u imenovanom hotelu, vrati se istim putem — sve direktno. Svaki detalj otključan da rezervišeš sam za 10 minuta.'
-      : 'Rezerviši outbound let kod imenovane aviokompanije, odsedni u imenovanom hotelu, vrati se sa imenovanim prevoznikom — sve direktno kod partnera. Svaki detalj otključan da rezervišeš sam za 10 minuta.';
-    const paywallBodyEl = document.querySelector('.paywall-body');
-    if (paywallBodyEl) {
-      paywallBodyEl.innerHTML = `<span data-en>${paywallBodyEn}</span><span data-sr>${paywallBodySr}</span>`;
-    }
 
     const transportIcon = isBus ? iconBus : iconFlight;
     const transportIconR = isBus ? iconBus : iconFlightR;
