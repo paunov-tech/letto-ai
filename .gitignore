@@ -49,3 +49,6 @@ service-account.json
 .env.engine
 .mcp.json
 .env*.local
+
+# Local backups — contain env snapshots with LIVE secrets, never commit
+backups/
