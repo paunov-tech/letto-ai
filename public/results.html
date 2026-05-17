@@ -4543,6 +4543,17 @@
           <span class="mix-final__total-meta" id="final-total-meta">—</span>
         </div>
 
+        <!-- Premium · finish & deliver the Mix (Commit 5) -->
+        <button type="button" class="btn-gold" id="mix-finish-cta"
+                style="width:100%;margin-top:20px;padding:15px 24px;font-size:15px;">
+          <span data-en>Finish Mix · save &amp; send →</span>
+          <span data-sr>Završi miks · sačuvaj i pošalji →</span>
+        </button>
+        <p style="text-align:center;font-size:12px;color:#6B5E47;margin:10px 0 0;line-height:1.5;">
+          <span data-en>We save your Mix, email it to you, and give you a shareable link.</span>
+          <span data-sr>Čuvamo tvoj Mix, šaljemo ti ga na email i dobijaš link za deljenje.</span>
+        </p>
+
         <!-- Email backup slot — Phase 5 territory -->
         <div class="mix-final__email-backup" id="mix-final-email" hidden></div>
       </div>
@@ -6034,6 +6045,78 @@
     updateStages(!!state.flight.selected, true, bothBooked);
   }
 
+  // ── Premium · finish the Mix: persist server-side, then open the trip
+  //    page. Commit 5. Only premium / mix-unlocked users reach this CTA (the
+  //    paywall overlay covers Stage 3 otherwise); /api/save-mix-premium also
+  //    re-verifies the session server-side and 401s a non-subscriber.
+  var finishMixInFlight = false;
+  function finishMixPremium() {
+    if (finishMixInFlight) return;
+    var l = lang();
+    var unlocked = document.body.classList.contains('letto-premium') ||
+                   document.body.classList.contains('letto-mix-unlocked');
+    if (!unlocked) {
+      if (typeof window.lettoCheckout === 'function') window.lettoCheckout('premium');
+      return;
+    }
+    var state = getState();
+    var complete = !!(state && state.flight && state.flight.selected &&
+                      state.hotel && state.hotel.selected);
+    if (!complete) {
+      showToast(l === 'en' ? 'Pick a flight and a hotel first.'
+                           : 'Prvo izaberi let i hotel.', 3500);
+      return;
+    }
+    var session = '';
+    try {
+      session = localStorage.getItem('letto_mix_session') ||
+                localStorage.getItem('letto_premium_session') || '';
+    } catch (_) {}
+    if (!session) {
+      showToast(l === 'en' ? 'Session not found — reload the page.'
+                           : 'Sesija nije pronađena — osveži stranicu.', 3500);
+      return;
+    }
+
+    var btn = $('mix-finish-cta');
+    finishMixInFlight = true;
+    if (btn) { btn.style.pointerEvents = 'none'; btn.style.opacity = '0.7'; }
+    showToast(l === 'en' ? 'Saving your Mix…' : 'Čuvam tvoj Mix…', 6000);
+
+    fetch('/api/save-mix-premium', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Letto-Session': session },
+      body: JSON.stringify({ mix: state })
+    }).then(function (resp) {
+      return resp.json().then(function (data) { return { status: resp.status, data: data }; });
+    }).then(function (r) {
+      if (r.status === 200 && r.data && r.data.tripId) {
+        // Plausible custom event — no-op if Plausible isn't loaded on the page.
+        try {
+          if (typeof window.plausible === 'function') {
+            var fsel = state.flight.selected || {};
+            var hsel = state.hotel.selected || {};
+            var sp = state.searchParams || {};
+            window.plausible('mix_finished', { props: {
+              origin_iata: fsel.origin || sp.origin_iata || '',
+              destination_iata: fsel.dest || sp.destination_iata || '',
+              nights: hsel.nights || fsel.nights || 0
+            } });
+          }
+        } catch (_) {}
+        window.location = '/trip/' + r.data.tripId;
+        return;
+      }
+      throw new Error((r.data && r.data.error) || ('HTTP ' + r.status));
+    }).catch(function (err) {
+      finishMixInFlight = false;
+      if (btn) { btn.style.pointerEvents = ''; btn.style.opacity = ''; }
+      console.warn('[mix-v2] finishMixPremium failed:', err && err.message);
+      showToast(l === 'en' ? 'Could not save the Mix. Try again.'
+                           : 'Nije uspelo čuvanje Mix-a. Pokušaj ponovo.', 4000);
+    });
+  }
+
   // ── Reset / Change flight ──
   function resetFlight() {
     var state = getState();
@@ -6197,6 +6280,12 @@
         var which = bookBtn.getAttribute('data-mix-book');
         if (which === 'flight') bookFlight();
         else if (which === 'hotel') bookHotel();
+        return;
+      }
+      // Premium · finish & deliver the Mix (Commit 5)
+      if (e.target.closest('#mix-finish-cta')) {
+        e.preventDefault();
+        finishMixPremium();
       }
     });
   }
