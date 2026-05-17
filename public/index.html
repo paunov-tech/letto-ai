@@ -236,6 +236,11 @@
       0 1px 2px rgba(10, 13, 17, 0.1),
       0 4px 12px rgba(10, 13, 17, 0.06);
   }
+  .btn-ink .lbl-short { display: none; }
+  @media (max-width: 768px) {
+    .btn-ink .lbl-full { display: none; }
+    .btn-ink .lbl-short { display: inline; }
+  }
   .btn-ink:hover {
     transform: translateY(-2px);
     background: linear-gradient(180deg, #20262D 0%, var(--ink-soft) 100%);
@@ -1734,170 +1739,182 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 24px;
-    max-width: 960px;
+    max-width: 880px;
     margin: 0 auto;
   }
-  @media (max-width: 768px) {
-    .pricing-grid {
-      grid-template-columns: 0.85fr 1.15fr;
-      gap: 10px;
-      max-width: 100%;
-    }
-    .tier { padding: 18px 14px; border-radius: 10px; }
-    .tier.free { transform: scale(0.95); transform-origin: left center; }
-    .tier.premium { transform: scale(1); }
-    .tier .eyebrow { font-size: 9px; letter-spacing: 0.18em; margin-bottom: 10px; }
-    .tier .price-main { font-size: 28px; line-height: 1; margin-bottom: 4px; }
-    .tier .price-annual { font-size: 11px; margin-left: 3px; }
-    .tier .price-cap { font-size: 11px; margin-bottom: 14px; line-height: 1.3; }
-    .tier ul.features { margin-bottom: 16px; }
-    .tier ul.features li {
-      font-size: 11.5px;
-      padding: 5px 0;
-      gap: 6px;
-      line-height: 1.35;
-    }
-    .tier .check-icon { width: 12px; height: 12px; flex-shrink: 0; margin-top: 2px; }
-    .tier .ribbon {
-      font-size: 8px;
-      padding: 4px 9px;
-      top: -10px;
-      letter-spacing: 0.16em;
-    }
-    .tier button,
-    .tier .btn-outline,
-    .tier a.btn-outline {
-      padding: 9px 10px;
-      font-size: 12px;
-    }
-  }
-
   .tier {
-    padding: 48px 40px;
+    padding: 36px 32px;
+    background: var(--paper);
+    border: 1px solid var(--line-soft);
     border-radius: 14px;
     position: relative;
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
   }
-  .tier.free {
-    background: var(--paper);
-    color: var(--ink);
-    border: 1px solid rgba(203, 191, 157, 0.5);
-    box-shadow:
-      0 1px 0 rgba(10, 13, 17, 0.02),
-      0 4px 12px rgba(10, 13, 17, 0.04);
-  }
-  .tier.free:hover {
-    transform: translateY(-3px);
-    box-shadow:
-      0 1px 0 rgba(10, 13, 17, 0.02),
-      0 12px 32px rgba(10, 13, 17, 0.08),
-      0 4px 12px rgba(10, 13, 17, 0.06);
-  }
+  .tier.free { background: var(--paper-warm); }
   .tier.premium {
-    background: linear-gradient(180deg, #1F252D 0%, var(--ink-soft) 100%);
-    color: var(--ivory);
-    border: 1px solid rgba(217, 169, 74, 0.35);
+    background: linear-gradient(180deg, #1F252D 0%, #0A0D11 100%);
+    color: var(--paper);
+    border-color: rgba(217, 169, 74, 0.4);
     box-shadow:
-      inset 0 1px 0 rgba(240, 215, 149, 0.08),
-      0 1px 0 rgba(10, 13, 17, 0.1),
-      0 12px 32px rgba(10, 13, 17, 0.18),
-      0 4px 12px rgba(161, 116, 51, 0.08);
+      inset 0 1px 0 rgba(255, 250, 230, 0.06),
+      0 12px 32px rgba(10, 13, 17, 0.15);
   }
-  .tier.premium:hover {
-    transform: translateY(-3px);
-    box-shadow:
-      inset 0 1px 0 rgba(240, 215, 149, 0.12),
-      0 1px 0 rgba(10, 13, 17, 0.1),
-      0 24px 48px rgba(10, 13, 17, 0.28),
-      0 12px 24px rgba(161, 116, 51, 0.15);
-  }
-  .tier.premium::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at top right, rgba(217, 169, 74, 0.14), transparent 65%);
-    border-radius: inherit;
-    pointer-events: none;
-  }
-
-  .tier .ribbon {
-    position: absolute;
-    top: -14px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #7C5B22, #D9A94A 50%, #7C5B22);
-    background-size: 200% 200%;
-    animation: gold-shimmer 8s ease-in-out infinite;
-    color: var(--ink);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    padding: 7px 14px;
-    border-radius: 99px;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 250, 230, 0.4),
-      inset 0 -1px 0 rgba(124, 91, 34, 0.4),
-      0 4px 14px rgba(161, 116, 51, 0.45);
-    white-space: nowrap;
-  }
-
   .tier .eyebrow {
-    margin-bottom: 18px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 700;
     color: var(--muted);
+    margin-bottom: 18px;
   }
-  .tier.premium .eyebrow { color: var(--gold-light); opacity: 0.85; }
-
+  .tier.premium .eyebrow { color: var(--gold); }
   .tier .price-main {
     font-family: 'Fraunces', serif;
-    font-size: 68px;
+    font-size: 48px;
     font-weight: 500;
-    line-height: 0.9;
-    margin-bottom: 6px;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--ink);
   }
+  .tier.premium .price-main { color: var(--paper); }
+  .tier .price-main.mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
   .tier .price-annual {
     font-family: 'Instrument Serif', serif;
-    font-size: 15px;
-    opacity: 0.7;
     font-style: italic;
-    margin-left: 6px;
+    font-size: 15px;
+    color: var(--muted);
   }
+  .tier.premium .price-annual { color: rgba(250, 246, 232, 0.6); }
   .tier .price-cap {
     font-family: 'Instrument Serif', serif;
-    font-size: 15px;
-    opacity: 0.6;
     font-style: italic;
-    margin-bottom: 32px;
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 22px;
+    line-height: 1.3;
   }
-
+  .tier.premium .price-cap { color: rgba(250, 246, 232, 0.6); }
   .tier ul.features {
     list-style: none;
     padding: 0;
-    margin: 0 0 36px 0;
+    margin: 0 0 24px;
+    flex: 1;
   }
   .tier ul.features li {
-    padding: 10px 0;
-    font-size: 14.5px;
     display: flex;
     align-items: flex-start;
-    gap: 11px;
-    line-height: 1.5;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 14.5px;
+    line-height: 1.35;
+    color: var(--ink);
   }
-  .check-icon {
+  .tier.premium ul.features li { color: var(--paper); }
+  .tier .check-icon {
     flex-shrink: 0;
-    margin-top: 4px;
-    color: var(--gold);
-  }
-  .tier.premium .check-icon { color: var(--gold-light); }
-  .tier ul.features li strong {
+    font-size: 14px;
     color: var(--gold-deep);
-    font-weight: 600;
+    margin-top: 1px;
+    font-weight: 700;
   }
-  .tier.premium ul.features li strong { color: var(--gold-bright); }
+  .tier.premium .check-icon { color: var(--gold); }
+  .tier .btn-outline {
+    display: block;
+    text-align: center;
+    padding: 12px 16px;
+    border: 1px solid var(--ink);
+    border-radius: 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+  }
+  .tier .btn-outline:hover { background: var(--ink); color: var(--paper); }
+  .tier .btn-gold {
+    display: block;
+    text-align: center;
+    padding: 13px 16px;
+    background: linear-gradient(135deg, #A17433 0%, #D9A94A 50%, #A17433 100%);
+    background-size: 200% 200%;
+    animation: gold-shimmer 8s ease-in-out infinite;
+    color: var(--ink);
+    border-radius: 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 250, 230, 0.4),
+      0 2px 10px rgba(161, 116, 51, 0.3);
+    transition: transform 0.2s;
+  }
+  .tier .btn-gold:hover { transform: translateY(-1px); }
+  .tier .ribbon {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #A17433, #D9A94A 50%, #A17433);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    padding: 4px 12px;
+    border-radius: 99px;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(10, 13, 17, 0.2);
+  }
 
-  .tier button { width: 100%; justify-content: center; }
+  /* TABLET */
+  @media (max-width: 1024px) {
+    .pricing-grid { max-width: 720px; }
+    .tier { padding: 28px 24px; }
+    .tier .price-main { font-size: 40px; }
+  }
+
+  /* MOBILE — asimetrija + kompaktno */
+  @media (max-width: 768px) {
+    .pricing-grid {
+      grid-template-columns: 0.82fr 1.18fr;
+      gap: 10px;
+      max-width: 100%;
+    }
+    .tier { padding: 16px 12px; border-radius: 10px; }
+    .tier.free { transform: scale(0.97); transform-origin: top left; }
+
+    .tier .eyebrow { font-size: 8.5px; letter-spacing: 0.18em; margin-bottom: 10px; }
+    .tier .price-main { font-size: 26px; letter-spacing: -0.025em; }
+    .tier .price-annual { font-size: 11px; }
+    .tier .price-cap { font-size: 11px; margin-bottom: 14px; line-height: 1.25; }
+
+    .tier ul.features { margin-bottom: 16px; }
+    .tier ul.features li {
+      font-size: 11.5px;
+      padding: 4px 0;
+      gap: 6px;
+      line-height: 1.3;
+    }
+    .tier .check-icon { font-size: 11px; }
+
+    .tier .btn-outline,
+    .tier .btn-gold {
+      padding: 9px 8px;
+      font-size: 11px;
+      letter-spacing: 0;
+    }
+    .tier .ribbon {
+      font-size: 7.5px;
+      padding: 3px 9px;
+      top: -9px;
+      letter-spacing: 0.18em;
+    }
+  }
 
   .pricing-footnote {
     text-align: center;
@@ -3681,8 +3698,11 @@
       <button onclick="setLang('sr')" id="btn-sr">SR</button>
     </div>
     <a href="#" class="btn-ink" data-stripe="premium">
-      <span data-en>Premium · €9.99/mo →</span>
-      <span data-sr>Premium · €9.99/mes →</span>
+      <span class="lbl-full">
+        <span data-en>Premium · €9.99/mo →</span>
+        <span data-sr>Premium · €9.99/mes →</span>
+      </span>
+      <span class="lbl-short">€9.99 →</span>
     </a>
   </div>
 </nav>
@@ -3698,7 +3718,8 @@
       if (!cta) return;
       cta.removeAttribute('data-stripe');
       cta.setAttribute('href', '/me');
-      cta.innerHTML = '<span data-en>My account →</span><span data-sr>Moj nalog →</span>';
+      cta.innerHTML = '<span class="lbl-full"><span data-en>My account →</span><span data-sr>Moj nalog →</span></span>' +
+        '<span class="lbl-short"><span data-en>Account →</span><span data-sr>Nalog →</span></span>';
     } catch (e) {}
   })();
 </script>
@@ -4317,57 +4338,71 @@
     <div class="pricing-grid">
       <!-- FREE TIER -->
       <div class="tier free">
-        <div class="eyebrow" data-en>FREE PREVIEW</div>
-        <div class="eyebrow" data-sr>BESPLATAN UVID</div>
-        <div class="price-main">
-          <span data-en>Free</span>
-          <span data-sr>Besplatno</span>
+        <div class="eyebrow">
+          <span data-en>FREE PREVIEW</span><span data-sr>BESPLATAN UVID</span>
         </div>
-        <div class="price-cap">
-          <span data-en>See savings, not the package.</span>
+
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;">
+          <span class="price-main">
+            <span data-en>Free</span><span data-sr>Besplatno</span>
+          </span>
+        </div>
+        <p class="price-cap">
+          <span data-en>You see the saving, not the package.</span>
           <span data-sr>Vidiš uštedu, ne paket.</span>
-        </div>
+        </p>
 
         <ul class="features">
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>See <strong>every</strong> daily deal · photo, hotel, price, dates</span><span data-sr>Vidiš <strong>SVE</strong> dnevne dealove · slika, hotel, cena, datumi</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>2 try-it deals daily with full booking detail (airline, times, links)</span><span data-sr>2 try-it deala dnevno sa punim detaljima (aviokompanija, vremena, linkovi)</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>Weekly newsletter (Wednesday)</span><span data-sr>Newsletter nedeljno (sreda)</span></span></li>
+          <li><span class="check-icon">✓</span>
+            <span data-en>See all deals</span><span data-sr>Sve dealove vidiš</span>
+          </li>
+          <li><span class="check-icon">✓</span>
+            <span data-en>2 try-it per day</span><span data-sr>2 try-it dnevno</span>
+          </li>
+          <li><span class="check-icon">✓</span>
+            <span data-en>Wednesday newsletter</span><span data-sr>Newsletter sredom</span>
+          </li>
         </ul>
 
-        <a href="mailto:info@letto.live?subject=LETTO%20Newsletter%20signup&body=Add%20me%20to%20the%20free%20weekly%20newsletter." class="btn-outline" style="text-align: center; text-decoration: none;">
-          <span data-en>Get newsletter</span>
-          <span data-sr>Dobij newsletter</span>
+        <a href="mailto:info@letto.live?subject=LETTO%20Newsletter%20signup&body=Add%20me%20to%20the%20free%20weekly%20newsletter." class="btn-outline">
+          <span data-en>Newsletter</span><span data-sr>Newsletter</span>
         </a>
       </div>
 
       <!-- PREMIUM TIER -->
       <div class="tier premium">
+        <div class="ribbon">
+          <span data-en>POPULAR</span><span data-sr>POPULARNO</span>
+        </div>
+
         <div class="eyebrow">PREMIUM</div>
-        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;">
+
+        <div style="display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px;">
           <span class="price-main mono">€9.99</span>
           <span class="price-annual" data-en>/ mo</span>
           <span class="price-annual" data-sr>/ mes</span>
         </div>
-        <div class="price-cap">
-          <span data-en>Auto-renew · cancel anytime · runs to the end of the current period</span>
-          <span data-sr>Auto-obnova · otkaži bilo kada · radi do kraja current perioda</span>
-        </div>
+        <p class="price-cap">
+          <span data-en>Cancel anytime.</span>
+          <span data-sr>Otkaži bilo kada.</span>
+        </p>
 
         <ul class="features">
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en><strong>Full package detail</strong> — airline, hotel, times</span><span data-sr><strong>Pun paket detalj</strong> — aviokompanija, hotel, vremena</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>Direct booking links to <strong>Air Serbia, Booking, Turkish</strong> &amp; partners</span><span data-sr>Direktni linkovi za <strong>Air Serbia, Booking, Turkish</strong> i partnere</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>1–3 new packages daily · BEG primary, more origins rolling out</span><span data-sr>1–3 novih paketa dnevno · BEG prvi, ostali aerodromi uskoro</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>Live price re-verification · alerts if expired</span><span data-sr>Provera cene uživo · alerti kad istekne</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>Premium Telegram channel</span><span data-sr>Premium Telegram kanal</span></span></li>
-          <li><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span><span data-en>14-day money-back guarantee</span><span data-sr>Garancija povraćaja 14 dana</span></span></li>
+          <li><span class="check-icon">✓</span>
+            <span data-en>All deals unlocked</span><span data-sr>Svi dealovi otključani</span>
+          </li>
+          <li><span class="check-icon">✓</span>
+            <span data-en>Unlimited Mix</span><span data-sr>Neograničeni Mix</span>
+          </li>
+          <li><span class="check-icon">✓</span>
+            <span data-en>4h before everyone</span><span data-sr>4h pre svih</span>
+          </li>
         </ul>
 
-        <div>
-          <button class="btn-gold" data-stripe="premium" style="width: 100%; justify-content: center; padding: 16px 28px;">
-            <span data-en>Premium · €9.99/mo →</span>
-            <span data-sr>Premium · €9.99/mes →</span>
-          </button>
-        </div>
+        <a href="#" class="btn-gold" data-stripe="premium">
+          <span data-en>Premium €9.99/mo →</span>
+          <span data-sr>Premium €9.99/mes →</span>
+        </a>
       </div>
     </div>
 
