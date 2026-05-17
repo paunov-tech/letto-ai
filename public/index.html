@@ -3477,7 +3477,14 @@
 
       // API caps limit at 50. Fetch the cap so the full-catalog grid below
       // #pricing has the full pool to display; carousel slices the top 6.
-      fetch('/api/packages?limit=50')
+      // Premium subscriber: send X-Letto-Session so api/packages returns the
+      // full (unscrubbed) card shape instead of the anon scrubToPreview one.
+      var pkgSid = null;
+      try {
+        pkgSid = localStorage.getItem('letto_premium_session') ||
+                 localStorage.getItem('letto_mix_session');
+      } catch (_) {}
+      fetch('/api/packages?limit=50', pkgSid ? { headers: { 'X-Letto-Session': pkgSid } } : undefined)
         .then(function (r) { return r.ok ? r.json() : Promise.reject('http_' + r.status); })
         .then(function (data) {
           var pkgs = (data && data.packages) || [];
