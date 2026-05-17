@@ -2731,6 +2731,26 @@
     border-radius: 12px;
     pointer-events: none;
   }
+  .mix-copy-free {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 9px 14px;
+    background: transparent;
+    border: 1px solid rgba(10, 13, 17, 0.14);
+    border-radius: 8px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .mix-copy-free:hover {
+    background: var(--paper-warm);
+    color: var(--ink);
+    border-color: var(--gold);
+  }
   .paywall-mark {
     width: 42px;
     height: 42px;
@@ -4513,6 +4533,10 @@
             <span data-en>Subscribe · €9.99 / month + VAT →</span>
             <span data-sr>Pretplati se · €9.99 / mesec + PDV →</span>
           </a>
+          <button type="button" class="mix-copy-free" id="mix-copy-free">
+            <span data-en>Or copy your Mix as text — free</span>
+            <span data-sr>Ili kopiraj svoj Mix kao tekst — besplatno</span>
+          </button>
           <div class="paywall-assurance">
             <span data-en>Secure checkout · Stripe</span><span data-sr>Sigurno plaćanje · Stripe</span>
             <span class="dot">·</span>
@@ -6162,6 +6186,60 @@
     });
   }
 
+  // ── Free alternative · copy the Mix as plain text (no save, no Stripe).
+  //    Reads the already-rendered Stage 3 review so the text always matches
+  //    what the user sees — lets a non-premium user keep their Mix.
+  function formatMixAsText() {
+    var l = lang();
+    function t(id) { var e = $(id); return e ? (e.textContent || '').trim() : ''; }
+    var out = ['LETTO MIX', ''];
+    out.push('✈ ' + (t('final-flight-desc') || '—'));
+    var fp = t('final-flight-price');
+    if (fp && fp !== '—') out.push('   ' + fp);
+    out.push('');
+    out.push('\u{1F3E8} ' + (t('final-hotel-desc') || '—'));
+    var hp = t('final-hotel-price');
+    if (hp && hp !== '—') out.push('   ' + hp);
+    out.push('', '─────────');
+    var tv = t('final-total-value'), tm = t('final-total-meta');
+    out.push((l === 'en' ? 'TOTAL: ' : 'UKUPNO: ') + (tv || '—') +
+             (tm && tm !== '—' ? ' · ' + tm : ''));
+    out.push('', 'letto.live');
+    return out.join('\n');
+  }
+
+  function copyMixAsText() {
+    var l = lang();
+    var text = formatMixAsText();
+    function ok() {
+      showToast(l === 'en' ? 'Copied · paste into WhatsApp or email'
+                           : 'Kopirano · nalepi u WhatsApp ili email', 3500);
+    }
+    function fail() {
+      showToast(l === 'en' ? 'Could not copy — try again'
+                           : 'Kopiranje nije uspelo — pokušaj ponovo', 3500);
+    }
+    function fallbackCopy() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.setAttribute('readonly', '');
+        document.body.appendChild(ta);
+        ta.select();
+        var done = document.execCommand('copy');
+        document.body.removeChild(ta);
+        done ? ok() : fail();
+      } catch (_) { fail(); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  }
+
   // ── Reset / Change flight ──
   function resetFlight() {
     var state = getState();
@@ -6331,6 +6409,12 @@
       if (e.target.closest('#mix-finish-cta')) {
         e.preventDefault();
         finishMixPremium();
+        return;
+      }
+      // Free alternative · copy the Mix as text (no save, no Stripe)
+      if (e.target.closest('#mix-copy-free')) {
+        e.preventDefault();
+        copyMixAsText();
       }
     });
   }
