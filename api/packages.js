@@ -61,6 +61,14 @@ function simpleHash(str) {
 let dailyTryItCache = { dateKey: null, ids: new Set() };
 
 async function getDailyTryItIds() {
+  // HOTFIX v22 · try-it KILLED (P0). The extras-prepend further down has no
+  // search-mode gate, so the single global daily pick leaked into every
+  // search — a BEG→ATH search rendered a Rome flight as the Mix default.
+  // An empty Set everywhere routes all free traffic through the paywall.
+  // Rotation machinery below is intentionally dead until v23 restores
+  // try-it as a per-session, user-specific seed.
+  return new Set();
+
   const startOfDay = new Date();
   startOfDay.setUTCHours(0, 0, 0, 0);
   const dateKey = startOfDay.toISOString().slice(0, 10);
