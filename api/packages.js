@@ -39,13 +39,25 @@ function shiftDateISO(iso, days) {
   return d.toISOString().slice(0, 10);
 }
 
-// Daily try-it picker · top 3 packages by pricing.total DESC, eligible set
-// fixed at startOfDayUTC so today's freshly-mined packages don't churn the
-// picks during the day (option C from product brief). Cached once per UTC
-// day per warm Lambda instance — Vercel may spawn multiple instances, but
-// each does at most 1 read/day for this. If the underlying query errors
-// (e.g. composite index not provisioned), free users see a fully-scrubbed
-// catalog for that instance/day instead of breaking the endpoint.
+// FNV-1a 32-bit hash · deterministic, dependency-free. Maps a UTC date
+// string onto an index in the daily try-it rotation pool.
+function simpleHash(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h | 0);
+}
+
+// Daily try-it picker · ONE package per UTC day, chosen by hashing the date
+// over a stable (id-sorted) eligible pool, so the pick rotates daily. The
+// eligible set is fixed at startOfDayUTC so today's freshly-mined packages
+// don't churn the pick during the day. Cached once per UTC day per warm
+// Lambda instance — each does at most 1 read/day for this. If the
+// underlying query errors (e.g. composite index not provisioned), free
+// users see a fully-scrubbed catalog for that instance/day instead of
+// breaking the endpoint.
 let dailyTryItCache = { dateKey: null, ids: new Set() };
 
 async function getDailyTryItIds() {
@@ -57,9 +69,8 @@ async function getDailyTryItIds() {
   try {
     const startOfDayMs = startOfDay.getTime();
     // Use the (status, metadata.createdAt DESC) composite that listing mode
-    // already exercises — no new Firestore index needed. Pull a wider
-    // 100-row window then sort by pricing.total in memory; catalog is well
-    // under 100 today, so this is effectively the global top-N by price.
+    // already exercises — no new Firestore index needed. Pull a wide
+    // 100-row window as the rotation pool; catalog is well under 100 today.
     const snap = await db.collection('letto_packages')
       .where('status', 'in', ['published_public', 'published_premium'])
       .orderBy('metadata.createdAt', 'desc')
@@ -81,23 +92,45 @@ async function getDailyTryItIds() {
       if (typeof ts === 'string') return new Date(ts).getTime();
       return null;
     }
-    const eligible = snap.docs
+    const pool = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(p => {
         const ms = tsToMs(p.metadata?.createdAt);
         return ms != null && ms < startOfDayMs;
       });
-    eligible.sort((a, b) => (b.pricing?.total ?? 0) - (a.pricing?.total ?? 0));
-    // Slice 2 (was 3) per 2026-05-15 spec — fewer try-it picks per day
-    // since the scrub is now narrow (locked cards still show price/hotel/
-    // dates/image, so the marketing pressure on the try-it set is lower).
-    const ids = new Set(eligible.slice(0, 2).map(p => p.id));
+
+    // London-bug ROOT FIX · was top-2 by pricing.total DESC — the two
+    // priciest packages, a fixed selection that never rotated (permanent
+    // London). Now a single pick, hashed off the UTC day over a stable
+    // (id-sorted) pool, so it rotates every day. No Firestore writes.
+    const eligible = pool.filter(p => p.destination?.code);
+    if (eligible.length === 0) return new Set();
+    eligible.sort((a, b) => a.id.localeCompare(b.id));
+    const idx = simpleHash(dateKey + '|letto-rotation-v1') % eligible.length;
+    const ids = new Set([eligible[idx].id]);
     dailyTryItCache = { dateKey, ids };
     return ids;
   } catch (e) {
     console.warn('[packages] daily_try_it query failed, free users see fully scrubbed catalog today:', e.message);
     return new Set();
   }
+}
+
+// Listing diversity · re-order so each destination.code appears at most
+// once up front (its first/best package), duplicates pushed to the tail.
+// Stable: preserves input order within the primary and secondary groups.
+function diversifyByDestination(packages) {
+  const seen = new Set();
+  const primary = [];
+  const secondary = [];
+  for (const p of packages) {
+    const code = p.destination?.code;
+    if (!code) { secondary.push(p); continue; }
+    if (seen.has(code)) { secondary.push(p); continue; }
+    seen.add(code);
+    primary.push(p);
+  }
+  return [...primary, ...secondary];
 }
 
 async function handler(req, res) {
@@ -280,6 +313,12 @@ async function handler(req, res) {
       out.round_trip = true;
       return out;
     });
+
+    // London-bug fix · listing carousel must not repeat a destination.
+    // Search mode keeps its date-proximity/deal ranking untouched.
+    if (!isSearch) {
+      packages = diversifyByDestination(packages);
+    }
 
     return res.status(200).json({
       packages,

@@ -43,11 +43,16 @@
   pre { background: var(--bg); padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto; border: 1px solid var(--border); }
 </style>
 <!-- Sentry · letto-prod (EU region) · GDPR-aware (legitimate interest under Art. 6(1)(f)) -->
+<!-- Sentry temporarily disabled · the js-de.sentry-cdn loader threw
+     "isn't working anymore" on prod. TODO migrate to SDK 8.x (needs the
+     full DSN from the Sentry dashboard, Client Keys section). Original
+     loader tag preserved below, commented:
 <script
   src="https://js-de.sentry-cdn.com/971aff07cdaeabfc32b5ddd87c492819.min.js"
   crossorigin="anonymous"
   defer
 ></script>
+-->
 <script>
   window.sentryOnLoad = function () {
     Sentry.init({
