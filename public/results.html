@@ -2731,7 +2731,7 @@
     border-radius: 12px;
     pointer-events: none;
   }
-  .mix-copy-free {
+  .save-mix-trigger {
     display: block;
     width: 100%;
     margin-top: 12px;
@@ -2746,10 +2746,102 @@
     cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
-  .mix-copy-free:hover {
+  .save-mix-trigger:hover {
     background: var(--paper-warm);
     color: var(--ink);
     border-color: var(--gold);
+  }
+
+  /* ── Save Mix modal · non-premium "keep your Mix" chooser ─────────── */
+  .save-mix-modal {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal, 100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .save-mix-modal[hidden] { display: none; }
+  .save-mix-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 13, 17, 0.55);
+    backdrop-filter: blur(8px);
+  }
+  .save-mix-card {
+    position: relative;
+    z-index: 1;
+    max-width: 420px;
+    width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--gold);
+    border-radius: 14px;
+    padding: 24px 24px 20px;
+    box-shadow: 0 24px 50px -16px rgba(10, 13, 17, 0.4);
+  }
+  .save-mix-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+  }
+  .save-mix-close:hover { color: var(--ink); }
+  .save-mix-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
+  .save-mix-sub {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 18px;
+  }
+  .save-mix-copy-btn {
+    display: block;
+    width: 100%;
+    padding: 13px 16px;
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, color 0.15s;
+  }
+  .save-mix-copy-btn:hover { background: var(--ink); color: var(--paper); }
+  .save-mix-copy-btn:hover .save-mix-copy-sub { color: rgba(250, 246, 232, 0.6); }
+  .save-mix-copy-label {
+    display: block;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .save-mix-copy-sub {
+    display: block;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .save-mix-fineprint {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    margin: 14px 0 0;
   }
   .paywall-mark {
     width: 42px;
@@ -4511,9 +4603,9 @@
             <span data-en>Get Premium →</span>
             <span data-sr>Aktiviraj Premium →</span>
           </a>
-          <button type="button" class="mix-copy-free" id="mix-copy-free">
-            <span data-en>Or copy your Mix as text — free</span>
-            <span data-sr>Ili kopiraj svoj Mix kao tekst — besplatno</span>
+          <button type="button" class="save-mix-trigger" id="saveMixBtn" data-action="save-mix">
+            <span data-en>Save this Mix</span>
+            <span data-sr>Sačuvaj ovaj Mix</span>
           </button>
           <div class="paywall-assurance">
             <span data-en>Auto-renews monthly</span><span data-sr>Mesečna obnova</span>
@@ -6214,6 +6306,25 @@
     }
   }
 
+  // ── Save Mix modal · non-premium "keep your Mix" chooser. Opened from the
+  //    in-card trigger inside the paywall card; premium path → Stripe checkout,
+  //    free path → copyMixAsText() (clipboard only, no account).
+  function openSaveMixModal() {
+    var m = document.getElementById('saveMixModal');
+    if (!m) return;
+    m.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSaveMixModal() {
+    var m = document.getElementById('saveMixModal');
+    if (!m || m.hidden) return;
+    m.hidden = true;
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeSaveMixModal();
+  });
+
   // ── Reset / Change flight ──
   function resetFlight() {
     var state = getState();
@@ -6385,10 +6496,23 @@
         finishMixPremium();
         return;
       }
-      // Free alternative · copy the Mix as text (no save, no Stripe)
-      if (e.target.closest('#mix-copy-free')) {
+      // Save Mix modal · open the keep-your-Mix chooser
+      if (e.target.closest('#saveMixBtn')) {
+        e.preventDefault();
+        openSaveMixModal();
+        return;
+      }
+      // Save Mix modal · "Copy as text (free)" → clipboard, then close
+      if (e.target.closest('#copyMixBtn')) {
         e.preventDefault();
         copyMixAsText();
+        closeSaveMixModal();
+        return;
+      }
+      // Save Mix modal · dismiss (× / backdrop)
+      if (e.target.closest('#closeMixModal') || e.target.closest('#saveMixBackdrop')) {
+        e.preventDefault();
+        closeSaveMixModal();
       }
     });
   }
@@ -7560,6 +7684,39 @@
 </script>
 
 <script src="/lead-capture.js" defer></script>
+
+<!-- Save Mix modal · non-premium "keep your Mix" chooser (Premium vs free copy) -->
+<div class="save-mix-modal" id="saveMixModal" hidden role="dialog" aria-modal="true" aria-labelledby="saveMixTitle">
+  <div class="save-mix-backdrop" id="saveMixBackdrop"></div>
+  <div class="save-mix-card">
+    <button type="button" class="save-mix-close" id="closeMixModal" aria-label="Close">×</button>
+
+    <h3 id="saveMixTitle" class="save-mix-title">
+      <span data-en>Save this Mix</span>
+      <span data-sr>Sačuvaj ovaj Mix</span>
+    </h3>
+    <p class="save-mix-sub">
+      <span data-en>Pick how you want to keep it.</span>
+      <span data-sr>Izaberi kako da ga zadržiš.</span>
+    </p>
+
+    <button type="button" class="save-mix-copy-btn" id="copyMixBtn">
+      <span class="save-mix-copy-label">
+        <span data-en>Copy as text (free)</span>
+        <span data-sr>Kopiraj kao tekst (besplatno)</span>
+      </span>
+      <span class="save-mix-copy-sub">
+        <span data-en>Paste in WhatsApp, email or notes</span>
+        <span data-sr>Pejstuj u WhatsApp, email ili beleške</span>
+      </span>
+    </button>
+
+    <p class="save-mix-fineprint">
+      <span data-en>Free copy doesn't save in your account — just clipboard.</span>
+      <span data-sr>Besplatna kopija se ne čuva u nalogu — samo u clipboard-u.</span>
+    </p>
+  </div>
+</div>
 
 </body>
 </html>

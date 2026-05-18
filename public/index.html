@@ -4331,8 +4331,9 @@
     font-family: inherit;
     font-size: 13px;
     color: var(--muted, #8a8076);
-    letter-spacing: 0.3px;
+    letter-spacing: 0.06em;
     font-weight: 500;
+    text-transform: uppercase;
     position: relative;
     transition: color 0.15s ease, background 0.15s ease;
   }
@@ -4343,6 +4344,8 @@
     margin-left: 4px;
     opacity: 0.85;
     font-weight: 400;
+    text-transform: none;       /* italic descriptor "unbundled holiday" stays natural */
+    letter-spacing: 0.01em;
   }
   .letto-toggle-btn:hover {
     color: var(--ink, #1f1a16);
@@ -4512,7 +4515,8 @@
     font-size: 17px;
     font-weight: 500;
     color: var(--ink, #1f1a16);
-    letter-spacing: 0.2px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     pointer-events: none;
     padding-right: 22px;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A17433' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
