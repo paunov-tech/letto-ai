@@ -3477,7 +3477,12 @@
 
       <div class="letto-search__toggle">
         <button type="button" class="letto-toggle-btn is-active" data-mode="mix">
-          <span data-en>Build your own</span><span data-sr>Sastavi sam</span> <em>· unbundled holiday</em>
+          <span data-en>Flight + Hotel</span><span data-sr>Let + Hotel</span>
+          <em data-en>· bundled</em><em data-sr>· u paketu</em>
+        </button>
+        <button type="button" class="letto-toggle-btn" data-mode="hotel">
+          <span data-en>Hotel only</span><span data-sr>Samo Hotel</span>
+          <em data-en>· no flight</em><em data-sr>· bez aviona</em>
         </button>
         <button type="button" class="letto-toggle-btn" data-mode="curated">
           <span data-en>Curated for you</span><span data-sr>Pravljeno po meri</span>
@@ -4929,8 +4934,8 @@
     /* Hero search bar margin tighter to grid */
     .letto-search { margin-top: 24px; }
     .letto-search__toggle { flex-wrap: wrap; }
-    .letto-toggle-btn { flex: 1 1 50%; padding: 14px 16px; font-size: 12px; }
-    .letto-toggle-btn em { font-size: 13px; margin-left: 2px; }
+    .letto-toggle-btn { flex: 1 1 33.333%; padding: 14px 6px; font-size: 11px; }
+    .letto-toggle-btn em { font-size: 11px; margin-left: 3px; }
     .letto-field { padding: 14px 18px; }
     .letto-field__label { font-size: 9px; letter-spacing: 1.4px; margin-bottom: 6px; }
     .letto-field input { font-size: 17px; }
@@ -6196,11 +6201,13 @@
     // ── Submit ────────────────────────────────────────────
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      if (activeMode() !== 'mix') {
+      var __mixMode = activeMode();
+      if (__mixMode === 'curated') {
         var deals = document.getElementById('deals');
         if (deals) deals.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
+      // 'mix' and 'hotel' both continue into the Mix results flow ↓
 
       var origin = (form.from.value || 'BEG').toUpperCase();
       var dest = (form.to.value || '').toUpperCase();
@@ -6234,6 +6241,9 @@
         infants: '0',
         trip_class: 'Y'
       });
+      if (__mixMode === 'hotel') {
+        params.set('no_flight', '1');
+      }
       if (typeof window.openResultsModal === 'function') {
         window.openResultsModal('/results?' + params.toString());
       }

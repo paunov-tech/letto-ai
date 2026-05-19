@@ -4722,6 +4722,11 @@
   function $(id) { return document.getElementById(id); }
   function lang() { return document.body.classList.contains('lang-en') ? 'en' : 'sr'; }
 
+  // ── Mix mode · "Hotel only" (no flight). Set once from the URL param
+  //    no_flight=1; read by renderMixSummary / formatMixAsText / the
+  //    Save-Mix modal to drop all flight-side UI. Backend is unaffected.
+  window.LETTO_NO_FLIGHT = new URLSearchParams(location.search).get('no_flight') === '1';
+
   // ── URL params (origin/dest/dates/pax) ──
   // Hotfix-3: TP widget redirects the iframe to its own URL format
   // (`?flightSearch=BEG2605ATH30052`) which strips our origin_iata / dest /
@@ -5840,7 +5845,9 @@
     var dest = iataToCityEn(p.dest) || p.dest || '';
 
     var flightChip;
-    if (flight) {
+    if (window.LETTO_NO_FLIGHT) {
+      flightChip = '';   // Hotel-only mode — no flight chip at all
+    } else if (flight) {
       var price = flight.price || (flight.priceNum ? ('€' + flight.priceNum) : '');
       var airline = flight.airline || (l === 'en' ? 'Flight' : 'Let');
       flightChip = '<span class="mix-summary__chip mix-summary__chip--done">'
@@ -5870,10 +5877,25 @@
         + '</span>';
     }
 
-    // Total chip — same formula as Stage 3 review: flight.totalPrice (per-package,
-    // already covers travelers) + hotel.priceTotal (per-stay). Direct sum.
+    // Total chip — let+hotel: flight.totalPrice (per-package, already covers
+    // travelers) + hotel.priceTotal (per-stay), direct sum, "=" prefix.
+    // Hotel-only (no_flight): hotel.priceTotal stands alone, no "=" prefix.
     var totalChip = '';
-    if (flight && hotel) {
+    if (window.LETTO_NO_FLIGHT) {
+      if (hotel) {
+        var adultsHO = (state.searchParams && state.searchParams.adults) || p.adults || 2;
+        var hotelOnlyTotal = Math.round(hotel.priceTotal || 0);
+        if (hotelOnlyTotal > 0) {
+          totalChip = '<span class="mix-summary__total" aria-hidden="false">'
+            + '<strong>€' + hotelOnlyTotal + '</strong>'
+            + '<span class="mix-summary__total-note">'
+            +   '<span data-en> total · ' + adultsHO + ' pax</span>'
+            +   '<span data-sr> ukupno · ' + adultsHO + ' os.</span>'
+            + '</span>'
+            + '</span>';
+        }
+      }
+    } else if (flight && hotel) {
       var adults = (state.searchParams && state.searchParams.adults) || p.adults || 2;
       var flightTotal = Math.round(flight.totalPrice || flight.priceNum || 0);
       var hotelTotal = Math.round(hotel.priceTotal || 0);
@@ -5890,9 +5912,15 @@
       }
     }
 
-    // CTA: gold if both selected (Završi rezervaciju), else neutral progress hint
+    // CTA: gold "finish/save" once selection is complete, else a progress hint.
     var ctaHtml;
-    if (flight && hotel) {
+    if (window.LETTO_NO_FLIGHT) {
+      // Hotel-only: past the early !flight && !hotel return, hotel is guaranteed.
+      ctaHtml = '<button type="button" class="mix-summary__cta" data-mix-finish>'
+        + '<span data-en>Save Hotel →</span>'
+        + '<span data-sr>Sačuvaj Hotel →</span>'
+        + '</button>';
+    } else if (flight && hotel) {
       ctaHtml = '<button type="button" class="mix-summary__cta" data-mix-finish>'
         + '<span data-en>Finish booking →</span>'
         + '<span data-sr>Završi rezervaciju →</span>'
@@ -5917,7 +5945,7 @@
       +     '<span data-en>Your Mix</span><span data-sr>Tvoj Mix</span>'
       +   '</span>'
       +   flightChip
-      +   '<span class="mix-summary__plus" aria-hidden="true">+</span>'
+      +   (window.LETTO_NO_FLIGHT ? '' : '<span class="mix-summary__plus" aria-hidden="true">+</span>')
       +   hotelChip
       +   totalChip
       +   ctaHtml
@@ -6263,11 +6291,14 @@
   function formatMixAsText() {
     var l = lang();
     function t(id) { var e = $(id); return e ? (e.textContent || '').trim() : ''; }
-    var out = ['LETTO MIX', ''];
-    out.push('✈ ' + (t('final-flight-desc') || '—'));
-    var fp = t('final-flight-price');
-    if (fp && fp !== '—') out.push('   ' + fp);
-    out.push('');
+    var noFlight = !!window.LETTO_NO_FLIGHT;
+    var out = [noFlight ? 'LETTO HOTEL' : 'LETTO MIX', ''];
+    if (!noFlight) {
+      out.push('✈ ' + (t('final-flight-desc') || '—'));
+      var fp = t('final-flight-price');
+      if (fp && fp !== '—') out.push('   ' + fp);
+      out.push('');
+    }
     out.push('\u{1F3E8} ' + (t('final-hotel-desc') || '—'));
     var hp = t('final-hotel-price');
     if (hp && hp !== '—') out.push('   ' + hp);
@@ -6317,6 +6348,16 @@
   function openSaveMixModal() {
     var m = document.getElementById('saveMixModal');
     if (!m) return;
+    // Hotel-only mode → relabel the modal title ("Mix" → "Hotel").
+    if (window.LETTO_NO_FLIGHT) {
+      var mt = m.querySelector('.save-mix-title');
+      if (mt) {
+        var mtEn = mt.querySelector('[data-en]');
+        var mtSr = mt.querySelector('[data-sr]');
+        if (mtEn) mtEn.textContent = 'Save this Hotel';
+        if (mtSr) mtSr.textContent = 'Sačuvaj ovaj hotel';
+      }
+    }
     m.hidden = false;
     document.body.style.overflow = 'hidden';
   }
