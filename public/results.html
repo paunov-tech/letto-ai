@@ -3409,6 +3409,15 @@
     height: 14px;
   }
 
+  /* ── "Hotel only" mode (body.is-no-flight, set when ?no_flight=1) ──
+     Drops every flight-side surface: Stage-2 flights pane + mobile tab,
+     and the Stage-3 review flight row. Remaining panes go single-column. */
+  body.is-no-flight .mix-pane--flights,
+  body.is-no-flight .mix-tabs__btn[data-mix-tab="flights"],
+  body.is-no-flight .mix-final__item--flight { display: none !important; }
+  body.is-no-flight .mix-grid { grid-template-columns: 1fr; }
+  body.is-no-flight .mix-final__summary { grid-template-columns: 1fr; }
+
   /* ── 60 / 40 grid ── */
   .mix-grid {
     display: grid;
@@ -4094,6 +4103,8 @@
     }
     .mix-pane { display: none; min-height: 0; }
     .mix-pane.is-active { display: flex; }
+    /* Hotel-only: hotels pane carries no is-active by default — force it visible */
+    body.is-no-flight .mix-pane--hotels { display: flex; }
     .mix-pane--flights .mix-packages { min-height: 240px; }
     /* On mobile, hide all sub-label variants regardless of state — title + circle alone convey progress */
     .mix-stages__sub,
@@ -4726,6 +4737,11 @@
   //    no_flight=1; read by renderMixSummary / formatMixAsText / the
   //    Save-Mix modal to drop all flight-side UI. Backend is unaffected.
   window.LETTO_NO_FLIGHT = new URLSearchParams(location.search).get('no_flight') === '1';
+  if (window.LETTO_NO_FLIGHT) {
+    document.body.classList.add('is-no-flight');   // CSS hides flight pane / mobile tab / Stage-3 flight row
+    var s2title = document.querySelector('.mix-stages__step[data-stage="2"] .mix-stages__title');
+    if (s2title) s2title.textContent = 'Hotel';    // Stage 2 "Mix" → "Hotel" (word is identical EN/SR)
+  }
 
   // ── URL params (origin/dest/dates/pax) ──
   // Hotfix-3: TP widget redirects the iframe to its own URL format
@@ -4910,7 +4926,9 @@
     if (!s.length) return;
     s[0].classList.add('is-done');
     s[0].classList.remove('is-active');
-    var stage2Done = !!(flightSelected && hotelSelected);
+    var stage2Done = window.LETTO_NO_FLIGHT
+      ? !!hotelSelected
+      : !!(flightSelected && hotelSelected);
     s[1].classList.toggle('is-done', stage2Done);
     s[1].classList.toggle('is-active', !stage2Done);
     s[2].classList.toggle('is-active', stage2Done && !bothBooked);
@@ -5818,8 +5836,8 @@
       var badge = document.querySelector('[data-mix-tab-badge="hotels"]');
       if (badge) badge.hidden = false;
     }
-    // Reverse: nudge to flights tab if hotel chosen first
-    if (hasHotel && !hasFlight && window.matchMedia && window.matchMedia('(max-width: 1023px)').matches) {
+    // Reverse: nudge to flights tab if hotel chosen first (skipped in hotel-only mode)
+    if (hasHotel && !hasFlight && !window.LETTO_NO_FLIGHT && window.matchMedia && window.matchMedia('(max-width: 1023px)').matches) {
       var badgeF = document.querySelector('[data-mix-tab-badge="flights"]');
       if (badgeF) badgeF.hidden = false;
     }
@@ -5974,7 +5992,8 @@
     var state = getState();
     var hasFlight = flightIsSet(state);
     var hasHotel  = hotelIsSet(state);
-    if (!hasFlight || !hasHotel) {
+    var needFlight = !window.LETTO_NO_FLIGHT;   // hotel-only mode requires only a hotel
+    if ((needFlight && !hasFlight) || !hasHotel) {
       // Don't show modal alerts on auto-trigger from init (would block UX).
       // Just bail silently; sticky bar already prompts the user for what's missing.
       console.log('[mix-v2] showStage3 · skipped · flight=' + hasFlight + ' hotel=' + hasHotel);
