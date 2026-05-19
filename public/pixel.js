@@ -39,4 +39,17 @@
     if (window.lettoFireFbPixel) window.lettoFireFbPixel(loadPixel);
     else setTimeout(whenReady, 50);
   })();
+
+  // v27 · Custom event helper for high-intent actions (Lead, InitiateCheckout,
+  // Subscribe). Bails silently if the Pixel didn't load (user declined marketing
+  // consent, admin page, network blocked Meta) — caller stays unaware and the
+  // click flow never breaks. Use:
+  //   window.lettoTrackPixel('Lead', { content_name: 'mix_finish', value: 240, currency: 'EUR' });
+  window.lettoTrackPixel = function (event, params) {
+    try {
+      if (typeof window.fbq === 'function' && window.fbq.loaded) {
+        window.fbq('track', event, params || {});
+      }
+    } catch (e) { /* never break the calling click flow */ }
+  };
 })();

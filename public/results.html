@@ -6549,6 +6549,26 @@
       //   unlocked → open the partner booking URL directly (skip review)
       if (e.target.closest('[data-mix-finish]')) {
         e.preventDefault();
+        // v27 · Meta Pixel Lead · user clicked Finish/Save CTA (high-intent).
+        // Differentiated by mode so Meta can optimize mix vs hotel-only separately.
+        // Wrapped in try so a Pixel error never blocks the click flow below.
+        try {
+          var __leadSt = getState();
+          var __leadVal = 0;
+          if (__leadSt) {
+            var __leadFt = __leadSt.flight && __leadSt.flight.selected ? Math.round(__leadSt.flight.selected.totalPrice || 0) : 0;
+            var __leadHt = __leadSt.hotel  && __leadSt.hotel.selected  ? Math.round(__leadSt.hotel.selected.priceTotal || 0) : 0;
+            __leadVal = __leadFt + __leadHt;
+          }
+          if (window.lettoTrackPixel) {
+            window.lettoTrackPixel('Lead', {
+              content_name: window.LETTO_NO_FLIGHT ? 'hotel_finish' : 'mix_finish',
+              content_category: 'travel',
+              currency: 'EUR',
+              value: __leadVal
+            });
+          }
+        } catch (_) {}
         var unlocked = document.body.classList.contains('letto-premium') ||
                        document.body.classList.contains('letto-mix-unlocked');
         var st = getState();
@@ -7172,6 +7192,15 @@
 
   async function lettoCheckout(tier) {
     console.log('[letto] checkout intent · tier=' + tier);
+    // v27 · Meta Pixel InitiateCheckout · same fire as index.html copy.
+    if (window.lettoTrackPixel) {
+      window.lettoTrackPixel('InitiateCheckout', {
+        content_name: 'premium_' + tier,
+        content_category: 'subscription',
+        currency: 'EUR',
+        value: tier === 'premium' ? 9.99 : 0
+      });
+    }
     var triggered = document.querySelector('[data-stripe="' + tier + '"]');
     var originalText = triggered ? triggered.innerHTML : '';
     if (triggered) {

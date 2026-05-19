@@ -5498,6 +5498,18 @@
 
   async function lettoCheckout(tier) {
     console.log('[letto] checkout intent · tier=' + tier);
+    // v27 · Meta Pixel InitiateCheckout · user clicked Premium Subscribe.
+    // Tracks both the primary fetch path and the form-POST fallback (fallback
+    // is downstream of this function). Single tier today (premium €9.99/mo);
+    // extend the value map when more tiers are added.
+    if (window.lettoTrackPixel) {
+      window.lettoTrackPixel('InitiateCheckout', {
+        content_name: 'premium_' + tier,
+        content_category: 'subscription',
+        currency: 'EUR',
+        value: tier === 'premium' ? 9.99 : 0
+      });
+    }
     var triggered = document.querySelector('[data-stripe="' + tier + '"]');
     var originalText = triggered ? triggered.innerHTML : '';
     if (triggered) {
