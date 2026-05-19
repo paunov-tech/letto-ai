@@ -18,7 +18,9 @@
     { "source": "/impressum", "destination": "/impressum.html" },
     { "source": "/dobrodosao", "destination": "/dobrodosao.html" },
     { "source": "/welcome", "destination": "/dobrodosao.html" },
-    { "source": "/me", "destination": "/me.html" }
+    { "source": "/me", "destination": "/me.html" },
+    { "source": "/letovi-:slug", "destination": "/letovi-:slug.html" },
+    { "source": "/flights-:slug", "destination": "/flights-:slug.html" }
   ],
   "headers": [
     {

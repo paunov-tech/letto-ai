@@ -5,7 +5,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "build:seo": "node scripts/generate-sitemap.mjs && node scripts/generate-destination-pages.mjs",
+    "build:sitemap": "node scripts/generate-sitemap.mjs",
+    "build:destinations": "node scripts/generate-destination-pages.mjs"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",

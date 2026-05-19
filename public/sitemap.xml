@@ -1,33 +1,364 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://letto.live/</loc>
+    <lastmod>2026-05-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/" />
   </url>
   <url>
-    <loc>https://letto.live/about.html</loc>
+    <loc>https://letto.live/about</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/about" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/about?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/about" />
+  </url>
+  <url>
+    <loc>https://letto.live/dobrodosao</loc>
+    <lastmod>2026-05-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/dobrodosao" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/dobrodosao?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/dobrodosao" />
   </url>
   <url>
-    <loc>https://letto.live/dobrodosao.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.4</priority>
-  </url>
-  <url>
-    <loc>https://letto.live/privacy.html</loc>
+    <loc>https://letto.live/impressum</loc>
+    <lastmod>2026-05-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/impressum" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/impressum?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/impressum" />
   </url>
   <url>
-    <loc>https://letto.live/terms.html</loc>
+    <loc>https://letto.live/privacy</loc>
+    <lastmod>2026-05-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/privacy" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/privacy?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/privacy" />
   </url>
   <url>
-    <loc>https://letto.live/impressum.html</loc>
+    <loc>https://letto.live/terms</loc>
+    <lastmod>2026-05-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/terms" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/terms?lang=en" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/terms" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-rim</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-rim" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-rome" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-rim" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-rome</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-rim" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-rome" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-rim" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-palma</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-palma" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-palma" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-palma" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-palma</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-palma" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-palma" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-palma" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-atina</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-atina" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-athens" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-atina" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-athens</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-atina" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-athens" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-atina" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-barselona</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-barselona" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-barcelona" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-barselona" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-barcelona</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-barselona" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-barcelona" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-barselona" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-pariz</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-pariz" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-paris" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-pariz" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-paris</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-pariz" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-paris" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-pariz" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-valeta</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-valeta" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-valletta" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-valeta" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-valletta</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-valeta" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-valletta" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-valeta" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-budimpesta</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-budimpesta" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-budapest" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-budimpesta" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-budapest</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-budimpesta" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-budapest" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-budimpesta" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-lisabon</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-lisabon" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-lisbon" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-lisabon" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-lisbon</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-lisabon" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-lisbon" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-lisabon" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-bec</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-bec" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-vienna" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-bec" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-vienna</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-bec" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-vienna" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-bec" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-dubai</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-dubai" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-dubai" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-dubai" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-dubai</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-dubai" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-dubai" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-dubai" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-solun</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-solun" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-thessaloniki" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-solun" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-thessaloniki</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-solun" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-thessaloniki" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-solun" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-istanbul</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-istanbul" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-istanbul" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-istanbul" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-istanbul</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-istanbul" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-istanbul" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-istanbul" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-minhen</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-minhen" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-munich" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-minhen" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-munich</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-minhen" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-munich" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-minhen" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-split</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-split" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-split" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-split" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-split</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-split" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-split" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-split" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-dubrovnik</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-dubrovnik" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-dubrovnik" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-dubrovnik" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-dubrovnik</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-dubrovnik" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-dubrovnik" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-dubrovnik" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-prag</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-prag" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-prague" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-prag" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-prague</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-prag" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-prague" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-prag" />
+  </url>
+  <url>
+    <loc>https://letto.live/letovi-tirana</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-tirana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-tirana" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-tirana" />
+  </url>
+  <url>
+    <loc>https://letto.live/flights-tirana</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="sr-Latn" href="https://letto.live/letovi-tirana" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://letto.live/flights-tirana" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-tirana" />
   </url>
 </urlset>
