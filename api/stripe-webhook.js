@@ -9,6 +9,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import PDFDocument from 'pdfkit';
 import { cleanAviasalesUrl } from '../lib/aviasales-url.js';
 import { sendWelcomeEmail } from '../lib/email-welcome.js';
+import { sendCapiEvent } from '../lib/meta-capi.js';
 
 // Init Firebase Admin
 if (!getApps().length) {
@@ -748,6 +749,35 @@ async function handler(req, res) {
           telegramInviteLink: inviteLink,
           telegramInviteIssued: new Date().toISOString()
         }, { merge: true });
+
+        // ── v28 · Meta Conversions API · server-side Subscribe event ──
+        // Complements the client-side fbq('track','InitiateCheckout') in v27
+        // by firing the conversion server-side from this webhook, which
+        // bypasses ad-blockers (~20-40% attribution recovery). Uses the
+        // ACTUAL Stripe charge (session.amount_total in cents → major units),
+        // not the labelled per-month equivalent. event_id is stable-per-session
+        // so future client-side Subscribe fires can dedup against this.
+        // Non-blocking · sendCapiEvent never throws and returns a result.
+        try {
+          const __capiAmount = (typeof session.amount_total === 'number')
+            ? session.amount_total / 100
+            : null;
+          const __capiResult = await sendCapiEvent('Subscribe', {
+            email:           lowerEmail,
+            externalId:      customerId,                      // Stripe cust_xxx · stable across sessions
+            value:           __capiAmount,
+            currency:        (session.currency || 'eur').toUpperCase(),
+            eventSourceUrl:  'https://letto.live/',
+            eventId:         'subscribe_' + session.id
+          });
+          if (__capiResult.ok) {
+            console.log(`[LETTO] CAPI Subscribe sent · session=${session.id} eventsReceived=${__capiResult.eventsReceived}`);
+          } else if (__capiResult.skipped !== 'no-token') {
+            console.warn(`[LETTO] CAPI Subscribe failed · session=${session.id}`, __capiResult.error);
+          }
+        } catch (__capiErr) {
+          console.error('[LETTO] CAPI Subscribe threw (non-blocking)', __capiErr.message);
+        }
 
         // Receipt summary for the welcome email — amount from the checkout
         // session (cents → major units), date is today. Both optional;
