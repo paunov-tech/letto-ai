@@ -1411,7 +1411,7 @@
      is now field-level (flight.airline / departureTime / arrivalTime /
      flight.bookingUrl / hotel.bookingUrl null on locked) so every other
      visual element renders identically to an unlocked card. The "locked"
-     signal is the gold .unlock-strip glued to the card bottom. */
+     signal is the gold .lock-corner-icon at the top-left of the photo. */
   .deal-hotel {
     font-family: 'IBM Plex Sans', sans-serif;
     font-size: 12px;
@@ -1490,27 +1490,9 @@
   }
   .deal-book-btn__arrow { transition: transform 0.14s ease; }
   .deal-book-btn:not(.is-locked):hover .deal-book-btn__arrow { transform: translateX(3px); }
-  .unlock-strip {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #f0c674 0%, #b8863b 100%);
-    color: #1f2226;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    padding: 11px 14px;
-    text-decoration: none;
-    text-transform: uppercase;
-    border-top: 1px solid rgba(31, 34, 38, 0.12);
-    transition: background 0.15s ease;
-  }
-  .unlock-strip:hover { background: linear-gradient(135deg, #f5d089 0%, #c79548 100%); }
-
-  /* Lock corner icon — replaces .unlock-strip on locked cards. Top-LEFT to
-     avoid colliding with .badge-top-right (top_deal sticker). Click scrolls
-     to #pricing; .unlock-strip CSS above is kept (defensive, no longer emitted). */
+  /* Lock corner icon · the gold "locked" badge on free-tier cards. Top-LEFT
+     to avoid colliding with .badge-top-right (top_deal sticker). Click
+     scrolls to #pricing. Replaced the older .unlock-strip bar in v23. */
   .lock-corner-icon {
     position: absolute;
     top: 12px;
@@ -3720,9 +3702,9 @@
         // deal ratio, transport, top_deal/round_trip markers are visible to
         // all tiers. Only flight.airline / departureTime / arrivalTime /
         // flight.bookingUrl / hotel.bookingUrl are nulled for locked cards
-        // (free, non-try-it). Locked cards get a gold unlock-strip glued to
-        // the card bottom; try-it and premium cards render an inline flight
-        // row with airline + times + booking link.
+        // (free, non-try-it). Locked cards get a gold .lock-corner-icon at
+        // the top-left of the photo; try-it and premium cards render an inline
+        // flight row with airline + times + booking link.
         var locked = (p.locked === true);
         var tryIt = (p.daily_try_it === true);
         var hasTopDeal = (p.top_deal === true);
@@ -3826,9 +3808,9 @@
         var flightHref = (fl.bookingUrl || '').replace(/[<>"']/g, '');
 
         // Booking buttons · flight + hotel. locked → BOTH disabled (lock
-        // glyph, no click); the unlock-strip below covers both. unlocked
-        // (try-it / premium) → both active, link out. The lead-capture
-        // modal still intercepts the booking.com / aviasales click.
+        // glyph, no click); the .lock-corner-icon at top-left routes to
+        // #pricing. unlocked (try-it / premium) → both active, link out.
+        // The lead-capture modal still intercepts the booking click.
         function dealBookBtn(kind, href, enLabel, srLabel, icon) {
           if (locked || !href) {
             return '<span class="deal-book-btn deal-book-btn--' + kind + ' is-locked" aria-disabled="true">' +

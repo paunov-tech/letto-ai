@@ -5329,6 +5329,9 @@
 
   function loadPackages(opts) {
     opts = opts || {};
+    // Hotel-only mode: the flight package list is hidden via body.is-no-flight CSS;
+    // skip the /api/packages fetch entirely to save bandwidth + a stale render.
+    if (window.LETTO_NO_FLIGHT) return;
     var userClick = !!opts.userClick;
     var p = readUrlParams();
     var mount = document.getElementById('mix-packages');
@@ -5482,8 +5485,9 @@
       var priceText = '€' + Math.round(fl.totalPrice || 0);
 
       // Airline: scrubbed for locked → render placeholder. Free user sees
-      // the route + price + dates but not the carrier; unlock-strip below
-      // explains how to get it.
+      // the route + price + dates but not the carrier; the locked-card
+      // lock-corner-icon (homepage) / Premium card (Stage 2) explains how
+      // to get it.
       var airlineHtml;
       if (locked || !fl.airline) {
         airlineHtml = '<span class="pkg-card__airline pkg-card__airline--locked" data-en>Carrier — Premium</span>' +
@@ -6149,6 +6153,19 @@
       totalMeta.textContent = (l === 'en')
         ? ('for ' + pax + (pax === 1 ? ' person' : ' people') + ' · ' + nights + (nights === 1 ? ' night' : ' nights'))
         : ('za ' + adults + ' osobe · ' + nights + ' noći');
+    }
+
+    // Hotel-only · the premium "Finish Mix · save & send" CTA reads as
+    // let+hotel by default; in no_flight mode relabel to match the rest
+    // of Stage 3 (and the sticky bar's "Save Hotel" framing).
+    if (window.LETTO_NO_FLIGHT) {
+      var finishCta = $('mix-finish-cta');
+      if (finishCta) {
+        var ftEn = finishCta.querySelector('[data-en]');
+        var ftSr = finishCta.querySelector('[data-sr]');
+        if (ftEn) ftEn.textContent = 'Finish Hotel · save & send →';
+        if (ftSr) ftSr.textContent = 'Završi hotel · sačuvaj i pošalji →';
+      }
     }
   }
 
