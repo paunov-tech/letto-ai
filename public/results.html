@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Mix-mode CSS hook · MUST run before <body> parses so the .is-no-flight
+     rules apply on the FIRST paint of .mix-pane / .mix-tabs. Late application
+     caused a +0.13 CLS jump on mobile (v24 regression, root-cause fixed v25.1). -->
+<script>
+  try {
+    if (new URLSearchParams(location.search).get('no_flight') === '1') {
+      document.documentElement.classList.add('is-no-flight');
+    }
+  } catch (e) { /* URLSearchParams unsupported · late body script handles it */ }
+</script>
+
 <title>Letto · Rezultati pretrage</title>
 <meta name="description" content="Letto rezultati pretrage — letovi i hoteli u realnom vremenu.">
 
@@ -3409,14 +3420,15 @@
     height: 14px;
   }
 
-  /* ── "Hotel only" mode (body.is-no-flight, set when ?no_flight=1) ──
+  /* ── "Hotel only" mode · class set on <html> in <head> for CLS-safe initial
+     paint (v25.1), also defensively re-set on <body> by inline JS post-DOM.
      Drops every flight-side surface: Stage-2 flights pane + mobile tab,
      and the Stage-3 review flight row. Remaining panes go single-column. */
-  body.is-no-flight .mix-pane--flights,
-  body.is-no-flight .mix-tabs__btn[data-mix-tab="flights"],
-  body.is-no-flight .mix-final__item--flight { display: none !important; }
-  body.is-no-flight .mix-grid { grid-template-columns: 1fr; }
-  body.is-no-flight .mix-final__summary { grid-template-columns: 1fr; }
+  .is-no-flight .mix-pane--flights,
+  .is-no-flight .mix-tabs__btn[data-mix-tab="flights"],
+  .is-no-flight .mix-final__item--flight { display: none !important; }
+  .is-no-flight .mix-grid { grid-template-columns: 1fr; }
+  .is-no-flight .mix-final__summary { grid-template-columns: 1fr; }
 
   /* ── 60 / 40 grid ── */
   .mix-grid {
@@ -4104,7 +4116,7 @@
     .mix-pane { display: none; min-height: 0; }
     .mix-pane.is-active { display: flex; }
     /* Hotel-only: hotels pane carries no is-active by default — force it visible */
-    body.is-no-flight .mix-pane--hotels { display: flex; }
+    .is-no-flight .mix-pane--hotels { display: flex; }
     .mix-pane--flights .mix-packages { min-height: 240px; }
     /* On mobile, hide all sub-label variants regardless of state — title + circle alone convey progress */
     .mix-stages__sub,
@@ -4733,12 +4745,16 @@
   function $(id) { return document.getElementById(id); }
   function lang() { return document.body.classList.contains('lang-en') ? 'en' : 'sr'; }
 
-  // ── Mix mode · "Hotel only" (no flight). Set once from the URL param
-  //    no_flight=1; read by renderMixSummary / formatMixAsText / the
-  //    Save-Mix modal to drop all flight-side UI. Backend is unaffected.
+  // ── Mix mode · "Hotel only" (no flight). The CSS hook (.is-no-flight) is
+  //    applied in <head> (v25.1, see top of file) so first-paint of .mix-pane
+  //    is already correct — that's the CLS-safe path. The body.add here is
+  //    defensive (in case the head script throws) plus does the JS bits that
+  //    need the DOM (Stage-2 title relabel) and the window.LETTO_NO_FLIGHT
+  //    flag read by renderMixSummary / formatMixAsText / Save-Mix modal /
+  //    loadPackages. Backend is unaffected.
   window.LETTO_NO_FLIGHT = new URLSearchParams(location.search).get('no_flight') === '1';
   if (window.LETTO_NO_FLIGHT) {
-    document.body.classList.add('is-no-flight');   // CSS hides flight pane / mobile tab / Stage-3 flight row
+    document.body.classList.add('is-no-flight');   // defensive · head script already set it on <html>
     var s2title = document.querySelector('.mix-stages__step[data-stage="2"] .mix-stages__title');
     if (s2title) s2title.textContent = 'Hotel';    // Stage 2 "Mix" → "Hotel" (word is identical EN/SR)
   }
@@ -5329,7 +5345,7 @@
 
   function loadPackages(opts) {
     opts = opts || {};
-    // Hotel-only mode: the flight package list is hidden via body.is-no-flight CSS;
+    // Hotel-only mode: the flight package list is hidden via .is-no-flight CSS;
     // skip the /api/packages fetch entirely to save bandwidth + a stale render.
     if (window.LETTO_NO_FLIGHT) return;
     var userClick = !!opts.userClick;
