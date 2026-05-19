@@ -3112,32 +3112,11 @@
   };
 </script>
 <script src="/consent.js" defer></script>
-<!-- F95 · FB Pixel template, gated by marketing consent. Activate by setting
-     the LETTO_FB_PIXEL_ID below to your real numeric Pixel ID. The snippet is
-     a no-op while the placeholder remains. -->
-<script>
-  (function () {
-    var LETTO_FB_PIXEL_ID = ''; // TODO: fill with Meta Business Manager Pixel ID
-    if (!LETTO_FB_PIXEL_ID) return;
-    function loadPixel() {
-      if (window.fbq) { window.fbq('track', 'PageView'); return; }
-      !function (f, b, e, v, n, t, s) {
-        if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) };
-        if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
-        t = b.createElement(e); t.async = !0; t.src = v;
-        s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
-      }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-      window.fbq('init', LETTO_FB_PIXEL_ID);
-      window.fbq('track', 'PageView');
-    }
-    // lettoFireFbPixel runs immediately if marketing consent already granted,
-    // or queues until the user accepts (and never fires if they don't).
-    function whenReady() { window.lettoFireFbPixel ? window.lettoFireFbPixel(loadPixel) : setTimeout(whenReady, 50); }
-    whenReady();
-  })();
-</script>
+<script src="/pixel.js" defer></script>
+
 </head>
 <body class="lang-en">
+<noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=2513952102382319&ev=PageView&noscript=1"/></noscript>
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- COMPASS-SUN ROSE REUSABLE SVG                   -->
@@ -3266,7 +3245,6 @@
     </symbol>
   </defs>
 </svg>
-
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- NAVIGATION                                       -->
@@ -3419,7 +3397,6 @@
     } catch (e) {}
   })();
 </script>
-
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- HERO                                             -->
@@ -3968,7 +3945,6 @@
         });
     })();
     </script>
-
 
     <div style="margin-top: 72px; text-align: center;">
       <a href="#pricing" class="btn-outline">
@@ -6231,7 +6207,6 @@
       }
     });
   })();
-
 
   // Deals carousel — peek scroll with arrow nav
   (function () {
