@@ -132,6 +132,49 @@ export const DESTINATIONS = [
     srIntro: 'Letovi za Tiranu — albanska prestolnica u usponu, kafana po kafani, šetnja po Bllok-u. Lako do plaža Sarande za dnevni izlet. Letto bira hotele blizu Skanderbeg trga ili u Bllok-u (mladi, modernije).',
     enSlug: 'tirana',     enCity: 'Tirana',
     enIntro: 'Flights to Tirana — Albania’s rising capital, cafe after cafe, walks through Blloku. Easy access to the Saranda beaches for a day trip. Letto picks hotels near Skanderbeg Square or in Blloku (younger, more modern).'
+  },
+  // ── v30.1 additions · spec extension ──
+  {
+    iata: 'AMS', country: 'NL',
+    srSlug: 'amsterdam',  srCity: 'Amsterdam',
+    srIntro: 'Letovi za Amsterdam iz Beograda — sat i po direktno, ili preko Beča/Minhena jeftinije. Kanali, Van Gogh muzej, biciklističke staze, Anne Frank kuća. Letto bira hotele u Jordaan-u ili De Pijp-u (autentičnije od Centrum-a, blizu tramvaja).',
+    enSlug: 'amsterdam',  enCity: 'Amsterdam',
+    enIntro: 'Flights to Amsterdam from Belgrade — 1.5h direct, or cheaper via Vienna/Munich. Canals, Van Gogh Museum, bike lanes, Anne Frank House. Letto picks hotels in Jordaan or De Pijp (more authentic than Centrum, near a tram line).'
+  },
+  {
+    iata: 'CMN', country: 'MA',
+    srSlug: 'kazablanka', srCity: 'Kazablanka',
+    srIntro: 'Letovi za Kazablanku — najveći grad Maroka, kapija u Marakeš i Fes. Druga najveća džamija na svetu (Hasan II), francusko-kolonijalna arhitektura, Atlantik. Letto bira hotele blizu Hassan II ili u centru, lako do Boulevard Mohammed V.',
+    enSlug: 'casablanca', enCity: 'Casablanca',
+    enIntro: 'Flights to Casablanca — Morocco’s largest city, gateway to Marrakech and Fez. The world’s second-largest mosque (Hassan II), French colonial architecture, the Atlantic. Letto picks hotels near Hassan II or downtown, walkable to Boulevard Mohammed V.'
+  },
+  {
+    iata: 'HER', country: 'GR',
+    srSlug: 'krit',       srCity: 'Krit (Heraklion)',
+    srIntro: 'Letovi za Krit (Heraklion) — najveće grčko ostrvo, plaže Elafonisi i Balos, Knossos palata. Sezona maj–oktobar, najbolje cene maja i septembra. Letto bira hotele uz plažu u Hersonissos-u ili u staroj Heraklion luci.',
+    enSlug: 'crete',      enCity: 'Crete (Heraklion)',
+    enIntro: 'Flights to Crete (Heraklion) — Greece’s largest island, Elafonisi and Balos beaches, the Palace of Knossos. Season May–October, best prices in May and September. Letto picks beachfront hotels in Hersonissos or in the old Heraklion harbour.'
+  },
+  {
+    iata: 'IBZ', country: 'ES',
+    srSlug: 'ibiza',      srCity: 'Ibiza',
+    srIntro: 'Letovi za Ibizu — balearsko ostrvo legendarno po klubovima i plažama. Maj-oktobar sezona, vrh u julu/avgustu. Stara četvrt Dalt Vila je UNESCO. Letto bira hotele blizu Playa d’en Bossa (party) ili Santa Eulalia (mirnije, porodice).',
+    enSlug: 'ibiza',      enCity: 'Ibiza',
+    enIntro: 'Flights to Ibiza — the Balearic island legendary for clubs and beaches. Season May–October, peak in July/August. The old Dalt Vila quarter is UNESCO-listed. Letto picks hotels near Playa d’en Bossa (party) or Santa Eulalia (quieter, family).'
+  },
+  {
+    iata: 'LHR', country: 'GB',
+    srSlug: 'london',     srCity: 'London',
+    srIntro: 'Letovi za London (LHR/LGW/STN) iz Beograda — 3h direktno ili preko Beča. Big Ben, Tower, West End, kafića po kafića u Shoreditch-u. Letto bira hotele blizu metro stanice u Zone 1-2 (Camden, Shoreditch, Bloomsbury) — sve unutar 15min od centra.',
+    enSlug: 'london',     enCity: 'London',
+    enIntro: 'Flights to London (LHR/LGW/STN) from Belgrade — 3h direct or via Vienna. Big Ben, the Tower, the West End, café after café in Shoreditch. Letto picks hotels near a Zone 1–2 tube station (Camden, Shoreditch, Bloomsbury) — all within 15 min of the centre.'
+  },
+  {
+    iata: 'MAD', country: 'ES',
+    srSlug: 'madrid',     srCity: 'Madrid',
+    srIntro: 'Letovi za Madrid — španska prestolnica, Prado, Reina Sofía, Retiro park. Tapas u La Latini, fudbal na Bernabéu-u. Letto kombinuje let + hotel u Sol-u, Malasañi ili Chueki — sve blizu metroa i jeftino za Evropu.',
+    enSlug: 'madrid',     enCity: 'Madrid',
+    enIntro: 'Flights to Madrid — Spain’s capital, the Prado, Reina Sofía, Retiro park. Tapas in La Latina, football at Bernabéu. Letto bundles flight + hotel in Sol, Malasaña, or Chueca — all near the metro and cheap for Europe.'
   }
 ];
 
