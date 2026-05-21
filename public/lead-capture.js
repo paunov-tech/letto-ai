@@ -121,6 +121,8 @@
     if (!emailInput) return;
     var email = (emailInput.value || '').trim();
     if (!email) return;
+    // v31 · feed email to Pixel advanced matching (picked up on next PageView)
+    if (window.lettoSetPixelEmail) window.lettoSetPixelEmail(email);
     errorEl.textContent = '';
     if (saveBtn) saveBtn.disabled = true;
     try {

@@ -21,6 +21,32 @@
 (function () {
   'use strict';
   var LETTO_FB_PIXEL_ID = '2513952102382319';
+
+  // v31 · Advanced Matching — raises Meta Event Match Quality above the
+  // default IP/UA/fbp triple by adding stronger identifiers:
+  //   external_id · stable random per-visitor id (1st-party, not PII)
+  //   em          · the visitor's email once known (lead-capture / /me),
+  //                  persisted by window.lettoSetPixelEmail below.
+  //                  fbevents.js SHA-256-hashes em client-side before send.
+  function lettoExtId() {
+    try {
+      var k = 'letto_ext_id', v = localStorage.getItem(k);
+      if (!v) {
+        v = (window.crypto && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : 'ext-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+        localStorage.setItem(k, v);
+      }
+      return v;
+    } catch (e) { return null; }
+  }
+  function lettoKnownEmail() {
+    try {
+      var e = localStorage.getItem('letto_user_email');
+      return (e && e.indexOf('@') > 0) ? e : null;
+    } catch (e) { return null; }
+  }
+
   function loadPixel() {
     if (window.fbq) { window.fbq('track', 'PageView'); return; }
     !function (f, b, e, v, n, t, s) {
@@ -31,7 +57,11 @@
       t = b.createElement(e); t.async = !0; t.src = v;
       s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
     }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-    window.fbq('init', LETTO_FB_PIXEL_ID);
+    // Advanced Matching object · external_id always, em when known.
+    var am = {};
+    var extId = lettoExtId();      if (extId) am.external_id = extId;
+    var email = lettoKnownEmail(); if (email) am.em = email;
+    window.fbq('init', LETTO_FB_PIXEL_ID, am);
     window.fbq('track', 'PageView');
   }
   // Queue until consent.js exposes the firing registry.
@@ -51,5 +81,16 @@
         window.fbq('track', event, params || {});
       }
     } catch (e) { /* never break the calling click flow */ }
+  };
+
+  // v31 · Called by lead-capture.js + me.html the moment a visitor's email
+  // becomes known. Persists it (raw, lowercased/trimmed — fbevents.js hashes
+  // before send) so the NEXT PageView — this nav or any return visit — fires
+  // with em advanced matching, the single strongest EMQ signal.
+  window.lettoSetPixelEmail = function (email) {
+    try {
+      var e = (email || '').toLowerCase().trim();
+      if (e.indexOf('@') > 0) localStorage.setItem('letto_user_email', e);
+    } catch (e) { /* localStorage blocked · skip silently */ }
   };
 })();

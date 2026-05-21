@@ -378,6 +378,8 @@
     function renderDashboard(data) {
       var en = lettoLang() === 'en';
       document.getElementById('dash-email').textContent = data.email || '';
+      // v31 · confirmed subscriber email → strongest Pixel advanced-matching signal
+      if (data.email && window.lettoSetPixelEmail) window.lettoSetPixelEmail(data.email);
 
       var sub = data.subscription || {};
       var label, cls;
@@ -462,6 +464,8 @@
         showResult(en ? 'Enter a valid email.' : 'Unesi validan email.', true);
         return;
       }
+      // v31 · feed email to Pixel advanced matching
+      if (window.lettoSetPixelEmail) window.lettoSetPixelEmail(email);
       submitBtn.disabled = true;
       submitBtn.textContent = en ? 'Sending…' : 'Šaljem...';
       result.classList.remove('shown', 'error');
