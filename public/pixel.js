@@ -70,15 +70,58 @@
     else setTimeout(whenReady, 50);
   })();
 
-  // v27 · Custom event helper for high-intent actions (Lead, InitiateCheckout,
-  // Subscribe). Bails silently if the Pixel didn't load (user declined marketing
-  // consent, admin page, network blocked Meta) — caller stays unaware and the
-  // click flow never breaks. Use:
+  // v33 · cookie reader for _fbp / _fbc (CAPI attribution).
+  function lettoCookie(n) {
+    try {
+      var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    } catch (e) { return ''; }
+  }
+
+  // v33 · server-side mirror of a conversion event. Beacons /api/meta-event,
+  // which re-fires it via CAPI with the SAME event_id → Meta dedups the pair
+  // into one conversion. sendBeacon survives the navigation that immediately
+  // follows InitiateCheckout (→ Stripe). Fire-and-forget · response ignored.
+  function lettoCapiBeacon(event, eventId, params) {
+    try {
+      var payload = {
+        event: event,
+        eventId: eventId,
+        value: params.value,
+        currency: params.currency,
+        contentName: params.content_name,
+        contentCategory: params.content_category,
+        fbp: lettoCookie('_fbp'),
+        fbc: lettoCookie('_fbc'),
+        extId: lettoExtId(),
+        email: lettoKnownEmail(),
+        sourceUrl: location.href
+      };
+      var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/meta-event', blob);
+      } else {
+        fetch('/api/meta-event', { method: 'POST', body: blob, keepalive: true }).catch(function () {});
+      }
+    } catch (e) { /* attribution is best-effort */ }
+  }
+
+  // v27 helper · v33-enhanced. Fires the event in the browser WITH an eventID
+  // (enables dedup) and — for the conversion events — mirrors it server-side
+  // via the /api/meta-event CAPI beacon. Ad-blockers can kill the browser
+  // fire; the server fire survives, and Meta dedups on the shared eventID.
+  // Bails silently if the Pixel isn't loaded (consent declined / admin page) —
+  // the calling click flow never breaks. Use:
   //   window.lettoTrackPixel('Lead', { content_name: 'mix_finish', value: 240, currency: 'EUR' });
   window.lettoTrackPixel = function (event, params) {
     try {
-      if (typeof window.fbq === 'function' && window.fbq.loaded) {
-        window.fbq('track', event, params || {});
+      // No consent → Pixel not loaded → skip BOTH browser and server fire.
+      if (!(typeof window.fbq === 'function' && window.fbq.loaded)) return;
+      params = params || {};
+      var eventId = 'le-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+      window.fbq('track', event, params, { eventID: eventId });
+      if (event === 'Lead' || event === 'InitiateCheckout') {
+        lettoCapiBeacon(event, eventId, params);
       }
     } catch (e) { /* never break the calling click flow */ }
   };
