@@ -7178,20 +7178,35 @@
     }
   }
 
+  // v32 · Meta attribution for CAPI · _fbp/_fbc cookies (Pixel sets them
+  // post-consent) + the v31 letto_ext_id. Absent → '' (consent declined).
+  function lettoFbAttribution() {
+    function ck(n) {
+      var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+    var x = '';
+    try { x = localStorage.getItem('letto_ext_id') || ''; } catch (e) {}
+    return { fbp: ck('_fbp'), fbc: ck('_fbc'), extId: x };
+  }
+
   function lettoFormFallback(tier, tripId) {
     console.log('[letto] checkout fallback · form POST to /api/stripe-go · tier=' + tier);
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = '/api/stripe-go';
     form.target = '_top';
-    var i = document.createElement('input');
-    i.type = 'hidden'; i.name = 'tier'; i.value = tier;
-    form.appendChild(i);
-    if (tripId) {
-      var t = document.createElement('input');
-      t.type = 'hidden'; t.name = 'tripId'; t.value = tripId;
-      form.appendChild(t);
-    }
+    var fields = { tier: tier };
+    if (tripId) fields.tripId = tripId;
+    var fb = lettoFbAttribution();          // v32 · attribution through the fallback too
+    if (fb.fbp)   fields.fbp = fb.fbp;
+    if (fb.fbc)   fields.fbc = fb.fbc;
+    if (fb.extId) fields.extId = fb.extId;
+    Object.keys(fields).forEach(function (k) {
+      var i = document.createElement('input');
+      i.type = 'hidden'; i.name = k; i.value = fields[k];
+      form.appendChild(i);
+    });
     document.body.appendChild(form);
     form.submit();
   }
@@ -7225,6 +7240,8 @@
     var tripId = await lettoSaveMixBeforeCheckout();
     var payload = { tier: tier };
     if (tripId) payload.tripId = tripId;
+    var fb = lettoFbAttribution();          // v32 · Meta attribution → CAPI Subscribe
+    payload.fbp = fb.fbp; payload.fbc = fb.fbc; payload.extId = fb.extId;
 
     try {
       var resp = await fetch('/api/stripe-checkout', {

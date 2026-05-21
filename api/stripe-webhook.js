@@ -762,13 +762,23 @@ async function handler(req, res) {
           const __capiAmount = (typeof session.amount_total === 'number')
             ? session.amount_total / 100
             : null;
+          // v32 · attribution params threaded through Checkout Session metadata
+          // by stripe-checkout.js / stripe-go.js (metaCheckoutMetadata). fbp/fbc
+          // link this server event to the browser session + ad click; letto_ext_id
+          // matches the browser Pixel's external_id. Absent keys (consent declined
+          // / Pixel not loaded) just fall through — sendCapiEvent omits them.
+          const __md = session.metadata || {};
           const __capiResult = await sendCapiEvent('Subscribe', {
-            email:           lowerEmail,
-            externalId:      customerId,                      // Stripe cust_xxx · stable across sessions
-            value:           __capiAmount,
-            currency:        (session.currency || 'eur').toUpperCase(),
-            eventSourceUrl:  'https://letto.live/',
-            eventId:         'subscribe_' + session.id
+            email:            lowerEmail,
+            externalId:       __md.letto_ext_id || customerId,  // browser-matching id · Stripe cust fallback
+            value:            __capiAmount,
+            currency:         (session.currency || 'eur').toUpperCase(),
+            eventSourceUrl:   'https://letto.live/',
+            eventId:          'subscribe_' + session.id,
+            fbp:              __md.fbp || null,
+            fbc:              __md.fbc || null,
+            clientIpAddress:  __md.fb_ip || null,
+            clientUserAgent:  __md.fb_ua || null
           });
           if (__capiResult.ok) {
             console.log(`[LETTO] CAPI Subscribe sent · session=${session.id} eventsReceived=${__capiResult.eventsReceived}`);

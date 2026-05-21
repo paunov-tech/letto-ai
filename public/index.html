@@ -5487,15 +5487,35 @@
   // (server 303 redirect to Stripe). Fallback fires on fetch failure or
   // missing url, plus belt-and-suspenders timer in case navigation is silently
   // blocked (mobile Safari async-gesture, popup blockers, content extensions).
+  // v32 · Meta attribution for CAPI · _fbp/_fbc cookies (the Pixel sets them
+  // post-consent) + the v31 letto_ext_id. Absent → '' (consent declined or
+  // Pixel not loaded); the checkout endpoint treats absent as fine.
+  function lettoFbAttribution() {
+    function ck(n) {
+      var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+    var x = '';
+    try { x = localStorage.getItem('letto_ext_id') || ''; } catch (e) {}
+    return { fbp: ck('_fbp'), fbc: ck('_fbc'), extId: x };
+  }
+
   function lettoFormFallback(tier) {
     console.log('[letto] checkout fallback · form POST to /api/stripe-go · tier=' + tier);
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = '/api/stripe-go';
     form.target = '_top';
-    var i = document.createElement('input');
-    i.type = 'hidden'; i.name = 'tier'; i.value = tier;
-    form.appendChild(i);
+    var fields = { tier: tier };
+    var fb = lettoFbAttribution();          // v32 · ride attribution through the fallback too
+    if (fb.fbp)   fields.fbp = fb.fbp;
+    if (fb.fbc)   fields.fbc = fb.fbc;
+    if (fb.extId) fields.extId = fb.extId;
+    Object.keys(fields).forEach(function (k) {
+      var i = document.createElement('input');
+      i.type = 'hidden'; i.name = k; i.value = fields[k];
+      form.appendChild(i);
+    });
     document.body.appendChild(form);
     form.submit();
   }
@@ -5529,10 +5549,11 @@
     }
 
     try {
+      var fb = lettoFbAttribution();        // v32 · Meta attribution → CAPI Subscribe
       var resp = await fetch('/api/stripe-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: tier })
+        body: JSON.stringify({ tier: tier, fbp: fb.fbp, fbc: fb.fbc, extId: fb.extId })
       });
       var data = await resp.json();
       if (data && data.url) {

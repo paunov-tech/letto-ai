@@ -14,6 +14,7 @@ import Stripe from 'stripe';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
+import { metaCheckoutMetadata } from '../lib/meta-capi.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia'
@@ -116,7 +117,9 @@ async function handler(req, res) {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { source: 'letto', origin: 'landing', ...(tripId ? { tripId } : {}) },
+      // v32 · spread Meta attribution (fbp/fbc/letto_ext_id from body, ip/ua
+      // from headers) so the Stripe webhook can forward it to CAPI Subscribe.
+      metadata: { source: 'letto', origin: 'landing', ...(tripId ? { tripId } : {}), ...metaCheckoutMetadata(req, req.body) },
       subscription_data: { metadata: { source: 'letto' } },
       allow_promotion_codes: true,
       payment_method_collection: 'always',
