@@ -15,6 +15,21 @@
   } catch (e) { /* URLSearchParams unsupported · late body script handles it */ }
 </script>
 
+<!-- v35 · suppress [mix-v2] info logs in production. Re-enable in DevTools
+     with `window.LETTO_DEBUG = true` then refresh, or load with ?debug=1 in
+     the URL. Console.warn / console.error pass through unchanged. -->
+<script>
+(function () {
+  var orig = console.log.bind(console);
+  console.log = function () {
+    if (typeof arguments[0] === 'string' && arguments[0].indexOf('[mix-v2]') === 0) {
+      if (!window.LETTO_DEBUG && !/[?&]debug=1\b/.test(location.search)) return;
+    }
+    orig.apply(console, arguments);
+  };
+})();
+</script>
+
 <title>Letto · Rezultati pretrage</title>
 <meta name="description" content="Letto rezultati pretrage — letovi i hoteli u realnom vremenu.">
 
