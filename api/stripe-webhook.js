@@ -1,5 +1,8 @@
-// api/stripe-webhook.js — Handles Stripe subscription events
-// - checkout.session.completed → mark user premium + send Telegram invite
+// api/stripe-webhook.js — Handles Stripe subscription + invoice events
+// - checkout.session.completed    → mark user premium + Telegram invite + welcome email
+// - invoice.paid                  → record renewal (lastPaidAt)
+// - invoice.payment_failed        → flag subscriber + alert operator (Slack + Telegram)
+// - customer.subscription.updated → sync status (past_due / active / cancel-at-period-end)
 // - customer.subscription.deleted → revoke premium access
 
 import Stripe from 'stripe';
@@ -109,6 +112,29 @@ async function notifyAdminFallback({ email, inviteLink, reason }) {
     body: JSON.stringify({
       chat_id: chatId,
       text: `⚠️ <b>Welcome email failed (Resend)</b>\nSubscriber: <code>${email}</code>\nReason: <code>${reason}</code>\nManual invite: ${inviteLink}`,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true
+    })
+  }).catch(() => {});
+}
+
+// Telegram ping to the operator when a subscription renewal payment fails.
+// Mirrors notifyAdminFallback — silent no-op if Telegram env is unset, never
+// throws (best-effort alert; the webhook must still 200 back to Stripe).
+async function notifyAdminPaymentFailed({ email, amountDue, attemptCount, nextLabel, hostedUrl }) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!token || !chatId) return;
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: `⚠️ <b>Plaćanje pretplate palo</b>\n` +
+            `Pretplatnik: <code>${email}</code>\n` +
+            `Iznos: <code>${amountDue || '?'}</code> · pokušaj #${attemptCount || '?'}\n` +
+            `Sledeći pokušaj: ${nextLabel}` +
+            (hostedUrl ? `\nInvoice: ${hostedUrl}` : ''),
       parse_mode: 'HTML',
       disable_web_page_preview: true
     })
@@ -959,6 +985,67 @@ async function handler(req, res) {
         await db.collection('letto_subscribers').doc(subEmail.toLowerCase())
           .set(update, { merge: true });
         console.log(`[webhook] subscription.updated · ${subEmail} · ${sub.status} · cancelAtPeriodEnd=${sub.cancel_at_period_end}`);
+        break;
+      }
+
+      // Renewal payment failed. Stripe Smart Retries keeps trying on its own
+      // schedule; access revocation is handled by customer.subscription.updated
+      // (status → past_due). This case is notification-only: flag the
+      // subscriber doc + alert the operator. Stripe's built-in dunning emails
+      // the customer the "update your card" prompt.
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const email = (invoice.customer_email || '').toLowerCase();
+        if (!email) {
+          console.warn('[webhook] invoice.payment_failed with no customer_email — skipping');
+          break;
+        }
+
+        // Isolation guard (Stripe account shared with jadran.ai). A genuine
+        // letto subscriber already has a letto_subscribers doc from
+        // checkout.session.completed — its absence means this invoice isn't
+        // ours, so skip without writing a phantom doc.
+        const pfRef = db.collection('letto_subscribers').doc(email);
+        const pfSnap = await pfRef.get();
+        if (!pfSnap.exists) {
+          console.log(`[webhook] invoice.payment_failed · no letto_subscribers doc for ${email} — skipping`);
+          break;
+        }
+
+        const nextAttempt = invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1000)
+          : null;
+        const nextLabel = nextAttempt
+          ? nextAttempt.toLocaleDateString('sr-Latn', { day: 'numeric', month: 'short', year: 'numeric' })
+          : 'nema više pokušaja — pretplata ide u unpaid/canceled';
+        const amountDue = (typeof invoice.amount_due === 'number')
+          ? (invoice.amount_due / 100).toFixed(2) + ' ' + String(invoice.currency || 'eur').toUpperCase()
+          : null;
+
+        // lastPaymentFailedAt + retry context — survives in the subscriber doc
+        // so a future /me "payment failed, update your card" banner can read it.
+        await pfRef.set({
+          lastPaymentFailedAt: new Date().toISOString(),
+          lastPaymentFailedInvoiceId: invoice.id || null,
+          paymentFailedAttemptCount: invoice.attempt_count || null,
+          paymentRetryNextAt: nextAttempt ? nextAttempt.toISOString() : null
+        }, { merge: true });
+
+        await postSlackAlert(
+          `⚠️ Plaćanje pretplate palo · ${email} · ${amountDue || '?'} · pokušaj #${invoice.attempt_count || '?'} (${invoice.billing_reason || 'n/a'})\n` +
+          `Sledeći pokušaj: ${nextLabel}\n` +
+          `Invoice: ${invoice.hosted_invoice_url || '(nema hosted URL)'}`
+        ).catch(e => console.error('[webhook] payment_failed Slack alert failed:', e.message));
+
+        await notifyAdminPaymentFailed({
+          email,
+          amountDue,
+          attemptCount: invoice.attempt_count,
+          nextLabel,
+          hostedUrl: invoice.hosted_invoice_url
+        });
+
+        console.log(`[webhook] invoice.payment_failed · ${email} · attempt=${invoice.attempt_count} · next=${nextLabel}`);
         break;
       }
 
