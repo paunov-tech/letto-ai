@@ -3755,7 +3755,12 @@
 
         var transport = p.transport === 'bus' ? 'bus' : 'flight';
         var aria = transport === 'bus' ? 'bus + hotel + bus' : 'flight + hotel + flight';
-        var imgUrl = (p.imageUrl || '').replace(/[<>"']/g, '');
+        // v35.1 · 5/30 live packages have empty p.imageUrl (Pexels scrape
+        // never ran / failed). Fall back to the Booking.com hotel photo
+        // when present — every NO-IMG package in prod had hotel.photo set,
+        // so the card always renders SOMETHING instead of a flat gradient.
+        // CSP img-src 'self' data: blob: https: covers cf.bstatic.com.
+        var imgUrl = (p.imageUrl || (p.hotel && p.hotel.photo) || '').replace(/[<>"']/g, '');
         var imgAlt = esc((p.imageCredit && p.imageCredit.alt) || cityName);
         var photographer = esc((p.imageCredit && p.imageCredit.photographer) || '');
         var photographerUrl = ((p.imageCredit && p.imageCredit.photographerUrl) || '').replace(/[<>"']/g, '');
