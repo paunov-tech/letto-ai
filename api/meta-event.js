@@ -17,7 +17,10 @@ import { sendCapiEvent } from '../lib/meta-capi.js';
 
 // Only conversion events the client Pixel actually dual-fires. PageView is
 // deliberately NOT here — it's high-volume, browser-only by design.
-const ALLOWED_EVENTS = new Set(['Lead', 'InitiateCheckout']);
+// v36 · CompleteRegistration added — lead-capture.js fires it after email
+// submit on the free deal-card book funnel. Distinct iOS AEM signal for
+// FB optimisation of email-magnet campaigns.
+const ALLOWED_EVENTS = new Set(['Lead', 'InitiateCheckout', 'CompleteRegistration']);
 
 async function readJson(req) {
   if (req.body && typeof req.body === 'object') return req.body;

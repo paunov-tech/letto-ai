@@ -147,6 +147,29 @@
       // Network failure — don't block. We'd rather lose the lead than the click.
       console.warn('[lead-capture] fetch failed:', err && err.message);
     }
+    // v36 · fire Pixel Lead + CompleteRegistration on successful email
+    // capture, via the v33 lettoTrackPixel helper that dual-fires (browser
+    // fbq + /api/meta-event CAPI mirror with shared eventId). CR is a
+    // distinct iOS AEM signal — FB algorithm optimises better for email
+    // leads vs. generic Leads. Source carried in content_category for
+    // funnel segmentation (catalog vs try_it vs mix).
+    try {
+      if (window.lettoTrackPixel) {
+        window.lettoTrackPixel('Lead', {
+          content_name:     'deal_card_book',
+          content_category: pendingSource || 'catalog',
+          currency:         'EUR',
+          value:            0
+        });
+        window.lettoTrackPixel('CompleteRegistration', {
+          content_name:     'email_capture',
+          content_category: pendingSource || 'catalog',
+          status:           'completed',
+          currency:         'EUR',
+          value:            0
+        });
+      }
+    } catch (_) { /* Pixel optional · never block the click */ }
     markSkip();
     openLink();
     closeModal();
@@ -166,6 +189,10 @@
     document.addEventListener('click', function (ev) {
       // Skip flag still active — let the link open normally.
       if (skipActive()) return;
+      // v36 · premium / mix-unlocked users already gave email at subscribe;
+      // no point asking again — let the partner link open straight through.
+      if (document.body.classList.contains('letto-premium') ||
+          document.body.classList.contains('letto-mix-unlocked')) return;
       var a = ev.target && ev.target.closest && ev.target.closest('a[href]');
       if (!a) return;
       // Don't intercept clicks inside the modal itself.

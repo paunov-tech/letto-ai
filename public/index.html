@@ -3822,12 +3822,17 @@
         }
         var flightHref = (fl.bookingUrl || '').replace(/[<>"']/g, '');
 
-        // Booking buttons · flight + hotel. locked → BOTH disabled (lock
-        // glyph, no click); the .lock-corner-icon at top-left routes to
-        // #pricing. unlocked (try-it / premium) → both active, link out.
-        // The lead-capture modal still intercepts the booking click.
+        // v36 · pre-mix catalog cards = free lead-magnet funnel. The
+        // synthesized canonical Aviasales URL is always present (api/
+        // packages.js calls buildAviasalesUrl as fallback BEFORE scrub,
+        // and lib/package-shape.js no longer nulls bookingUrl). Render a
+        // real <a> for every card — lead-capture.js captures the click
+        // and prompts for email before letting it through. Premium users
+        // skip the modal (see lead-capture.js isPremiumUser check). The
+        // 🔒 span branch stays as a defensive fallback for the rare case
+        // a package is missing both real and synthesized booking URL.
         function dealBookBtn(kind, href, enLabel, srLabel, icon) {
-          if (locked || !href) {
+          if (!href) {
             return '<span class="deal-book-btn deal-book-btn--' + kind + ' is-locked" aria-disabled="true">' +
               '<span aria-hidden="true">🔒</span>' +
               '<span data-en>' + enLabel + '</span><span data-sr>' + srLabel + '</span>' +
@@ -3844,21 +3849,15 @@
           dealBookBtn('hotel', hotelHref, 'Book hotel', 'Rezerviši hotel', '🏨') +
         '</div>';
 
-        // Lock corner icon on locked cards — top-left badge, scrolls to
-        // #pricing on click. Replaces the old .unlock-strip; both booking
-        // buttons above stay disabled for free.
-        var lockCornerHtml = locked
-          ? '<button class="lock-corner-icon" type="button" '
-            + 'aria-label="Premium · klikni za detalje" '
-            + 'title="Premium · klikni za detalje" '
-            + 'data-action="scroll-to-pricing">'
-            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
-            + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
-            + 'width="16" height="16">'
-            + '<rect x="3" y="11" width="18" height="11" rx="2"/>'
-            + '<path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
-            + '</svg></button>'
-          : '';
+        // v36 · lock corner icon retired. Pre-mix catalog cards are now
+        // free funnel for everyone (with email via lead-capture.js). The
+        // gold lock badge implied "Premium to unlock", which is the wrong
+        // message for the new strategy. Premium is sold via the dedicated
+        // #pricing section + the Custom Mix paywall in results.html.
+        // Kept as an empty string (not removed from concat below) so the
+        // surrounding template stays diff-clean. The .lock-corner-icon
+        // CSS rule survives as orphan — harmless until a later cleanup.
+        var lockCornerHtml = '';
 
         var articleClass = 'deal-card' + (locked ? ' locked' : '');
 
@@ -4117,13 +4116,13 @@
 
         <ul class="features">
           <li><span class="check-icon">✓</span>
-            <span data-en>All deals unlocked</span><span data-sr>Svi dealovi otključani</span>
+            <span data-en>Custom Mix · build your own trip</span><span data-sr>Custom Mix · sastavi sopstveno putovanje</span>
           </li>
           <li><span class="check-icon">✓</span>
-            <span data-en>Unlimited Mix</span><span data-sr>Neograničeni Mix</span>
+            <span data-en>4h early access · new deals</span><span data-sr>4h ranije · novi dealovi</span>
           </li>
           <li><span class="check-icon">✓</span>
-            <span data-en>4h before everyone</span><span data-sr>4h pre svih</span>
+            <span data-en>Telegram premium channel</span><span data-sr>Telegram premium kanal</span>
           </li>
         </ul>
 
