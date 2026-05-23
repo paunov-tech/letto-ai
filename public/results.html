@@ -5377,10 +5377,26 @@
     if (p.adults)  qs.set('pax', String((p.adults || 0) + (p.children || 0)));
     if (packagesState.priceTier) qs.set('priceTier', packagesState.priceTier);
     qs.set('limit', '20');
+
+    // v34 · P0 · CDN cache poisoning fix. Without &auth=1 + X-Letto-Session,
+    // a premium caller hits the Vercel edge cache key for the plain URL —
+    // which serves the cached ANONYMOUS (scrubToPreview) response. That has
+    // flight.bookingUrl null, so bookFlight() falls into the "Re-pick the
+    // flight" alert / silent fail path EVEN THOUGH the user paid. Hotel
+    // booking still works because hotel.bookingUrl was un-scrubbed in
+    // 2026-05-16. Same pattern as index.html carousel fetch (~line 3898).
+    var pkgSid = null;
+    try {
+      pkgSid = localStorage.getItem('letto_premium_session') ||
+               localStorage.getItem('letto_mix_session');
+    } catch (_) {}
+    if (pkgSid) qs.set('auth', '1');
     var url = '/api/packages?' + qs.toString();
+    var fetchOpts = { headers: { 'Accept': 'application/json' } };
+    if (pkgSid) fetchOpts.headers['X-Letto-Session'] = pkgSid;
 
     var startedAt = Date.now();
-    fetch(url, { headers: { 'Accept': 'application/json' } })
+    fetch(url, fetchOpts)
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
