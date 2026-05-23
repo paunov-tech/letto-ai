@@ -640,6 +640,15 @@
     .logo-dropdown {
       width: calc(100vw - 24px);
       max-width: 440px;
+      /* v35 · cap height + scroll inside. Mobile dropdown stacks columns
+         vertically and grows tall (~11 links + header CTAs); base rule has
+         overflow:hidden so anything past the viewport bottom is CLIPPED —
+         "Moj nalog" (link to /me login flow) sits below the fold and is
+         unreachable. Opening the y-axis lets the menu actually scroll. */
+      max-height: calc(100vh - 96px);
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .dropdown-header { padding: 18px 20px 16px; }
     .dropdown-header-title { font-size: 20px; }
@@ -1789,15 +1798,20 @@
     .tier .price-main { font-size: 40px; }
   }
 
-  /* MOBILE — asimetrija + kompaktno */
+  /* MOBILE · v35 — stack tiers vertically. The previous asymmetric 2-column
+     attempt (0.82fr / 1.18fr) kept Premium narrower than its content needs
+     (ribbon + €9.99 + 4-line features) — phone users couldn't read the offer.
+     Single column at max-width 420px centers cleanly and lets each card
+     breathe. The mobile typography tweaks below (eyebrow / price / features)
+     stay — they're still right for a narrower card. */
   @media (max-width: 768px) {
     .pricing-grid {
-      grid-template-columns: 0.82fr 1.18fr;
-      gap: 10px;
-      max-width: 100%;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      max-width: 420px;
     }
-    .tier { padding: 16px 12px; border-radius: 10px; }
-    .tier.free { transform: scale(0.97); transform-origin: top left; }
+    .tier { padding: 22px 20px; border-radius: 12px; }
+    .tier.free { transform: none; }
 
     .tier .eyebrow { font-size: 8.5px; letter-spacing: 0.18em; margin-bottom: 10px; }
     .tier .price-main { font-size: 26px; letter-spacing: -0.025em; }
@@ -2603,7 +2617,13 @@
     .deal-modal-pricing .cell:last-child { border-bottom: none; }
     .included-bar { padding: 22px 24px; }
     .included-items { grid-template-columns: 1fr; gap: 18px; }
-    .paywall-overlay { padding: 16px; }
+    /* v35 · the gate's min-height (400px) was tighter than the card's
+       content height (~345px + breathing room). With overlay align-items
+       :flex-end the card was pushed into the gate's overflow:hidden ceiling
+       — phone users saw only the bottom half of the offer. Taller gate +
+       centred overlay puts the full card inside the visible band. */
+    .paywall-gate { min-height: 560px; }
+    .paywall-overlay { padding: 16px; align-items: center; }
     .paywall-card { padding: 20px 22px 18px; }
     .paywall-title { font-size: 18px; }
     .price-main { font-size: 48px; }
@@ -2785,7 +2805,15 @@
       rgba(10, 13, 17, 0.92) 100%
     );
   }
-  .deal-grid > .letto-billboard { flex: 0 0 calc((100% - 72px) / 3.3); }
+  .deal-grid > .letto-billboard {
+    flex: 0 0 calc((100% - 72px) / 3.3);
+    /* v35 · the carousel uses scroll-snap-type:x-mandatory and only the
+       .deal-card siblings declare scroll-snap-align — so a swipe across
+       the carousel skips PAST the billboard without ever landing on it.
+       Adding a snap stop here makes the billboard a first-class slide. */
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
   @media (min-width: 1025px) {
     .deal-grid > .letto-billboard { flex: 0 0 calc((100% - 72px) / 3.3); }
   }
@@ -4175,7 +4203,18 @@
     meta.textContent = getLang() === 'sr' ? (left + ' još za prikaz') : (left + ' more to view');
   }
 
-  btn.addEventListener('click', function () { stage += 1; update(); });
+  btn.addEventListener('click', function () {
+    stage += 1;
+    update();
+    // v35 · force-load lazy images inside the newly-revealed cards.
+    // Native loading="lazy" can stall when the parent card was display:none
+    // (CSS reveal via is-expanded-N class) — mobile Chrome/Safari don't always
+    // re-trigger the lazy IntersectionObserver after the parent reappears, so
+    // cards 7+ render with empty <img>. Flipping to eager forces the request.
+    grid.querySelectorAll('img[loading="lazy"]').forEach(function (img) {
+      img.loading = 'eager';
+    });
+  });
   new MutationObserver(function () { update(); }).observe(grid, { childList: true });
   window.addEventListener('resize', update);
   window.addEventListener('letto:lang-changed', update);
