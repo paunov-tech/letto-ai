@@ -4275,6 +4275,15 @@
     outline: 2px solid #D9A94A;
     outline-offset: 2px;
   }
+  /* v41 · breadcrumb nav · same look as destination landing pages. */
+  .breadcrumbs { padding: 12px 16px; font-size: 13px; color: #5C6470; max-width: 720px; margin: 0 auto; }
+  .breadcrumbs ol { list-style: none; padding: 0; margin: 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .breadcrumbs li { display: flex; align-items: center; }
+  .breadcrumbs li + li::before { content: "›"; margin-right: 8px; color: #b8b1a0; font-size: 16px; }
+  .breadcrumbs a { color: #5C6470; text-decoration: none; }
+  .breadcrumbs a:hover { color: #A17433; text-decoration: underline; }
+  .breadcrumbs li[aria-current="page"] { color: #1F2226; font-weight: 500; }
+  @media (max-width: 480px) { .breadcrumbs { font-size: 12px; padding: 10px 14px; } }
 </style>
 <script>
   window.addEventListener('error', function (e) {
@@ -4297,6 +4306,79 @@
 <body class="lang-en">
 <!-- v40 polish · WCAG skip-link · jump past nav into Mix search results. -->
 <a class="skip-to-content" href="#mix-stages"><span data-en>Skip to results</span><span data-sr>Pređi na rezultate</span></a>
+<!-- v41 · dynamic breadcrumb populated from URL params · LETTO_DESTINATIONS
+     IATA → city lookup. JSON-LD schema injected in head for Google. -->
+<nav class="breadcrumbs" id="lettoBreadcrumbs" aria-label="Putanja"></nav>
+<script>
+// Defer to DOMContentLoaded · window.LETTO_DESTINATIONS loads further
+// down in body (line ~4909), so we need it parsed before lookup.
+function lettoBuildBreadcrumb() {
+  var nav = document.getElementById('lettoBreadcrumbs');
+  if (!nav || nav.childElementCount) return;  // idempotent
+  var p = new URLSearchParams(location.search);
+  var dest = (p.get('dest') || p.get('destination_iata') || '').toUpperCase();
+  var noFlight = p.get('no_flight') === '1';
+  // Lang follows body class set by the i18n switcher · default sr.
+  var isSr = !document.body.classList.contains('lang-en');
+
+  var destEntry = null;
+  if (dest && Array.isArray(window.LETTO_DESTINATIONS)) {
+    for (var i = 0; i < window.LETTO_DESTINATIONS.length; i++) {
+      if (window.LETTO_DESTINATIONS[i].iata === dest) { destEntry = window.LETTO_DESTINATIONS[i]; break; }
+    }
+  }
+  var leaf = destEntry
+    ? (isSr ? destEntry.city : destEntry.cityEn)
+    : (noFlight
+        ? (isSr ? 'Samo hotel' : 'Hotel only')
+        : (isSr ? 'Pretraga' : 'Search'));
+
+  // Build crumbs · Home → All deals → leaf
+  var crumbs = [
+    { name: isSr ? 'Početna' : 'Home',          href: '/' },
+    { name: isSr ? 'Sve ponude' : 'All deals',  href: '/#deals' },
+    { name: leaf }
+  ];
+
+  // Visible nav
+  var ol = document.createElement('ol');
+  crumbs.forEach(function (c, i) {
+    var li = document.createElement('li');
+    if (c.href) {
+      var a = document.createElement('a');
+      a.href = c.href;
+      a.textContent = c.name;
+      li.appendChild(a);
+    } else {
+      li.setAttribute('aria-current', 'page');
+      li.textContent = c.name;
+    }
+    ol.appendChild(li);
+  });
+  nav.appendChild(ol);
+
+  // BreadcrumbList JSON-LD for Google Rich Results
+  var origin = location.origin;
+  var ld = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: crumbs.map(function (c, i) {
+      var item = { '@type': 'ListItem', position: i + 1, name: c.name };
+      if (c.href) item.item = origin + c.href;
+      return item;
+    })
+  };
+  var s = document.createElement('script');
+  s.type = 'application/ld+json';
+  s.textContent = JSON.stringify(ld);
+  document.head.appendChild(s);
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', lettoBuildBreadcrumb);
+} else {
+  lettoBuildBreadcrumb();
+}
+</script>
 <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=2513952102382319&ev=PageView&noscript=1"/></noscript>
 
 <!-- ═══════════════════════════════════════════════ -->

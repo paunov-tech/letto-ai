@@ -171,10 +171,15 @@ function renderPage({ dest, lang, hero, deals, otherDests }) {
         address: { '@type': 'PostalAddress', addressCountry: dest.country }
       },
       {
+        // v41 · 3-level breadcrumb · Home → All deals (#deals anchor) → city.
+        // /#deals is a real anchor on the homepage carousel, so the middle
+        // crumb is a clickable hop, not a 404 trap (we don't have a
+        // dedicated /destinations index page).
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Letto', item: ORIGIN + '/' },
-          { '@type': 'ListItem', position: 2, name: city, item: canonical }
+          { '@type': 'ListItem', position: 1, name: isSr ? 'Početna' : 'Home',          item: ORIGIN + '/' },
+          { '@type': 'ListItem', position: 2, name: isSr ? 'Sve ponude' : 'All deals', item: ORIGIN + '/#deals' },
+          { '@type': 'ListItem', position: 3, name: city,                                item: canonical }
         ]
       },
       ...(deals && deals.length ? [{
@@ -239,6 +244,15 @@ ${hero ? `<meta property="og:image" content="${esc(hero.url)}" />` : ''}
   .other-links a { color: #A17433; }
   footer { text-align: center; padding: 32px 24px 48px; color: #8a8076; font-size: 12px; }
   footer a { color: #A17433; }
+  /* v41 · breadcrumb nav · slim line between hero and main content. */
+  .breadcrumbs { padding: 12px 16px; font-size: 13px; color: #5C6470; max-width: 720px; margin: 0 auto; }
+  .breadcrumbs ol { list-style: none; padding: 0; margin: 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .breadcrumbs li { display: flex; align-items: center; }
+  .breadcrumbs li + li::before { content: "›"; margin-right: 8px; color: #b8b1a0; font-size: 16px; }
+  .breadcrumbs a { color: #5C6470; text-decoration: none; }
+  .breadcrumbs a:hover { color: #A17433; text-decoration: underline; }
+  .breadcrumbs li[aria-current="page"] { color: #1F2226; font-weight: 500; }
+  @media (max-width: 480px) { .breadcrumbs { font-size: 12px; padding: 10px 14px; } }
 </style>
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
@@ -251,6 +265,14 @@ ${hero ? `<meta property="og:image" content="${esc(hero.url)}" />` : ''}
   <h1>${esc(t.h1)}</h1>
   ${heroCredit}
 </header>
+
+<nav class="breadcrumbs" aria-label="${isSr ? 'Putanja' : 'Breadcrumb'}">
+  <ol>
+    <li><a href="/">${isSr ? 'Početna' : 'Home'}</a></li>
+    <li><a href="/#deals">${isSr ? 'Sve ponude' : 'All deals'}</a></li>
+    <li aria-current="page">${esc(city)}</li>
+  </ol>
+</nav>
 
 <main>
   <p class="intro">${esc(intro)}</p>
