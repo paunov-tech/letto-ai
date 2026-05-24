@@ -1,13 +1,17 @@
-/* LETTO · Google Analytics 4 · dual tracking · GDPR Consent Mode v2
+/* LETTO · Google Analytics 4 · GDPR Consent Mode v2
  *
- *   GA_IDS[0]  G-7S08G830GK   — original Letto property (v37)
- *   GA_IDS[1]  G-WLXPWVNFNJ   — Sial > molty-portal > Letto stream
+ *   GA_IDS[0]  G-WLXPWVNFNJ   — Sial > molty-portal > Letto stream
+ *                              (sole live property; G-7S08G830GK dropped
+ *                               on cleanup — verified absent from GA4
+ *                               Admin Account history + Realtime overview,
+ *                               only G-WLXPWVNFNJ shows incoming traffic)
  *
- * Loads gtag.js once and registers a gtag('config', …) per ID — gtag.js
- * natively multiplexes events to every configured property, so a single
- * page_view fires two /g/collect pings (one tid per property). Consent
- * Mode v2 settings are GLOBAL across all properties — one consent default
- * + one consent update covers both.
+ * Loads gtag.js once and registers a gtag('config', …) per ID. The
+ * structure stays array-shaped so a second property can be added back
+ * as a one-line edit — gtag.js natively multiplexes events to every
+ * configured property without further wiring. Consent Mode v2 settings
+ * are GLOBAL — one consent default + one consent update covers any
+ * number of configured properties.
  *
  * Consent: gtag.js loads immediately with default = denied for both
  * analytics_storage and ad_storage. No actual events leave the browser
@@ -29,7 +33,7 @@
  */
 (function () {
   'use strict';
-  var GA_IDS = ['G-7S08G830GK', 'G-WLXPWVNFNJ'];
+  var GA_IDS = ['G-WLXPWVNFNJ'];
 
   // dataLayer + gtag bootstrap. Defined BEFORE gtag.js loads so its
   // first calls don't race against the async script tag below.
