@@ -337,4 +337,20 @@
   } else {
     boot();
   }
+
+  // v40.4 · Service Worker registration · offline-first cache layer.
+  // Deferred past window.load + 1.2s so it doesn't compete with critical
+  // resources. Fail-open: if register throws (Safari private mode, no SW
+  // support, network blip) the page still works exactly as before. The
+  // SW itself (public/sw.js) has cache-first for static, network-first
+  // for HTML, network-only for /api/*, and pass-through for 3rd-party.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        navigator.serviceWorker.register('/sw.js').catch(function (err) {
+          console.warn('[letto-sw] register failed:', err && err.message);
+        });
+      }, 1200);
+    });
+  }
 })();
