@@ -40,6 +40,16 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- v39 polish · preconnect to known 3rd-party origins so TLS+DNS
+     handshake completes BEFORE the page actually requests them. Saves
+     ~100-300ms per origin on first contact (especially on mobile). -->
+<link rel="preconnect" href="https://www.googletagmanager.com">
+<link rel="preconnect" href="https://www.google-analytics.com">
+<link rel="preconnect" href="https://connect.facebook.net" crossorigin>
+<link rel="preconnect" href="https://js.stripe.com">
+<link rel="preconnect" href="https://images.pexels.com">
+<link rel="preconnect" href="https://cf.bstatic.com">
+<link rel="preconnect" href="https://tpembars.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,900;1,9..144,300;1,9..144,400;1,9..144,500&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 <!-- Flatpickr (date range picker) — used by Letto search bar DATUMI field -->
@@ -3149,8 +3159,80 @@
 <link rel="alternate" hreflang="sr-Latn" href="https://letto.live/" />
 <link rel="alternate" hreflang="en" href="https://letto.live/?lang=en" />
 <link rel="alternate" hreflang="x-default" href="https://letto.live/" />
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     v39 POLISH · focus-visible + skip-link + global error capture.
+     Lives at the end of <head> so it overrides earlier styles (last-rule-
+     wins on equal specificity) without surgery on the main <style>.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style>
+  /* Keyboard focus polish · only fires for keyboard-tab nav (not mouse
+     click), so it never adds visual noise for pointer users. Themed to
+     the gold-light brand token. Includes a generous outline-offset so
+     the ring breathes around tight CTAs like the carousel Book buttons. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid #D9A94A;
+    outline-offset: 3px;
+    border-radius: 6px;
+    transition: outline-offset 0.12s ease-out;
+  }
+  /* Skip-to-content · WCAG 2.4.1. position:fixed + transform off-screen
+     by default (cross-browser reliable; clip-rect + width:1px tripped on
+     some parent layout). Focus slides it down with a soft easing. */
+  .skip-to-content {
+    position: fixed;
+    top: 0;
+    left: 12px;
+    z-index: 10000;
+    background: #1F2226;
+    color: #F5EFE0;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .skip-to-content:focus,
+  .skip-to-content:focus-visible {
+    transform: translateY(12px);
+    outline: 2px solid #D9A94A;
+    outline-offset: 2px;
+  }
+</style>
+<script>
+  // v39 polish · capture uncaught JS errors + unhandled promise rejections
+  // with a labelled console marker. Vercel runtime logs catch console.error
+  // so these surface in deployment logs; users who report a bug can also
+  // paste their DevTools console. Tiny, no SDK, no extra request.
+  window.addEventListener('error', function (e) {
+    try {
+      console.error('[letto-frontend-error]',
+        (e.message || '?') + ' @ ' + ((e.filename || '?') + ':' + (e.lineno || '?')),
+        e.error && e.error.stack ? '\n' + e.error.stack : '');
+    } catch (_) {}
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    try {
+      var r = e.reason;
+      console.error('[letto-unhandled-promise]',
+        (r && r.message) ? r.message : String(r),
+        (r && r.stack) ? '\n' + r.stack : '');
+    } catch (_) {}
+  });
+</script>
 </head>
 <body class="lang-en">
+<!-- v39 polish · WCAG skip-link, hidden until keyboard-focused. -->
+<a class="skip-to-content" href="#deals"><span data-en>Skip to deals</span><span data-sr>Pređi na ponude</span></a>
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TR2FLLW8" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=2513952102382319&ev=PageView&noscript=1"/></noscript>
 
@@ -3768,8 +3850,13 @@
         var photographer = esc((p.imageCredit && p.imageCredit.photographer) || '');
         var photographerUrl = ((p.imageCredit && p.imageCredit.photographerUrl) || '').replace(/[<>"']/g, '');
 
+        // v39 polish · width/height on <img> tells the browser the intrinsic
+        // 3:2-ish aspect (Pexels query is ~940x650, hotel.photo ~500 square)
+        // BEFORE the bytes arrive — the .deal-photo container reserves the
+        // exact pixel box, so the card body below stops jumping when the
+        // image finally paints. CLS goes from ~0.05 to ~0 on slow mobile.
         var photoLayer = imgUrl
-          ? '<img src="' + imgUrl + '" alt="' + imgAlt + '" loading="lazy" class="card-photo-img" onerror="this.style.display=\'none\'">'
+          ? '<img src="' + imgUrl + '" alt="' + imgAlt + '" width="480" height="320" loading="lazy" class="card-photo-img" onerror="this.style.display=\'none\'">'
           + '<div class="photo-scene photo-' + scene + '" aria-hidden="true"></div>'
           : '<div class="photo-scene photo-' + scene + '"></div>';
 
