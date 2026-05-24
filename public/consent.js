@@ -301,6 +301,25 @@
     document.addEventListener('lettoConsentChanged', listener);
   };
 
+  // GA4 analytics-grant helper (v37). Same pattern as lettoFireFbPixel but
+  // gates on .analytics instead of .marketing — distinct GDPR category, the
+  // user can accept analytics without accepting marketing. ga4.js uses this
+  // to upgrade gtag('consent') from 'denied' to 'granted'.
+  window.lettoFireGaAnalytics = function (fn) {
+    var c = window.lettoConsent;
+    if (c && c.analytics) {
+      try { fn(); } catch (e) { console.error('[letto-consent] GA4 fn threw:', e); }
+      return;
+    }
+    var listener = function (ev) {
+      if (ev.detail && ev.detail.analytics) {
+        document.removeEventListener('lettoConsentChanged', listener);
+        try { fn(); } catch (e) { console.error('[letto-consent] GA4 fn threw:', e); }
+      }
+    };
+    document.addEventListener('lettoConsentChanged', listener);
+  };
+
   // ─── Boot ──────────────────────────────────────────────────
   function boot() {
     injectStyles();

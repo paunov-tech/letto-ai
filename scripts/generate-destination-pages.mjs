@@ -208,6 +208,7 @@ function renderPage({ dest, lang, hero, deals, otherDests }) {
 ${hero ? `<meta property="og:image" content="${esc(hero.url)}" />` : ''}
 <script src="/consent.js" defer></script>
 <script src="/pixel.js" defer></script>
+<script src="/ga4.js" defer></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'IBM Plex Sans', -apple-system, sans-serif; color: #1f1a16; background: #fffdf7; line-height: 1.5; }
