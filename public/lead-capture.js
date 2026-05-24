@@ -1,34 +1,39 @@
-// public/lead-capture.js — Email-capture interstitial before external booking
+// public/lead-capture.js — MANDATORY email gate before external booking
 // link clicks. Same script ships on index.html / results.html / trip.html;
 // script is idempotent so accidental double-include is harmless.
 //
-// Flow:
+// Flow (v36.1 · email is required to proceed):
 //   - User clicks a[href*=booking-host] (Wizz / Booking / Kiwi / Aviasales /
 //     TPEmbars / Air Serbia / Turkish Airlines).
-//   - capture-phase listener intercepts, opens modal IF a 24h skip flag is
-//     NOT set in localStorage.
-//   - "Save & open" → POST /api/lead-capture → window.open(url, '_blank') →
-//     set localStorage skip flag.
-//   - "Skip this time" → set skip flag → window.open(url, '_blank') without
-//     POSTing.
-//   - Backdrop click → close, no flag, no open (pure cancel).
+//   - capture-phase listener intercepts, opens modal UNLESS the visitor has
+//     already submitted email on a previous click (permanent unlock flag
+//     in localStorage). Premium / mix-unlocked subscribers also skip — they
+//     gave email at Stripe checkout.
+//   - "Save & open" → POST /api/lead-capture → permanently mark unlocked
+//     → fire Pixel Lead + CompleteRegistration → window.open(url, '_blank').
+//   - Backdrop / ESC / X close → cancel (no unlock, no open). The user
+//     can come back to the same deal via another click.
+//
+// The previous "Skip this time" escape hatch was removed in v36.1 — email
+// is now mandatory for the free pre-mix catalog funnel (per product spec).
+// The X / backdrop cancel survives so users can recover from an accidental
+// click without being forced to enter email.
 
 (function () {
   if (window.__lettoLeadCapture) return;
   window.__lettoLeadCapture = true;
 
   var BOOKING_HOST_RE = /(?:wizz(?:air)?|booking|kiwi|airserbia|turkishairlines|aviasales|tpembars)\.com/i;
-  var SKIP_KEY = 'letto_lead_modal_skip_until';
-  var SKIP_MS = 24 * 3600 * 1000;
+  // v36.1 · localStorage key name kept for migration — legacy 24h-expiring
+  // timestamp values still parse as truthy under the new permanent check
+  // below, so visitors who unlocked under the old flag stay unlocked.
+  var LEAD_UNLOCK_KEY = 'letto_lead_modal_skip_until';
 
-  function skipActive() {
-    try {
-      var until = parseInt(localStorage.getItem(SKIP_KEY), 10);
-      return until && until > Date.now();
-    } catch (e) { return false; }
+  function isLeadUnlocked() {
+    try { return !!localStorage.getItem(LEAD_UNLOCK_KEY); } catch (e) { return false; }
   }
-  function markSkip() {
-    try { localStorage.setItem(SKIP_KEY, String(Date.now() + SKIP_MS)); } catch (e) {}
+  function markLeadUnlocked() {
+    try { localStorage.setItem(LEAD_UNLOCK_KEY, '1'); } catch (e) {}
   }
 
   function injectStyle() {
@@ -48,8 +53,6 @@
       '.lead-modal__save { background: #1F2226; color: #FAF6EA; border: none; border-radius: 8px; padding: 11px 18px; font-family: "IBM Plex Sans", sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: 0.01em; }',
       '.lead-modal__save:hover { background: #3A3F47; }',
       '.lead-modal__save:disabled { background: #6A604D; cursor: wait; }',
-      '.lead-modal__skip { background: none; border: none; color: #6A604D; font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; cursor: pointer; margin-top: 14px; text-decoration: underline; display: block; padding: 0; }',
-      '.lead-modal__skip:hover { color: #1F2226; }',
       '.lead-modal__error { color: #7C1E29; font-size: 12px; margin-top: 10px; font-family: "JetBrains Mono", monospace; min-height: 14px; }',
     ].join('\n');
     document.head.appendChild(s);
@@ -69,8 +72,8 @@
           '<span data-sr>Pre nego što odeš na <span data-lead-host>partnera</span>…</span>',
         '</h3>',
         '<p class="lead-modal__copy">',
-          '<span data-en>📧 Leave your email — we send 1–3 similar deals weekly. No spam, one-click unsubscribe.</span>',
-          '<span data-sr>📧 Ostavi email — šaljemo 1-3 slična deal-a nedeljno. Bez spama, 1 klik odjava.</span>',
+          '<span data-en>📧 Leave your email to unlock the deal — we send 1–3 similar deals weekly. No spam, one-click unsubscribe.</span>',
+          '<span data-sr>📧 Ostavi email da otključaš deal — šaljemo 1-3 slična deal-a nedeljno. Bez spama, 1 klik odjava.</span>',
         '</p>',
         '<form class="lead-modal__form" autocomplete="off">',
           '<input type="email" name="email" class="lead-modal__email" placeholder="email@adresa.com" required>',
@@ -80,10 +83,6 @@
           '</button>',
         '</form>',
         '<div class="lead-modal__error" data-lead-error></div>',
-        '<button type="button" class="lead-modal__skip" data-lead-skip>',
-          '<span data-en>Skip this time</span>',
-          '<span data-sr>Preskoči ovaj put</span>',
-        '</button>',
       '</div>'
     ].join('');
     document.body.appendChild(div);
@@ -170,12 +169,11 @@
         });
       }
     } catch (_) { /* Pixel optional · never block the click */ }
-    markSkip();
+    markLeadUnlocked();
     openLink();
     closeModal();
   }
 
-  function onSkip() { markSkip(); openLink(); closeModal(); }
   function onCancel() { closeModal(); }
 
   function isBookingHost(url) {
@@ -187,8 +185,8 @@
 
   function interceptClicks() {
     document.addEventListener('click', function (ev) {
-      // Skip flag still active — let the link open normally.
-      if (skipActive()) return;
+      // Already unlocked (email submitted on a previous click) — let it open.
+      if (isLeadUnlocked()) return;
       // v36 · premium / mix-unlocked users already gave email at subscribe;
       // no point asking again — let the partner link open straight through.
       if (document.body.classList.contains('letto-premium') ||
@@ -221,7 +219,6 @@
     errorEl = modal.querySelector('[data-lead-error]');
     saveBtn = modal.querySelector('.lead-modal__save');
     form.addEventListener('submit', onSubmit);
-    modal.querySelector('[data-lead-skip]').addEventListener('click', onSkip);
     modal.querySelector('[data-lead-cancel]').addEventListener('click', onCancel);
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !modal.hidden) onCancel();
