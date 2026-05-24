@@ -1,10 +1,19 @@
-/* LETTO · Google Analytics 4 (G-7S08G830GK) · GDPR Consent Mode v2
+/* LETTO · Google Analytics 4 · dual tracking · GDPR Consent Mode v2
  *
- * Loads gtag.js immediately with consent default = denied for both
+ *   GA_IDS[0]  G-7S08G830GK   — original Letto property (v37)
+ *   GA_IDS[1]  G-WLXPWVNFNJ   — Sial > molty-portal > Letto stream
+ *
+ * Loads gtag.js once and registers a gtag('config', …) per ID — gtag.js
+ * natively multiplexes events to every configured property, so a single
+ * page_view fires two /g/collect pings (one tid per property). Consent
+ * Mode v2 settings are GLOBAL across all properties — one consent default
+ * + one consent update covers both.
+ *
+ * Consent: gtag.js loads immediately with default = denied for both
  * analytics_storage and ad_storage. No actual events leave the browser
  * until consent.js dispatches the analytics grant via
  * lettoFireGaAnalytics(), which calls
- * gtag('consent', 'update', { analytics_storage: 'granted', ... }).
+ * gtag('consent', 'update', { analytics_storage: 'granted', … }).
  *
  * Loaded by every consent-enabled user-facing HTML — same set as pixel.js.
  * Skipped on admin*.html / metrics.html (internal, no consent.js).
@@ -16,11 +25,11 @@
  *   measurement even for users who decline cookies, which the strict
  *   block-load pattern can't provide.
  *
- * Swap the ID? One-line change here.
+ * Add or swap an ID? Edit the GA_IDS array — everything else flows.
  */
 (function () {
   'use strict';
-  var GA_ID = 'G-7S08G830GK';
+  var GA_IDS = ['G-7S08G830GK', 'G-WLXPWVNFNJ'];
 
   // dataLayer + gtag bootstrap. Defined BEFORE gtag.js loads so its
   // first calls don't race against the async script tag below.
@@ -28,26 +37,33 @@
   window.gtag = function () { dataLayer.push(arguments); };
   gtag('js', new Date());
 
-  // Consent default · DENIED. wait_for_update gives the consent gate
-  // 500ms to flip to 'granted' before any queued event would flush —
-  // mostly belt-and-suspenders since the only queued event here is
-  // the page_view from gtag('config') below, and it'll fire whether
-  // granted or denied (denied → cookieless ping, granted → full event).
+  // Consent default · DENIED — single GLOBAL call, applies to every
+  // GA4 property configured below. wait_for_update gives the consent
+  // gate 500ms to flip to 'granted' before any queued event would
+  // flush. Page_view fires either way (denied → cookieless ping per
+  // property, granted → full event per property).
   gtag('consent', 'default', {
     analytics_storage: 'denied',
     ad_storage: 'denied',
     wait_for_update: 500
   });
 
-  gtag('config', GA_ID, {
-    anonymize_ip: true,
-    send_page_view: true
+  // Per-property config. gtag.js dispatches each event to every
+  // configured property in parallel — no need to call gtag('event')
+  // per ID later.
+  GA_IDS.forEach(function (id) {
+    gtag('config', id, {
+      anonymize_ip: true,
+      send_page_view: true
+    });
   });
 
-  // Inject gtag.js · async so it never blocks the page parse.
+  // Inject gtag.js ONCE · the bootstrap is universal and serves all
+  // configured GA4 properties simultaneously. Using GA_IDS[0] in the
+  // src is purely conventional (Google's snippet picks the first one).
   var s = document.createElement('script');
   s.async = true;
-  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_IDS[0];
   document.head.appendChild(s);
 
   // Hook into consent.js · upgrade to granted the moment the visitor
