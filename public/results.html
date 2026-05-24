@@ -62,6 +62,17 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- v40 polish · mirror of v39 index.html preconnects · TLS+DNS handshake
+     completes BEFORE the page actually requests them. Mix flow hits
+     hotels.com (via cf.bstatic.com images), Aviasales (tpembars partner
+     resolution), Stripe checkout, GA4, GTM — all benefit. -->
+<link rel="preconnect" href="https://www.googletagmanager.com">
+<link rel="preconnect" href="https://www.google-analytics.com">
+<link rel="preconnect" href="https://connect.facebook.net" crossorigin>
+<link rel="preconnect" href="https://js.stripe.com">
+<link rel="preconnect" href="https://images.pexels.com">
+<link rel="preconnect" href="https://cf.bstatic.com">
+<link rel="preconnect" href="https://tpembars.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,900;1,9..144,300;1,9..144,400;1,9..144,500&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -4223,8 +4234,69 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SearchResultsPage","@id":"https://letto.live/results#page","url":"https://letto.live/results","inLanguage":"sr-Latn","name":"Letto · Rezultati pretrage","description":"Letto rezultati pretrage — letovi i hoteli u realnom vremenu.","isPartOf":{"@id":"https://letto.live/#website"}}
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     v40 POLISH · focus-visible + skip-link + global error capture.
+     Mirror of v39 (public/index.html) — Mix flow is JS-heavy so the error
+     capture especially matters here.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style>
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid #D9A94A;
+    outline-offset: 3px;
+    border-radius: 6px;
+    transition: outline-offset 0.12s ease-out;
+  }
+  .skip-to-content {
+    position: fixed;
+    top: 0;
+    left: 12px;
+    z-index: 10000;
+    background: #1F2226;
+    color: #F5EFE0;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .skip-to-content:focus,
+  .skip-to-content:focus-visible {
+    transform: translateY(12px);
+    outline: 2px solid #D9A94A;
+    outline-offset: 2px;
+  }
+</style>
+<script>
+  window.addEventListener('error', function (e) {
+    try {
+      console.error('[letto-frontend-error]',
+        (e.message || '?') + ' @ ' + ((e.filename || '?') + ':' + (e.lineno || '?')),
+        e.error && e.error.stack ? '\n' + e.error.stack : '');
+    } catch (_) {}
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    try {
+      var r = e.reason;
+      console.error('[letto-unhandled-promise]',
+        (r && r.message) ? r.message : String(r),
+        (r && r.stack) ? '\n' + r.stack : '');
+    } catch (_) {}
+  });
+</script>
 </head>
 <body class="lang-en">
+<!-- v40 polish · WCAG skip-link · jump past nav into Mix search results. -->
+<a class="skip-to-content" href="#mix-stages"><span data-en>Skip to results</span><span data-sr>Pređi na rezultate</span></a>
 <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=2513952102382319&ev=PageView&noscript=1"/></noscript>
 
 <!-- ═══════════════════════════════════════════════ -->
@@ -5088,8 +5160,13 @@
       ? (h.distanceToCenter + ' km ' + (l === 'en' ? 'from center' : 'od centra'))
       : '';
     var loc = [h.neighborhood, distancePart].filter(Boolean).join(' · ');
+    // v40 polish · width/height tells browser the intrinsic aspect (Booking.com
+    // cf.bstatic.com is typically 500x500 square; setting 480x320 matches the
+    // typical .hotel-card__photo CSS box ratio with object-fit:cover). Reserves
+    // the layout box BEFORE bytes arrive — Mix flow scrolling stops jumping
+    // when each hotel image finally paints.
     var photoHtml = h.photo
-      ? '<img src="' + escapeHtml(h.photo) + '" alt="' + escapeHtml(h.name) + '" loading="lazy" />'
+      ? '<img src="' + escapeHtml(h.photo) + '" alt="' + escapeHtml(h.name) + '" width="480" height="320" loading="lazy" />'
       : '<div class="hotel-card__photo-placeholder">' + escapeHtml(h.name.slice(0, 32)) + '</div>';
     var isSelected = (selectedId && String(selectedId) === String(h.id));
     var totalLabel = (l === 'en')
