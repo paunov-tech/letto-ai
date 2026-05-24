@@ -21,6 +21,70 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DESTINATIONS } from './lib/destinations.mjs';
+import { FAQ_DATA } from './lib/destinations-faq.mjs';
+
+// v43-A · helpers for FAQPage rendering. Pure functions, no state.
+const MONTH_NAMES_SR = ['januar','februar','mart','april','maj','jun','jul','avgust','septembar','oktobar','novembar','decembar'];
+const MONTH_NAMES_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function formatDuration(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return m + 'min';
+  return m === 0 ? h + 'h' : h + 'h ' + m + 'min';
+}
+
+function formatMonths(months, isSr) {
+  const names = isSr ? MONTH_NAMES_SR : MONTH_NAMES_EN;
+  return months.map(m => names[m - 1]).join(', ');
+}
+
+// Builds the 5 FAQ Q/A objects per destination. Same template every page —
+// the variation lives in the data (range, duration, months, visa note),
+// which is the right level of pSEO repetition: each page has unique
+// answers, identical structure → Google sees "consistent FAQ schema",
+// users get destination-specific facts.
+function buildFaqEntities({ faq, city, isSr }) {
+  const dur = formatDuration(faq.flight_duration_min_from_beg);
+  const months = formatMonths(faq.best_months, isSr);
+  const [fmin, fmax] = faq.flight_price_eur_range_from_beg;
+  const [hmin, hmax] = faq.hotel_price_eur_range_per_night;
+  const visaText = isSr ? faq.visa_note_sr : faq.visa_note_en;
+
+  if (isSr) return [
+    { '@type': 'Question', name: 'Koliko košta let za ' + city + ' iz Beograda?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'Tipičan raspon je €' + fmin + '–€' + fmax + ' u sezoni. Letto skenira deal-ove ispod €' + fmin + ' kad se ukažu (engine osvežava svaka 6 sata).' } },
+    { '@type': 'Question', name: 'Koliko traje let Beograd–' + city + '?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'Direktnim letom oko ' + dur + '. Sa presedanjem može biti znatno duže — Letto prikazuje obe opcije.' } },
+    { '@type': 'Question', name: 'Kada je najbolja sezona za putovanje u ' + city + '?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'Najpovoljniji meseci su ' + months + '. Tada su i cene i vreme u najboljoj kombinaciji.' } },
+    { '@type': 'Question', name: 'Koliko košta hotel u ' + city + ' po noći?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'Hoteli idu od €' + hmin + ' za budget 3★ kategoriju do €' + hmax + '+ za 5★ luksuz, po noći.' } },
+    { '@type': 'Question', name: 'Da li je potrebna viza za ' + city + '?',
+      acceptedAnswer: { '@type': 'Answer', text: visaText } },
+  ];
+
+  return [
+    { '@type': 'Question', name: 'How much does a flight to ' + city + ' from Belgrade cost?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'Typical range €' + fmin + '–€' + fmax + ' in season. Letto surfaces deals below €' + fmin + ' when they appear (engine refreshes every 6h).' } },
+    { '@type': 'Question', name: 'How long is the Belgrade–' + city + ' flight?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'About ' + dur + ' direct. With a connection it can be significantly longer — Letto shows both options.' } },
+    { '@type': 'Question', name: 'When is the best season to visit ' + city + '?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'Best months are ' + months + '. Price and weather align in this window.' } },
+    { '@type': 'Question', name: 'How much is a hotel in ' + city + ' per night?',
+      acceptedAnswer: { '@type': 'Answer',
+        text: 'Hotels range from €' + hmin + ' (3★ budget) up to €' + hmax + '+ (5★ luxury) per night.' } },
+    { '@type': 'Question', name: 'Do I need a visa for ' + city + '?',
+      acceptedAnswer: { '@type': 'Answer', text: visaText } },
+  ];
+}
 
 // v42 · per-IATA enrichment for Schema.org TouristDestination.
 // City-centre coords (Wikipedia) + Schema.org-aligned tourist-type tags.
@@ -190,12 +254,15 @@ function renderPage({ dest, lang, hero, deals, otherDests }) {
     return `<a href="/${oSlug}">${esc(oCity)}</a>`;
   }).join(' · ');
 
-  // ── JSON-LD: Place + TouristDestination + BreadcrumbList + ItemList ──
+  // ── JSON-LD: Place + TouristDestination + FAQPage + BreadcrumbList + ItemList ──
   // v42 · TouristDestination is the rich-result-friendly type Google uses
   // for travel SERP features (city carousel, "things to do"). Place stays
   // for the basic geo entity reference; TouristDestination layers on
-  // touristType + description for the marketing categorisation.
+  // touristType + description + attractions for marketing categorisation.
+  // v43-A · FAQPage adds the 5-Q/A block for FAQ rich results + AI Overview
+  // citation eligibility.
   const geo = GEO_TYPE_BY_IATA[dest.iata];
+  const faq = FAQ_DATA[dest.iata];
   const ld = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -207,15 +274,29 @@ function renderPage({ dest, lang, hero, deals, otherDests }) {
         ...(geo ? { geo: { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng } } : {})
       },
       ...(geo ? [{
-        '@type': 'TouristDestination',
-        '@id':        canonical + '#destination',
-        name:         city,
-        description:  intro,
-        url:          canonical,
-        address:      { '@type': 'PostalAddress', addressCountry: dest.country },
-        geo:          { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng },
-        touristType:  geo.types,
-        includesAttraction: { '@id': canonical + '#place' }
+        '@type':              'TouristDestination',
+        '@id':                canonical + '#destination',
+        name:                 city,
+        description:          intro,
+        url:                  canonical,
+        image:                ORIGIN + '/og.png',   // v43-A · single shared OG until per-dest pipeline (v44+)
+        isAccessibleForFree:  false,
+        publicAccess:         true,
+        address:              { '@type': 'PostalAddress', addressCountry: dest.country },
+        geo:                  { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng },
+        touristType:          geo.types,
+        includesAttraction:   (faq && faq.attractions && faq.attractions.length)
+          ? faq.attractions.map(a => ({ '@type': 'TouristAttraction', name: isSr ? a.name_sr : a.name_en }))
+          : { '@id': canonical + '#place' },
+      }] : []),
+      // v43-A · FAQPage · 5 Q/A per destination, data sourced from
+      // FAQ_DATA[iata]. Identical question shape across all 23 destinations
+      // gives Google a consistent schema to crawl; the answers are
+      // destination-specific so each page carries unique information gain.
+      ...(faq ? [{
+        '@type':    'FAQPage',
+        '@id':      canonical + '#faq',
+        mainEntity: buildFaqEntities({ faq, city, isSr }),
       }] : []),
       {
         // v41 · 3-level breadcrumb · Home → All deals (#deals anchor) → city.
