@@ -22,6 +22,36 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DESTINATIONS } from './lib/destinations.mjs';
 
+// v42 · per-IATA enrichment for Schema.org TouristDestination.
+// City-centre coords (Wikipedia) + Schema.org-aligned tourist-type tags.
+// Lookup kept here (not in destinations.mjs) so the SEO marketing
+// categorisation can evolve independently of the route source-of-truth.
+const GEO_TYPE_BY_IATA = {
+  FCO: { lat: 41.9028, lng: 12.4964, types: ['Cultural travel', 'City breaks', 'Romantic getaways'] },
+  PMI: { lat: 39.5696, lng:  2.6502, types: ['Beach holidays',  'Family travel', 'Mediterranean coast'] },
+  ATH: { lat: 37.9838, lng: 23.7275, types: ['Cultural travel', 'Historical sites', 'City breaks'] },
+  BCN: { lat: 41.3851, lng:  2.1734, types: ['City breaks',     'Cultural travel', 'Beach holidays'] },
+  CDG: { lat: 48.8566, lng:  2.3522, types: ['Romantic getaways','Cultural travel', 'City breaks'] },
+  MLA: { lat: 35.8989, lng: 14.5146, types: ['Cultural travel', 'Mediterranean coast', 'Historical sites'] },
+  BUD: { lat: 47.4979, lng: 19.0402, types: ['City breaks',     'Wellness travel', 'Cultural travel'] },
+  LIS: { lat: 38.7223, lng: -9.1393, types: ['City breaks',     'Cultural travel', 'Beach holidays'] },
+  VIE: { lat: 48.2082, lng: 16.3738, types: ['Cultural travel', 'City breaks',     'Historical sites'] },
+  DXB: { lat: 25.2048, lng: 55.2708, types: ['Luxury travel',   'Shopping',        'Family travel'] },
+  SKG: { lat: 40.6401, lng: 22.9444, types: ['City breaks',     'Mediterranean coast', 'Cultural travel'] },
+  IST: { lat: 41.0082, lng: 28.9784, types: ['Cultural travel', 'Historical sites', 'City breaks'] },
+  MUC: { lat: 48.1351, lng: 11.5820, types: ['City breaks',     'Cultural travel', 'Food and drink'] },
+  SPU: { lat: 43.5081, lng: 16.4402, types: ['Beach holidays',  'Adriatic coast',  'Cultural travel'] },
+  DBV: { lat: 42.6507, lng: 18.0944, types: ['Cultural travel', 'Adriatic coast',  'Beach holidays'] },
+  PRG: { lat: 50.0755, lng: 14.4378, types: ['Cultural travel', 'City breaks',     'Historical sites'] },
+  TIA: { lat: 41.3275, lng: 19.8187, types: ['City breaks',     'Cultural travel', 'Mediterranean coast'] },
+  AMS: { lat: 52.3676, lng:  4.9041, types: ['City breaks',     'Cultural travel', 'Nightlife'] },
+  CMN: { lat: 33.5731, lng: -7.5898, types: ['Cultural travel', 'Beach holidays',  'City breaks'] },
+  HER: { lat: 35.3387, lng: 25.1442, types: ['Beach holidays',  'Mediterranean coast', 'Cultural travel'] },
+  IBZ: { lat: 38.9067, lng:  1.4206, types: ['Beach holidays',  'Nightlife',       'Mediterranean coast'] },
+  LHR: { lat: 51.5074, lng: -0.1278, types: ['City breaks',     'Cultural travel', 'Shopping'] },
+  MAD: { lat: 40.4168, lng: -3.7038, types: ['City breaks',     'Cultural travel', 'Nightlife'] },
+};
+
 const ORIGIN = 'https://letto.live';
 const TODAY  = new Date().toISOString().slice(0, 10);
 const PEXELS_KEY = process.env.PEXELS_KEY || '';
@@ -160,7 +190,12 @@ function renderPage({ dest, lang, hero, deals, otherDests }) {
     return `<a href="/${oSlug}">${esc(oCity)}</a>`;
   }).join(' · ');
 
-  // ── JSON-LD: Place + BreadcrumbList + ItemList ──
+  // ── JSON-LD: Place + TouristDestination + BreadcrumbList + ItemList ──
+  // v42 · TouristDestination is the rich-result-friendly type Google uses
+  // for travel SERP features (city carousel, "things to do"). Place stays
+  // for the basic geo entity reference; TouristDestination layers on
+  // touristType + description for the marketing categorisation.
+  const geo = GEO_TYPE_BY_IATA[dest.iata];
   const ld = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -168,8 +203,20 @@ function renderPage({ dest, lang, hero, deals, otherDests }) {
         '@type': 'Place',
         '@id':   canonical + '#place',
         name:    city,
-        address: { '@type': 'PostalAddress', addressCountry: dest.country }
+        address: { '@type': 'PostalAddress', addressCountry: dest.country },
+        ...(geo ? { geo: { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng } } : {})
       },
+      ...(geo ? [{
+        '@type': 'TouristDestination',
+        '@id':        canonical + '#destination',
+        name:         city,
+        description:  intro,
+        url:          canonical,
+        address:      { '@type': 'PostalAddress', addressCountry: dest.country },
+        geo:          { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng },
+        touristType:  geo.types,
+        includesAttraction: { '@id': canonical + '#place' }
+      }] : []),
       {
         // v41 · 3-level breadcrumb · Home → All deals (#deals anchor) → city.
         // /#deals is a real anchor on the homepage carousel, so the middle
