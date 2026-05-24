@@ -252,6 +252,35 @@ async function handler(req, res) {
       packages = packages.slice(0, limit);
     }
 
+    // v38 · LISTING tier-sort. mode === 'listing' (no search filters set)
+    // → filter to mixing_engine_v4 source only (mvp_seed cards drop from
+    // the catalog landing; still discoverable via dest-filtered search),
+    // derive ephemeral _priceTier from pricing.total, then sort tier ASC
+    // → price ASC → createdAt DESC. Conversion-psychology: cheap hooks
+    // first, luxury aspires last. The earlier destination diversifier
+    // (diversifyByDestination) is retired for this branch — the tier
+    // ordering would be shuffled apart by it.
+    if (!isSearch) {
+      packages = packages.filter(p => p?.metadata?.source === 'mixing_engine_v4');
+      for (const p of packages) {
+        const t = p?.pricing?.total;
+        p._priceTier = (t == null) ? 'unknown'
+                     : (t <= 500)  ? 'budget'
+                     : (t <= 1000) ? 'mid'
+                     :               'luxury';
+      }
+      const tierOrder = { budget: 0, mid: 1, luxury: 2, unknown: 3 };
+      packages.sort((a, b) => {
+        const tDiff = tierOrder[a._priceTier] - tierOrder[b._priceTier];
+        if (tDiff !== 0) return tDiff;
+        const pDiff = (a.pricing?.total ?? 0) - (b.pricing?.total ?? 0);
+        if (pDiff !== 0) return pDiff;
+        const aCr = a?.metadata?.createdAt?._seconds ?? 0;
+        const bCr = b?.metadata?.createdAt?._seconds ?? 0;
+        return bCr - aCr;
+      });
+    }
+
     // P0 fix · normalize the bookingUrl shipped to the frontend. Two cases:
     //   1) URL exists → strip any stale TP fare tokens, convert YYMMDD → DDMM
     //   2) URL is missing/empty (mining engine sometimes writes packages
@@ -322,11 +351,12 @@ async function handler(req, res) {
       return out;
     });
 
-    // London-bug fix · listing carousel must not repeat a destination.
-    // Search mode keeps its date-proximity/deal ranking untouched.
-    if (!isSearch) {
-      packages = diversifyByDestination(packages);
-    }
+    // v38 · destination diversifier retired for listing mode — the tier
+    // sort (budget→mid→luxury) earlier in this handler replaces the
+    // London-bug-fix de-duplication, since the diversifier would re-
+    // shuffle the conversion-psychology tier blocks apart.
+    // diversifyByDestination() stays defined at the top of this file in
+    // case search mode reuses it later.
 
     return res.status(200).json({
       packages,
