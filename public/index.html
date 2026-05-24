@@ -52,9 +52,13 @@
 <link rel="preconnect" href="https://tpembars.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,900;1,9..144,300;1,9..144,400;1,9..144,500&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<!-- Flatpickr (date range picker) — used by Letto search bar DATUMI field -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
+<!-- Flatpickr (date range picker) — used by Letto search bar DATUMI field.
+     v40.1 · SRI hashes pin the exact file bytes for 4.6.13; if jsdelivr
+     ever serves tampered content the browser refuses to execute. Safe to
+     do here because the version is hard-pinned (4.6.13, not @latest).
+     Hashes from `curl … | openssl dgst -sha384 -binary | openssl base64 -A`. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
 <!-- Destinations list — loaded synchronously so LETTO_DESTINATIONS is ready before body inline scripts -->
 <script src="/js/destinations.js"></script>
 <style>
