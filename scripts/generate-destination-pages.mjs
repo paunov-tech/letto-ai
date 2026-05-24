@@ -209,6 +209,7 @@ ${hero ? `<meta property="og:image" content="${esc(hero.url)}" />` : ''}
 <script src="/consent.js" defer></script>
 <script src="/pixel.js" defer></script>
 <script src="/ga4.js" defer></script>
+<script src="/gtm.js" defer></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'IBM Plex Sans', -apple-system, sans-serif; color: #1f1a16; background: #fffdf7; line-height: 1.5; }
@@ -242,6 +243,7 @@ ${hero ? `<meta property="og:image" content="${esc(hero.url)}" />` : ''}
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
 <body>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TR2FLLW8" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=2513952102382319&ev=PageView&noscript=1"/></noscript>
 
 <header class="hero">
