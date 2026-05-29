@@ -82,7 +82,10 @@ function buildDestinationEntries() {
 
 const entries = [...buildStaticEntries(), ...buildDestinationEntries()];
 
-const xml = [
+// v43-C · sitemap.xml is now a <sitemapindex>. The static + destination URLs
+// move to sitemap-main.xml; the dynamic pSEO URLs are served by the
+// /api/sitemap-pseo function (reads the Firestore pre_gen / on_demand index).
+const mainXml = [
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
   '        xmlns:xhtml="http://www.w3.org/1999/xhtml">',
@@ -91,9 +94,28 @@ const xml = [
   ''
 ].join('\n');
 
-const out = path.resolve('public/sitemap.xml');
-fs.writeFileSync(out, xml);
-console.log(`✓ sitemap.xml written · ${entries.length} URLs · ${xml.length} bytes`);
+const indexXml = [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+  '  <sitemap>',
+  `    <loc>${ORIGIN}/sitemap-main.xml</loc>`,
+  `    <lastmod>${TODAY}</lastmod>`,
+  '  </sitemap>',
+  '  <sitemap>',
+  `    <loc>${ORIGIN}/api/sitemap-pseo</loc>`,
+  `    <lastmod>${TODAY}</lastmod>`,
+  '  </sitemap>',
+  '</sitemapindex>',
+  ''
+].join('\n');
+
+const mainOut = path.resolve('public/sitemap-main.xml');
+const indexOut = path.resolve('public/sitemap.xml');
+fs.writeFileSync(mainOut, mainXml);
+fs.writeFileSync(indexOut, indexXml);
+console.log(`✓ sitemap-main.xml written · ${entries.length} URLs · ${mainXml.length} bytes`);
 console.log(`  - ${STATIC_PAGES.length} static pages`);
 console.log(`  - ${DESTINATIONS.length * 2} destination pages (SR + EN)`);
-console.log(`  → ${out}`);
+console.log(`✓ sitemap.xml written · <sitemapindex> · sitemap-main.xml + /api/sitemap-pseo`);
+console.log(`  → ${mainOut}`);
+console.log(`  → ${indexOut}`);

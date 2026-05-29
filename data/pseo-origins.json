@@ -1,0 +1,22 @@
+[
+  {"code":"BEG","country":"RS","slug_sr":"beograda","slug_en":"belgrade","name_sr":"Beograd","name_sr_gen":"Beograda","name_en":"Belgrade","lat":44.8184,"lng":20.3091},
+  {"code":"INI","country":"RS","slug_sr":"nisa","slug_en":"nis","name_sr":"Niš","name_sr_gen":"Niša","name_en":"Niš","lat":43.3373,"lng":21.8536},
+  {"code":"TGD","country":"ME","slug_sr":"podgorice","slug_en":"podgorica","name_sr":"Podgorica","name_sr_gen":"Podgorice","name_en":"Podgorica","lat":42.3594,"lng":19.2519},
+  {"code":"TIV","country":"ME","slug_sr":"tivta","slug_en":"tivat","name_sr":"Tivat","name_sr_gen":"Tivta","name_en":"Tivat","lat":42.4047,"lng":18.7233},
+  {"code":"SJJ","country":"BA","slug_sr":"sarajeva","slug_en":"sarajevo","name_sr":"Sarajevo","name_sr_gen":"Sarajeva","name_en":"Sarajevo","lat":43.8246,"lng":18.3315},
+  {"code":"BNX","country":"BA","slug_sr":"banje-luke","slug_en":"banja-luka","name_sr":"Banja Luka","name_sr_gen":"Banje Luke","name_en":"Banja Luka","lat":44.9414,"lng":17.2975},
+  {"code":"OMO","country":"BA","slug_sr":"mostara","slug_en":"mostar","name_sr":"Mostar","name_sr_gen":"Mostara","name_en":"Mostar","lat":43.2829,"lng":17.8458},
+  {"code":"TZL","country":"BA","slug_sr":"tuzle","slug_en":"tuzla","name_sr":"Tuzla","name_sr_gen":"Tuzle","name_en":"Tuzla","lat":44.4587,"lng":18.7248},
+  {"code":"ZAG","country":"HR","slug_sr":"zagreba","slug_en":"zagreb","name_sr":"Zagreb","name_sr_gen":"Zagreba","name_en":"Zagreb","lat":45.7429,"lng":16.0688},
+  {"code":"SPU","country":"HR","slug_sr":"splita","slug_en":"split","name_sr":"Split","name_sr_gen":"Splita","name_en":"Split","lat":43.5388,"lng":16.2980},
+  {"code":"DBV","country":"HR","slug_sr":"dubrovnika","slug_en":"dubrovnik","name_sr":"Dubrovnik","name_sr_gen":"Dubrovnika","name_en":"Dubrovnik","lat":42.5614,"lng":18.2682},
+  {"code":"PUY","country":"HR","slug_sr":"pule","slug_en":"pula","name_sr":"Pula","name_sr_gen":"Pule","name_en":"Pula","lat":44.8935,"lng":13.9223},
+  {"code":"RJK","country":"HR","slug_sr":"rijeke","slug_en":"rijeka","name_sr":"Rijeka","name_sr_gen":"Rijeke","name_en":"Rijeka","lat":45.2169,"lng":14.5703},
+  {"code":"ZAD","country":"HR","slug_sr":"zadra","slug_en":"zadar","name_sr":"Zadar","name_sr_gen":"Zadra","name_en":"Zadar","lat":44.1083,"lng":15.3467},
+  {"code":"OSI","country":"HR","slug_sr":"osijeka","slug_en":"osijek","name_sr":"Osijek","name_sr_gen":"Osijeka","name_en":"Osijek","lat":45.4626,"lng":18.8101},
+  {"code":"LJU","country":"SI","slug_sr":"ljubljane","slug_en":"ljubljana","name_sr":"Ljubljana","name_sr_gen":"Ljubljane","name_en":"Ljubljana","lat":46.2237,"lng":14.4576},
+  {"code":"MBX","country":"SI","slug_sr":"maribora","slug_en":"maribor","name_sr":"Maribor","name_sr_gen":"Maribora","name_en":"Maribor","lat":46.4799,"lng":15.6861},
+  {"code":"SKP","country":"MK","slug_sr":"skoplja","slug_en":"skopje","name_sr":"Skoplje","name_sr_gen":"Skoplja","name_en":"Skopje","lat":41.9616,"lng":21.6214},
+  {"code":"OHD","country":"MK","slug_sr":"ohrida","slug_en":"ohrid","name_sr":"Ohrid","name_sr_gen":"Ohrida","name_en":"Ohrid","lat":41.1800,"lng":20.7423},
+  {"code":"PRN","country":"XK","slug_sr":"pristine","slug_en":"pristina","name_sr":"Priština","name_sr_gen":"Prištine","name_en":"Pristina","lat":42.5728,"lng":21.0359}
+]

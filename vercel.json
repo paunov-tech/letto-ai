@@ -6,10 +6,13 @@
   "functions": {
     "api/hotels-search.js": { "maxDuration": 25 },
     "api/cj-refresh.js":    { "maxDuration": 60 },
-    "api/admin.js":         { "maxDuration": 60 }
+    "api/admin.js":         { "maxDuration": 60 },
+    "api/pseo-route.js":    { "maxDuration": 15 }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/:slug(letovi-iz-[a-z0-9-]+)",  "destination": "/api/pseo-route?slug=:slug" },
+    { "source": "/:slug(flights-from-[a-z0-9-]+)", "destination": "/api/pseo-route?slug=:slug" },
     { "source": "/about", "destination": "/about.html" },
     { "source": "/results", "destination": "/results.html" },
     { "source": "/trip/:id", "destination": "/trip.html?id=:id" },
