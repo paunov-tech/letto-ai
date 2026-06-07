@@ -8,6 +8,14 @@
 // Claude gen → setPseoPage(isPreGenerated:true). Sleep 400ms (~2.5 req/s),
 // 2s back-off on error. Final tally OK / SKIP / FAIL.
 //
+// ⚠ PRE-FLIGHT (Phase 2 blocker): hasCoverage() below queries letto_packages
+//   with TWO equality filters (origin.code == x AND destination.code == y).
+//   Firestore needs a COMPOSITE INDEX on (origin.code ASC, destination.code ASC)
+//   for this. If it's missing the query THROWS → caught → returns false → EVERY
+//   slug SKIPs as "no coverage" and the whole run produces 0 pages silently.
+//   Verify the index exists (Firebase console → Firestore → Indexes) BEFORE the
+//   ~3.5–4h run. A --dry-run does NOT exercise this query, so it won't warn you.
+//
 // RUN (Phase 2 — needs Anthropic key + writes prod Firestore):
 //   source .env.engine && node scripts/pseo-pregen.mjs
 //   # or on Vercel where lettoprod + FIREBASE_ADMIN_* are already set
