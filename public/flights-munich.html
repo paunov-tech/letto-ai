@@ -68,6 +68,24 @@
   @media (prefers-reduced-motion: no-preference) { .compass-divider { animation: spin 90s linear infinite; } }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* v44-A.3 living compass */
+  .lc-wrap { margin: 48px 0; }
+  .lc-wrap .divider { margin: 0 0 10px; }
+  .living-compass { width: 66px; height: 66px; flex: none; }
+  .living-compass svg { width: 100%; height: 100%; overflow: visible; }
+  .lc-needle { transform-box: view-box; transform-origin: 50px 50px; transform: rotate(0deg); }
+  .lc-needle-line { stroke-dasharray: 32; stroke-dashoffset: 32; }
+  .lc-needle-tip { opacity: 0; transform-box: view-box; transform-origin: 50px 50px; }
+  .living-compass.lc-drawn .lc-needle-line { stroke-dashoffset: 0; transition: stroke-dashoffset .6s ease; }
+  .living-compass.lc-drawn .lc-needle-tip { opacity: 1; transition: opacity .3s ease .4s; }
+  .living-compass.lc-rot .lc-needle { transform: rotate(var(--lc-bearing)); transition: transform .9s cubic-bezier(.16,1,.3,1); }
+  .lc-caption { text-align: center; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 14px; color: var(--gold-deep); margin: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .lc-needle-line { stroke-dashoffset: 0 !important; }
+    .lc-needle-tip { opacity: 1 !important; }
+    .living-compass .lc-needle { transform: rotate(var(--lc-bearing)) !important; transition: none !important; }
+  }
+
   .deals { display: grid; gap: 14px; }
   .deal { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; background: var(--paper-warm); border: 1px solid var(--gold-deep); border-radius: 14px; padding: 18px 20px; transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s, border-color .25s; }
   .deal:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(161,116,51,0.18); border-color: var(--gold); }
@@ -190,17 +208,26 @@
     <div class="cta-wrap"><a class="cta" href="https://letto.live/results?destination_iata=MUC">Open Letto Mix →</a></div>
   </section>
 
-  <div class="divider"><span class="rule"></span><svg class="compass-divider" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="cdg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#7C5B22"/><stop offset="35%" stop-color="#D9A94A"/>
-          <stop offset="50%" stop-color="#F0D795"/><stop offset="65%" stop-color="#D9A94A"/>
-          <stop offset="100%" stop-color="#7C5B22"/></linearGradient></defs>
-        <circle cx="50" cy="50" r="46" fill="none" stroke="url(#cdg)" stroke-width="1"/>
-        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#cdg)" stroke-width="0.4" opacity="0.6"/>
-        <g stroke="url(#cdg)" stroke-width="1.4"><line x1="50" y1="6" x2="50" y2="94"/><line x1="6" y1="50" x2="94" y2="50"/></g>
-        <g stroke="url(#cdg)" stroke-width="0.6" opacity="0.7"><line x1="19" y1="19" x2="81" y2="81"/><line x1="81" y1="19" x2="19" y2="81"/></g>
-        <circle cx="50" cy="50" r="4" fill="url(#cdg)"/>
-      </svg><span class="rule"></span></div>
+  <div class="lc-wrap">
+    <div class="divider">
+      <span class="rule"></span>
+      <div class="living-compass" data-bearing="302" style="--lc-bearing:302deg" role="img" aria-label="Munich · 302° NW · 760 km from Belgrade">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <defs><linearGradient id="lcg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7C5B22"/><stop offset="50%" stop-color="#D9A94A"/><stop offset="100%" stop-color="#7C5B22"/></linearGradient></defs>
+          <circle cx="50" cy="50" r="46" fill="none" stroke="url(#lcg)" stroke-width="1"/>
+          <circle cx="50" cy="50" r="39" fill="none" stroke="url(#lcg)" stroke-width="0.4" opacity="0.5"/>
+          <g stroke="url(#lcg)" stroke-width="1"><line x1="50" y1="5" x2="50" y2="13"/><line x1="50" y1="87" x2="50" y2="95"/><line x1="5" y1="50" x2="13" y2="50"/><line x1="87" y1="50" x2="95" y2="50"/></g>
+          <g class="lc-needle">
+            <line class="lc-needle-line" x1="50" y1="50" x2="50" y2="18" stroke="#7C5B22" stroke-width="2" stroke-linecap="round"/>
+            <path class="lc-needle-tip" d="M50 11 L54.5 20 L50 16.5 L45.5 20 Z" fill="#7C5B22"/>
+          </g>
+          <circle cx="50" cy="50" r="3" fill="url(#lcg)"/>
+        </svg>
+      </div>
+      <span class="rule"></span>
+    </div>
+    <p class="lc-caption">Munich · 302° NW · 760 km from Belgrade</p>
+  </div>
 
   <section class="faq reveal">
     <h2>Frequently asked</h2>
@@ -279,6 +306,20 @@
       entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
     }, { rootMargin: '0px 0px -8% 0px' });
     reveals.forEach(function (el) { io.observe(el); });
+  }
+
+  // v44-A.3 · living compass — stroke-draw the needle, then rotate to bearing
+  // once in view. prefers-reduced-motion → CSS pins it static at the bearing.
+  var lc = document.querySelector('.living-compass');
+  if (lc) {
+    var lcGo = function () { lc.classList.add('lc-drawn'); setTimeout(function () { lc.classList.add('lc-rot'); }, 650); };
+    if (reduce) { lc.classList.add('lc-drawn', 'lc-rot'); }
+    else if ('IntersectionObserver' in window) {
+      var io2 = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { if (e.isIntersecting) { lcGo(); io2.unobserve(lc); } });
+      }, { rootMargin: '0px 0px -10% 0px' });
+      io2.observe(lc);
+    } else { lcGo(); }
   }
 
   function countUp(el, value) {
