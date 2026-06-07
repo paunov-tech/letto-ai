@@ -962,7 +962,17 @@
           // on DOMContentLoaded so a late-parsed element still gets filled.
           // The carousel #deals-grid never had this — its ref is captured
           // synchronously before the fetch (line ~3268).
-          var fullGridHtml = sorted.map(renderCard).join('');
+          // v44-A.1 · light diversify cap — at most 2 cards per destination in
+          // the full catalog so one popular city can't dominate "Svi današnji
+          // deal-ovi" (NOT the full retired diversifyByDestination). Carousel
+          // (top 5 above) is untouched.
+          var dmPerDest = {};
+          var dmCapped = sorted.filter(function (p) {
+            var k = (p && p.destination && p.destination.code) || '?';
+            dmPerDest[k] = (dmPerDest[k] || 0) + 1;
+            return dmPerDest[k] <= 2;
+          });
+          var fullGridHtml = dmCapped.map(renderCard).join('');
           var fullGridPainted = false;
           var paintFullGrid = function () {
             if (fullGridPainted) return;

@@ -6,9 +6,10 @@
   "type": "module",
   "scripts": {
     "deploy": "vercel --prod",
-    "build:seo": "node scripts/generate-sitemap.mjs && node scripts/generate-destination-pages.mjs",
+    "build:seo": "node scripts/generate-sitemap.mjs && node scripts/generate-destination-pages.mjs && node scripts/generate-destination-matrix.mjs",
     "build:sitemap": "node scripts/generate-sitemap.mjs",
-    "build:destinations": "node scripts/generate-destination-pages.mjs"
+    "build:destinations": "node scripts/generate-destination-pages.mjs",
+    "build:matrix": "node scripts/generate-destination-matrix.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
