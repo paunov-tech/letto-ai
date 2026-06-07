@@ -76,6 +76,7 @@
   .deal-badge svg { width: 11px; height: 11px; stroke: var(--gold-light); fill: none; }
   .deal-price { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; color: var(--gold-deep); font-weight: 600; text-align: right; white-space: nowrap; }
   .deal-price .per { display: block; font-size: 10px; color: var(--ink-mid); font-weight: 400; letter-spacing: 0.04em; }
+  .deal-price .deal-rsd { display: block; font-size: 12px; font-weight: 400; color: var(--ink-mid); margin-top: 2px; }
   .deals-empty { color: var(--ink-mid); font-style: italic; padding: 8px 0; }
   .deals-note { color: var(--gold-deep); font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.02em; padding: 14px 16px; background: var(--paper-warm); border: 1px dashed var(--gold-deep); border-radius: 12px; }
   .skel { height: 78px; border-radius: 14px; background: linear-gradient(100deg, var(--paper-warm) 30%, var(--paper-deep) 50%, var(--paper-warm) 70%); background-size: 200% 100%; }
@@ -334,8 +335,9 @@
           var badge = disc ? '<span class="deal-badge"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>' + badgeTpl.replace('%PCT%', Math.round(disc) + '%') + '</span>' : '';
           var el = document.createElement('div');
           el.className = 'deal';
+          var rsd = price ? '<span class="deal-rsd">\u2248 ' + (Math.round(price * 117.2 / 100) * 100).toLocaleString('de-DE') + ' RSD</span>' : '';
           el.innerHTML = '<div><div class="deal-meta">' + meta + '</div>' + badge + '</div>' +
-            '<div class="deal-price"><span class="amt">' + (price ? '€' + price : '—') + '</span><span class="per">' + perPkg + '</span></div>';
+            '<div class="deal-price"><span class="amt">' + (price ? '€' + price : '—') + '</span>' + rsd + '<span class="per">' + perPkg + '</span></div>';
           box.appendChild(el);
           if (price) countUp(el.querySelector('.amt'), price);
         });

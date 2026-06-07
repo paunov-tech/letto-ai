@@ -146,6 +146,23 @@
     } catch (_) {}
   });
 </script>
+<style id="v44a2-cards">
+  /* v44-A.2 deal-card micro-polish (M1 RSD · M2 median · M3 route ribbon · M4 chips) */
+  .deal-route{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.04em;color:var(--ink-mid,#333840);margin:10px 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .deal-route .rr-arrow{color:var(--gold,#A17433);font-weight:600}
+  .deal-route .rr-sep{color:var(--line-soft,#DCD1B3)}
+  .deal-route .rr-direct{color:var(--gold-deep,#7C5B22);font-weight:600}
+  .deal-route .rr-stops{color:var(--muted,#6E6453)}
+  .deal-median{display:block;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted,#6E6453);text-decoration:line-through;margin-bottom:2px;cursor:help}
+  .deal-rsd{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted,#6E6453);margin-top:3px}
+  .cat-chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+  .cat-chip{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.04em;border:1px solid var(--line-soft,#DCD1B3);background:var(--paper,#F5EFE0);color:var(--ink-mid,#333840);border-radius:99px;padding:7px 15px;cursor:pointer;transition:all .15s}
+  .cat-chip:hover{border-color:var(--gold,#A17433);color:var(--gold-deep,#7C5B22)}
+  .cat-chip.is-active{background:linear-gradient(135deg,#f0c674,#b8863b);color:#1f2226;border-color:transparent;font-weight:700;box-shadow:0 2px 8px #b8863b55}
+  .deal-card.cat-hidden{display:none!important}
+  .full-deals-grid.is-filtered>.deal-card:nth-child(n+7){display:flex}
+  @media (max-width:560px){.cat-chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}.cat-chip{flex:0 0 auto}}
+</style>
 </head>
 <body class="lang-en">
 <!-- v39 polish · WCAG skip-link, hidden until keyboard-focused. -->
@@ -735,6 +752,46 @@
         var total = Math.round(parseFloat(p.pricing && p.pricing.total) || 0);
         var priceHtml = '<div class="value">€' + total.toLocaleString('en-US') + '</div>';
 
+        // v44-A.2 · M1 — RSD dual price (SR only). Hardcoded rate; round to 100.
+        // TODO: replace EUR_RSD with a live FX rate (cron-cached) later.
+        var EUR_RSD = 117.2;
+        var rsdVal = total > 0 ? Math.round(total * EUR_RSD / 100) * 100 : 0;
+        var rsdHtml = rsdVal > 0 ? '<div class="deal-rsd" data-sr>≈ ' + rsdVal.toLocaleString('de-DE') + ' RSD</div>' : '';
+
+        // v44-A.2 · M2 — median strikethrough. HARD RULE: only the REAL 90-day
+        // route median (p.deal.flightMedian + flightSavingsVsMedian) is used; no
+        // baseline → no strikethrough, never an invented/inflated number. The
+        // struck total is the median-EQUIVALENT total (current total + the real
+        // flight saving vs median) — same math as the spec example.
+        var fMed = (p.deal && p.deal.flightMedian) || 0;
+        var fSav = (p.deal && p.deal.flightSavingsVsMedian) || 0;
+        var medianHtml = '';
+        if (fMed > 0 && fSav > 0 && total > 0) {
+          var medianTotal = Math.round(total + fSav);
+          if (medianTotal > total) {
+            medianHtml = '<s class="deal-median" title="Prosečna cena leta na ovoj ruti (90 dana): €' + Math.round(fMed) + ' · ušteda €' + Math.round(fSav) + '">€' + medianTotal.toLocaleString('en-US') + '</s>';
+          }
+        }
+
+        // v44-A.2 · M3 — route ribbon: origin → dest → origin (RT) + stops label.
+        var oCode = esc((p.origin && p.origin.code) || '');
+        var dCode = esc((p.destination && p.destination.code) || '');
+        var stops = p.flight && p.flight.stops;
+        var routeRibbon = '';
+        if (oCode && dCode) {
+          var arrow = '<span class="rr-arrow" aria-hidden="true">→</span>';
+          var path = roundTrip ? (oCode + arrow + dCode + arrow + oCode) : (oCode + arrow + dCode);
+          var stopLabel = '';
+          if (stops === 0 || stops === '0') {
+            stopLabel = '<span class="rr-direct" data-en>Direct</span><span class="rr-direct" data-sr>Direktan</span>';
+          } else if (stops >= 1) {
+            var n = parseInt(stops, 10) || 1;
+            stopLabel = '<span class="rr-stops" data-en>' + n + ' stop' + (n === 1 ? '' : 's') + '</span>' +
+                        '<span class="rr-stops" data-sr>' + n + (n === 1 ? ' presedanje' : ' presedanja') + '</span>';
+          }
+          routeRibbon = '<div class="deal-route">' + path + (stopLabel ? '<span class="rr-sep">·</span>' + stopLabel : '') + '</div>';
+        }
+
         // Hotel — name + star rating visible to all tiers post-2026-05-15.
         var hotelName = esc((p.hotel && p.hotel.name) || '');
         var hotelStars = (p.hotel && p.hotel.rating > 0 && p.hotel.rating <= 5) ? '★'.repeat(p.hotel.rating) : '';
@@ -869,7 +926,7 @@
         var articleClass = 'deal-card' + (locked ? ' locked' : '');
 
         return '' +
-          '<article class="' + articleClass + '" data-deal="' + esc(id) + '">' +
+          '<article class="' + articleClass + '" data-deal="' + esc(id) + '" data-category="' + esc(p.category || '') + '">' +
             '<div class="deal-photo">' +
               photoLayer +
               '<div class="gradient-overlay"></div>' +
@@ -888,9 +945,12 @@
               hotelLine +
               '<div class="deal-month" data-en>' + month_en + '</div>' +
               '<div class="deal-month" data-sr>' + month_sr + '</div>' +
+              routeRibbon +
               '<div class="deal-prices">' +
                 '<div class="total">' +
+                  medianHtml +
                   priceHtml +
+                  rsdHtml +
                   '<div class="per" data-en>per person</div>' +
                   '<div class="per" data-sr>po osobi</div>' +
                 '</div>' +
@@ -1177,6 +1237,15 @@
         <span data-sr>Premium otključava svaki card. Try-it picks rotiraju svaki dan.</span>
       </p>
     </div>
+    <!-- v44-A.2 · M4 theme filter chips · client-side, maps to p.category -->
+    <div class="cat-chips" id="cat-chips" role="group" aria-label="Filter po temi">
+      <button type="button" class="cat-chip is-active" data-cats="" aria-pressed="true"><span data-en>All</span><span data-sr>Sve</span></button>
+      <button type="button" class="cat-chip" data-cats="beach" aria-pressed="false"><span data-en>Beach</span><span data-sr>Plaža</span></button>
+      <button type="button" class="cat-chip" data-cats="cultural,architecture" aria-pressed="false"><span data-en>Culture</span><span data-sr>Kultura</span></button>
+      <button type="button" class="cat-chip" data-cats="city" aria-pressed="false"><span data-en>City</span><span data-sr>City</span></button>
+      <button type="button" class="cat-chip" data-cats="luxury" aria-pressed="false"><span data-en>Luxury</span><span data-sr>Luksuz</span></button>
+      <button type="button" class="cat-chip" data-cats="romantic" aria-pressed="false"><span data-en>Romantic</span><span data-sr>Romantika</span></button>
+    </div>
     <div id="full-deals-grid" class="full-deals-grid"></div>
 
     <!-- LETTO POLISH v11 · mobile show-more -->
@@ -1240,6 +1309,36 @@
   window.addEventListener('resize', update);
   window.addEventListener('letto:lang-changed', update);
   update();
+})();
+</script>
+
+<script>
+// v44-A.2 · M4 theme filter · client-side, no reload. "Sve" restores the
+// paginated show-more; a theme filter shows all matching cards (bypasses the
+// mobile nth-child(n+7) hide via .is-filtered) and hides the show-more button.
+(function () {
+  var chips = document.getElementById('cat-chips');
+  var grid = document.getElementById('full-deals-grid');
+  var wrap = document.getElementById('showMoreWrap');
+  if (!chips || !grid) return;
+  chips.addEventListener('click', function (e) {
+    var btn = e.target.closest('.cat-chip');
+    if (!btn) return;
+    chips.querySelectorAll('.cat-chip').forEach(function (c) {
+      var on = c === btn;
+      c.classList.toggle('is-active', on);
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    var cats = (btn.getAttribute('data-cats') || '').split(',').filter(Boolean);
+    var showAll = cats.length === 0;
+    grid.classList.toggle('is-filtered', !showAll);
+    grid.querySelectorAll('.deal-card').forEach(function (card) {
+      var cat = card.getAttribute('data-category') || '';
+      card.classList.toggle('cat-hidden', !showAll && cats.indexOf(cat) < 0);
+    });
+    if (wrap) wrap.style.display = showAll ? '' : 'none';
+    if (showAll) window.dispatchEvent(new Event('resize')); // let show-more recompute
+  });
 })();
 </script>
 
