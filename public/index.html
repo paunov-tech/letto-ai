@@ -161,6 +161,12 @@
   .cat-chip.is-active{background:linear-gradient(135deg,#f0c674,#b8863b);color:#1f2226;border-color:transparent;font-weight:700;box-shadow:0 2px 8px #b8863b55}
   .deal-card.cat-hidden{display:none!important}
   .full-deals-grid.is-filtered>.deal-card:nth-child(n+7){display:flex}
+  /* v44 E4 tier icons */
+  .tier-icon{width:14px;height:14px;display:inline-block;vertical-align:-2px;margin-right:5px}
+  .tier-budget{color:#3f7a43}
+  .tier-lux{color:var(--gold-mid,#C9963E)}
+  /* v44 S4 · AA contrast for small gold text in the homepage flight modal */
+  .modal-flight-detail .hotel-block .hotel-stars{color:var(--gold-deep)}
   @media (max-width:560px){.cat-chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}.cat-chip{flex:0 0 auto}}
 </style>
 </head>
@@ -925,6 +931,14 @@
 
         var articleClass = 'deal-card' + (locked ? ' locked' : '');
 
+        // v44 E4 · tier distinction icon (budget leaf / luxury star, 14px).
+        var _tier = p._priceTier || '';
+        var tierIcon = _tier === 'budget'
+          ? '<svg class="tier-icon tier-budget" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 21C5 21 3 15 3 10c7 0 10 3 10 9 0-5 3-8 8-8 0 5-2 10-8 10z" fill="currentColor"/></svg>'
+          : (_tier === 'luxury'
+            ? '<svg class="tier-icon tier-lux" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.3 6.8.6-5.1 4.6 1.5 6.7L12 17.8 5.9 20.8l1.5-6.7-5.1-4.6 6.8-.6z" fill="currentColor"/></svg>'
+            : '');
+
         return '' +
           '<article class="' + articleClass + '" data-deal="' + esc(id) + '" data-category="' + esc(p.category || '') + '">' +
             '<div class="deal-photo">' +
@@ -941,7 +955,7 @@
                 '<span class="deal-nights" data-en>' + nights + ' night' + (nights === 1 ? '' : 's') + '</span>' +
                 '<span class="deal-nights" data-sr>' + esc(nightsSr(nights)) + '</span>' +
               '</div>' +
-              '<div class="deal-name">' + cityName + '</div>' +
+              '<div class="deal-name">' + tierIcon + cityName + '</div>' +
               hotelLine +
               '<div class="deal-month" data-en>' + month_en + '</div>' +
               '<div class="deal-month" data-sr>' + month_sr + '</div>' +
