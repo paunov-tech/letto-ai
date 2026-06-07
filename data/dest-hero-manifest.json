@@ -1,0 +1,209 @@
+{
+  "FCO": {
+    "slug": "rome",
+    "base": "/img/dest/rome",
+    "width": 1600,
+    "height": 1046,
+    "credit": "AXP Photography",
+    "creditUrl": "https://www.pexels.com/@axp-photography-500641970",
+    "altEn": "Beautiful view of Ponte Sant'Angelo spanning the Tiber River in Rome, Italy under a clear sky."
+  },
+  "PMI": {
+    "slug": "palma",
+    "base": "/img/dest/palma",
+    "width": 1600,
+    "height": 1046,
+    "credit": "David Vives",
+    "creditUrl": "https://www.pexels.com/@david-vives-1474251",
+    "altEn": "Explore the picturesque skyline of Palma de Mallorca featuring La Seu Cathedral and the bustling marina."
+  },
+  "ATH": {
+    "slug": "athens",
+    "base": "/img/dest/athens",
+    "width": 1600,
+    "height": 1046,
+    "credit": "David Iglesias",
+    "creditUrl": "https://www.pexels.com/@iglp11",
+    "altEn": "Aerial view of Athens cityscape showcasing urban density with mountains in the background."
+  },
+  "BCN": {
+    "slug": "barcelona",
+    "base": "/img/dest/barcelona",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Rockwell branding agency",
+    "creditUrl": "https://www.pexels.com/@rockwell-branding-agency-85164430",
+    "altEn": "A panoramic view of Barcelona's skyline with Torre Glòries during a clear morning."
+  },
+  "CDG": {
+    "slug": "paris",
+    "base": "/img/dest/paris",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Artūras Kokorevas",
+    "creditUrl": "https://www.pexels.com/@kokorevas",
+    "altEn": "Stunning nighttime aerial cityscape of Paris highlighting iconic landmarks."
+  },
+  "MLA": {
+    "slug": "valletta",
+    "base": "/img/dest/valletta",
+    "width": 1600,
+    "height": 1046,
+    "credit": "X1ntao ZHOU",
+    "creditUrl": "https://www.pexels.com/@x1ntao-zhou-1257907212",
+    "altEn": "Beautiful view of Valletta with boats in foreground, highlighting iconic architecture under a clear blue sky."
+  },
+  "BUD": {
+    "slug": "budapest",
+    "base": "/img/dest/budapest",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Efrem  Efre",
+    "creditUrl": "https://www.pexels.com/@efrem-efre-2786187",
+    "altEn": "Scenic view of the iconic Hungarian Parliament Building along the Danube River in Budapest."
+  },
+  "LIS": {
+    "slug": "lisbon",
+    "base": "/img/dest/lisbon",
+    "width": 1600,
+    "height": 1046,
+    "credit": "thorl5",
+    "creditUrl": "https://www.pexels.com/@thorl5-2154653228",
+    "altEn": "Beautiful sunset over Lisbon with a view of the iconic 25 de Abril Bridge, framed by trees."
+  },
+  "VIE": {
+    "slug": "vienna",
+    "base": "/img/dest/vienna",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Alfred Franz",
+    "creditUrl": "https://www.pexels.com/@alfred-franz-114875410",
+    "altEn": "Aerial view of Vienna showcasing the town hall, Votivkirche, and architectural landmarks."
+  },
+  "DXB": {
+    "slug": "dubai",
+    "base": "/img/dest/dubai",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Rockwell branding agency",
+    "creditUrl": "https://www.pexels.com/@rockwell-branding-agency-85164430",
+    "altEn": "Dubai Marina with luxury yachts against a skyline of iconic skyscrapers in the morning light."
+  },
+  "SKG": {
+    "slug": "thessaloniki",
+    "base": "/img/dest/thessaloniki",
+    "width": 1600,
+    "height": 1046,
+    "credit": "K",
+    "creditUrl": "https://www.pexels.com/@kelly",
+    "altEn": "Stunning aerial night view of Thessaloniki's illuminated waterfront in Greece."
+  },
+  "IST": {
+    "slug": "istanbul",
+    "base": "/img/dest/istanbul",
+    "width": 1600,
+    "height": 1046,
+    "credit": "enaerguvan .",
+    "creditUrl": "https://www.pexels.com/@enaerguvan-397715279",
+    "altEn": "A captivating view of Istanbul's skyline at sunset, highlighting iconic minarets."
+  },
+  "MUC": {
+    "slug": "munich",
+    "base": "/img/dest/munich",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Bastian Riccardi",
+    "creditUrl": "https://www.pexels.com/@shutter-speed",
+    "altEn": "Scenic view of Munich skyline featuring the Frauenkirche and surrounding architecture at sunset."
+  },
+  "SPU": {
+    "slug": "split",
+    "base": "/img/dest/split",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Salim Chauhan",
+    "creditUrl": "https://www.pexels.com/@scpffm",
+    "altEn": "Discover the picturesque coastal cityscape of Split, Croatia, with its charming harbor and mountain backdrop."
+  },
+  "DBV": {
+    "slug": "dubrovnik",
+    "base": "/img/dest/dubrovnik",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Julia Volk",
+    "creditUrl": "https://www.pexels.com/@julia-volk",
+    "altEn": "Cityscape of residential houses with tiled roofs and brick walls on hills near calm ocean in overcast weather"
+  },
+  "PRG": {
+    "slug": "prague",
+    "base": "/img/dest/prague",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Diego F. Parra",
+    "creditUrl": "https://www.pexels.com/@diego-f-parra-33199",
+    "altEn": "Explore the historic charm of Prague's bridges and architecture with this stunning aerial cityscape."
+  },
+  "TIA": {
+    "slug": "tirana",
+    "base": "/img/dest/tirana",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Ingo Joseph",
+    "creditUrl": "https://www.pexels.com/@ingo",
+    "altEn": "View of modern skyscrapers and lush greenery in Tirana, Albania during daylight."
+  },
+  "AMS": {
+    "slug": "amsterdam",
+    "base": "/img/dest/amsterdam",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Jimmyk photos",
+    "creditUrl": "https://www.pexels.com/@jimmykphotos",
+    "altEn": "Aerial view showcasing Amsterdam's historic architecture, highlighting a stunning skyline."
+  },
+  "CMN": {
+    "slug": "casablanca",
+    "base": "/img/dest/casablanca",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Aymane Hanni",
+    "creditUrl": "https://www.pexels.com/@aymane-hanni-2148955127",
+    "altEn": "High-angle view of Casablanca's urban skyline under a vibrant blue sky."
+  },
+  "HER": {
+    "slug": "crete",
+    "base": "/img/dest/crete",
+    "width": 1600,
+    "height": 1046,
+    "credit": "K",
+    "creditUrl": "https://www.pexels.com/@kelly",
+    "altEn": "Discover the vibrant cityscape of Heraklion, Crete, captured from above with a stunning view of buildings and mountains."
+  },
+  "IBZ": {
+    "slug": "ibiza",
+    "base": "/img/dest/ibiza",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Raymond Petrik",
+    "creditUrl": "https://www.pexels.com/@raymond-petrik-1448389535",
+    "altEn": "A scenic aerial view of Ibiza's marina at dusk, showcasing vibrant city lights and bustling harbor in Spain."
+  },
+  "LHR": {
+    "slug": "london",
+    "base": "/img/dest/london",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Manzoni Studios",
+    "creditUrl": "https://www.pexels.com/@manzoni-studios-59597719",
+    "altEn": "Dramatic night view of London's skyline featuring modern skyscrapers and the historical Tower of London."
+  },
+  "MAD": {
+    "slug": "madrid",
+    "base": "/img/dest/madrid",
+    "width": 1600,
+    "height": 1046,
+    "credit": "Emilio Garcia",
+    "creditUrl": "https://www.pexels.com/@emilio-garcia-96280844",
+    "altEn": "Beautiful cityscape of Madrid, Spain, captured during twilight with iconic landmarks visible."
+  }
+}
