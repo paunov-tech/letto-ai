@@ -3,93 +3,257 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Letovi za Dubai iz Beograda · Letto</title>
-<meta name="description" content="Letovi za Dubai iz Beograda — Letto AI pronalazi sve ponude 30%+ ispod proseka. Premium pristup hotelima, Mix paketima, daily deals." />
+<title>Letovi za Dubai · Letto</title>
+<meta name="description" content="Letovi za Dubai — Letto skenira 50+ izvora svaka 6h i čuva samo ponude ~30% ispod proseka. Plus hoteli, Mix paketi, daily deals." />
 <link rel="canonical" href="https://letto.live/letovi-dubai" />
 <link rel="alternate" hreflang="sr-Latn"   href="https://letto.live/letovi-dubai" />
 <link rel="alternate" hreflang="en"        href="https://letto.live/flights-dubai" />
 <link rel="alternate" hreflang="x-default" href="https://letto.live/letovi-dubai" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Letovi za Dubai iz Beograda · Letto" />
-<meta property="og:description" content="Letovi za Dubai iz Beograda — Letto AI pronalazi sve ponude 30%+ ispod proseka. Premium pristup hotelima, Mix paketima, daily deals." />
+<meta property="og:title" content="Letovi za Dubai · Letto" />
+<meta property="og:description" content="Letovi za Dubai — Letto skenira 50+ izvora svaka 6h i čuva samo ponude ~30% ispod proseka. Plus hoteli, Mix paketi, daily deals." />
 <meta property="og:url" content="https://letto.live/letovi-dubai" />
-
+<meta property="og:image" content="https://images.pexels.com/photos/19612315/pexels-photo-19612315.jpeg?auto=compress&amp;cs=tinysrgb&amp;fit=crop&amp;h=627&amp;w=1200" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://images.pexels.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="/consent.js" defer></script>
 <script src="/pixel.js" defer></script>
 <script src="/ga4.js" defer></script>
 <script src="/gtm.js" defer></script>
 <style>
+  :root {
+    --paper: #F5EFE0; --paper-warm: #EEE4CB; --paper-deep: #E4D6B5;
+    --ink: #0A0D11; --ink-soft: #191D22; --ink-mid: #333840;
+    --line-soft: #DCD1B3;
+    --gold-deep: #7C5B22; --gold: #A17433; --gold-mid: #C9963E; --gold-light: #D9A94A; --gold-bright: #F0D795;
+    --burgundy: #6B1A25; --burgundy-warm: #8B2A3A;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'IBM Plex Sans', -apple-system, sans-serif; color: #1f1a16; background: #fffdf7; line-height: 1.5; }
-  a { color: #A17433; text-decoration: none; }
+  body { font-family: 'IBM Plex Sans', -apple-system, sans-serif; color: var(--ink-soft); background: var(--paper); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: var(--gold-deep); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  .hero { background: linear-gradient(135deg, #1a2a3a 0%, #b8863b 50%, #1a2a3a 100%); color: #fff; padding: 80px 24px; text-align: center; min-height: 320px; display: flex; flex-direction: column; justify-content: center; }
-  .hero h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(36px, 6vw, 64px); font-weight: 500; margin-bottom: 12px; text-shadow: 0 2px 12px rgba(0,0,0,0.4); }
-  .hero p.tag { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.85; margin-bottom: 24px; }
-  .hero-credit { font-size: 11px; opacity: 0.6; margin-top: auto; }
-  main { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
-  .intro { font-size: 18px; line-height: 1.65; color: #3d342c; margin-bottom: 40px; }
-  h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px; font-weight: 500; margin-bottom: 20px; color: #1f1a16; }
-  .deals-list { list-style: none; }
-  .deal { border-top: 1px solid #e8dfca; padding: 16px 0; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
-  .deal:last-child { border-bottom: 1px solid #e8dfca; }
-  .deal-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #8a8076; }
-  .deal-hotel { font-weight: 500; font-size: 15px; }
-  .deal-price { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #7C5B22; font-weight: 600; text-align: right; }
-  .deal-price span { font-size: 11px; color: #8a8076; font-weight: 400; display: block; }
-  .deals-empty { color: #8a8076; font-style: italic; padding: 16px 0; }
-  .cta-wrap { margin: 40px 0 32px; text-align: center; }
-  .cta { display: inline-block; background: linear-gradient(135deg, #f0c674 0%, #b8863b 100%); color: #1f1a16; padding: 16px 32px; border-radius: 10px; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 6px 20px rgba(184, 134, 59, 0.32); transition: transform 0.2s; }
-  .cta:hover { transform: translateY(-2px); text-decoration: none; }
-  .other { border-top: 1px solid #e8dfca; padding-top: 32px; margin-top: 48px; }
-  .other h2 { font-size: 18px; margin-bottom: 12px; }
-  .other-links { font-size: 14px; color: #8a8076; line-height: 1.9; }
-  .other-links a { color: #A17433; }
-  footer { text-align: center; padding: 32px 24px 48px; color: #8a8076; font-size: 12px; }
-  footer a { color: #A17433; }
-  /* v41 · breadcrumb nav · slim line between hero and main content. */
-  .breadcrumbs { padding: 12px 16px; font-size: 13px; color: #5C6470; max-width: 720px; margin: 0 auto; }
-  .breadcrumbs ol { list-style: none; padding: 0; margin: 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  ::selection { background: var(--gold); color: var(--ink); }
+  .grain::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.04 0 0 0 0 0.03 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"); opacity: 0.5; mix-blend-mode: multiply; }
+
+  .hero { position: relative; min-height: 55vh; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; background: linear-gradient(135deg, #1A1F25, #0A0D11); }
+  .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+  .hero::before { content: ''; position: absolute; inset: 0; z-index: 2; background:
+    linear-gradient(180deg, rgba(10,13,17,0.55) 0%, rgba(10,13,17,0.15) 45%, rgba(10,13,17,0.78) 100%),
+    radial-gradient(120% 80% at 50% 30%, transparent 55%, rgba(124,91,34,0.35) 100%); }
+  .hero-inner { position: relative; z-index: 3; max-width: 1100px; width: 100%; margin: 0 auto; padding: 0 32px 44px; }
+  .hero .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold-light); margin-bottom: 14px; }
+  .hero h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 900; font-size: clamp(2.6rem, 7vw, 5rem); line-height: 1.02; color: var(--paper); text-shadow: 0 2px 24px rgba(0,0,0,0.5); letter-spacing: -0.01em; }
+  .hero .tagline { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: clamp(1.1rem, 2.4vw, 1.6rem); color: var(--gold-light); margin-top: 12px; text-shadow: 0 1px 12px rgba(0,0,0,0.5); }
+  .photo-credit { position: absolute; right: 12px; bottom: 8px; z-index: 3; font-size: 10px; color: rgba(245,239,224,0.6); }
+  .photo-credit a { color: rgba(245,239,224,0.75); }
+
+  .breadcrumbs { background: var(--paper-warm); border-bottom: 1px solid var(--line-soft); }
+  .breadcrumbs ol { list-style: none; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; max-width: 1100px; margin: 0 auto; padding: 11px 32px; font-size: 13px; color: var(--ink-mid); }
   .breadcrumbs li { display: flex; align-items: center; }
-  .breadcrumbs li + li::before { content: "›"; margin-right: 8px; color: #b8b1a0; font-size: 16px; }
-  .breadcrumbs a { color: #5C6470; text-decoration: none; }
-  .breadcrumbs a:hover { color: #A17433; text-decoration: underline; }
-  .breadcrumbs li[aria-current="page"] { color: #1F2226; font-weight: 500; }
-  @media (max-width: 480px) { .breadcrumbs { font-size: 12px; padding: 10px 14px; } }
+  .breadcrumbs li + li::before { content: "›"; margin-right: 8px; color: var(--gold); }
+  .breadcrumbs a { color: var(--ink-mid); }
+  .breadcrumbs li[aria-current="page"] { color: var(--gold-deep); font-weight: 600; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 52px 32px; }
+  h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: clamp(1.6rem, 3.4vw, 2.1rem); color: var(--ink); margin-bottom: 22px; letter-spacing: -0.01em; }
+  .intro { font-size: 1.075rem; line-height: 1.72; color: var(--ink-mid); }
+  .intro p { margin-bottom: 16px; }
+  .byline { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.04em; color: var(--gold-deep); margin: 4px 0 8px; }
+
+  .divider { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 48px 0; }
+  .divider .rule { height: 1px; flex: 1; background: linear-gradient(90deg, transparent, var(--line-soft), transparent); }
+  .compass-divider { width: 48px; height: 48px; opacity: 0.45; flex: none; }
+  @media (prefers-reduced-motion: no-preference) { .compass-divider { animation: spin 90s linear infinite; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .deals { display: grid; gap: 14px; }
+  .deal { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; background: var(--paper-warm); border: 1px solid var(--gold-deep); border-radius: 14px; padding: 18px 20px; transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s, border-color .25s; }
+  .deal:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(161,116,51,0.18); border-color: var(--gold); }
+  .deal-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mid); }
+  .deal-badge { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; background: var(--burgundy); color: var(--paper); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 999px; }
+  .deal-badge svg { width: 11px; height: 11px; stroke: var(--gold-light); fill: none; }
+  .deal-price { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; color: var(--gold-deep); font-weight: 600; text-align: right; white-space: nowrap; }
+  .deal-price .per { display: block; font-size: 10px; color: var(--ink-mid); font-weight: 400; letter-spacing: 0.04em; }
+  .deals-empty { color: var(--ink-mid); font-style: italic; padding: 8px 0; }
+  .deals-note { color: var(--gold-deep); font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.02em; padding: 14px 16px; background: var(--paper-warm); border: 1px dashed var(--gold-deep); border-radius: 12px; }
+  .skel { height: 78px; border-radius: 14px; background: linear-gradient(100deg, var(--paper-warm) 30%, var(--paper-deep) 50%, var(--paper-warm) 70%); background-size: 200% 100%; }
+  @media (prefers-reduced-motion: no-preference) { .skel { animation: shimmer 1.3s ease-in-out infinite; } }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .cta-wrap { margin: 40px 0 8px; text-align: center; }
+  .cta { display: inline-block; position: relative; overflow: hidden; background: linear-gradient(135deg, #7C5B22, #A17433 30%, #F0D795 50%, #A17433 70%, #7C5B22); background-size: 200% 100%; color: var(--ink); padding: 16px 34px; border-radius: 12px; font-weight: 600; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 6px 22px rgba(124,91,34,0.32); transition: transform .2s; }
+  .cta:hover { transform: translateY(-2px); text-decoration: none; }
+  @media (prefers-reduced-motion: no-preference) { .cta:hover { animation: foil .8s ease; } }
+  @keyframes foil { 0% { background-position: 0% 0; } 100% { background-position: 100% 0; } }
+
+  .faq { margin-top: 8px; }
+  .faq-item { border-top: 1px solid var(--line-soft); }
+  .faq-item:last-child { border-bottom: 1px solid var(--line-soft); }
+  .faq-item summary { cursor: pointer; padding: 16px 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 1.25rem; color: var(--ink); list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-chev { width: 12px; height: 12px; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); transform: rotate(45deg); transition: transform .25s ease; flex: none; }
+  .faq-item[open] .faq-chev { transform: rotate(225deg); }
+  .faq-item[open] { background: var(--paper-deep); border-radius: 10px; padding: 0 14px; margin: 0 -14px; }
+  .faq-a { padding: 0 0 18px; color: var(--ink-mid); font-size: 0.98rem; line-height: 1.65; }
+
+  .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tile { position: relative; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; display: flex; align-items: flex-end; padding: 12px; border: 1px solid var(--line-soft); transition: transform .25s, box-shadow .25s; }
+  .tile:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(10,13,17,0.18); text-decoration: none; }
+  .tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(10,13,17,0.7)); }
+  .tile-name { position: relative; z-index: 1; font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.05rem; color: var(--paper); text-shadow: 0 1px 8px rgba(0,0,0,0.5); }
+  .tile-g0 { background: linear-gradient(135deg, #1A2A3A, #6B1A25); }
+  .tile-g1 { background: linear-gradient(135deg, #7C5B22, #1A1F25); }
+  .tile-g2 { background: linear-gradient(135deg, #333840, #A17433); }
+  .tile-g3 { background: linear-gradient(135deg, #6B1A25, #C9963E); }
+  .rel-row { margin-top: 18px; font-size: 0.9rem; color: var(--ink-mid); }
+  .rel-row a { color: var(--gold-deep); }
+
+  .newsletter { background: var(--paper-warm); border: 1px solid var(--line-soft); border-radius: 16px; padding: 28px; margin-top: 8px; }
+  .newsletter h2 { font-size: 1.4rem; margin-bottom: 6px; }
+  .newsletter p { font-size: 0.92rem; color: var(--ink-mid); margin-bottom: 14px; }
+  .nl-form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nl-form input { flex: 1 1 220px; min-width: 0; background: var(--paper); border: 1px solid var(--gold-deep); border-radius: 9px; padding: 12px 14px; font-family: inherit; font-size: 14px; color: var(--ink); }
+  .nl-form input:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+  .nl-form button { background: var(--ink); color: var(--paper); border: 0; border-radius: 9px; padding: 12px 22px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .nl-done { color: #2f6b3a; font-size: 14px; margin-top: 10px; }
+
+  footer { text-align: center; padding: 36px 24px 52px; color: var(--ink-mid); font-size: 12px; border-top: 1px solid var(--line-soft); margin-top: 56px; }
+  footer a { color: var(--gold-deep); }
+
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  .hero .eyebrow, .hero h1, .hero .tagline { opacity: 0; animation: fadeUp .7s cubic-bezier(.16,1,.3,1) forwards; }
+  .hero .eyebrow { animation-delay: 0ms; } .hero h1 { animation-delay: 80ms; } .hero .tagline { animation-delay: 160ms; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .hero .eyebrow, .hero h1, .hero .tagline { opacity: 1 !important; transform: none !important; animation: none !important; transition: none !important; }
+    .compass-divider, .skel, .cta { animation: none !important; }
+  }
+  @media (max-width: 600px) { .tile-grid { grid-template-columns: repeat(2, 1fr); } main { padding: 40px 22px; } }
 </style>
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Place","@id":"https://letto.live/letovi-dubai#place","name":"Dubai","address":{"@type":"PostalAddress","addressCountry":"AE"},"geo":{"@type":"GeoCoordinates","latitude":25.2048,"longitude":55.2708}},{"@type":"TouristDestination","@id":"https://letto.live/letovi-dubai#destination","name":"Dubai","description":"Letovi za Dubai — direktan let iz Beograda od ~5h. Burj Khalifa, Marina, pustinja na sat od centra. Sezona novembar–mart (van leta su ekstremne temperature). Letto bira hotele u Marini ili Downtown-u, blizu metroa.","url":"https://letto.live/letovi-dubai","image":"https://letto.live/og.png","isAccessibleForFree":false,"publicAccess":true,"address":{"@type":"PostalAddress","addressCountry":"AE"},"geo":{"@type":"GeoCoordinates","latitude":25.2048,"longitude":55.2708},"touristType":["Luxury travel","Shopping","Family travel"],"includesAttraction":[{"@type":"TouristAttraction","name":"Burdž Halifa"},{"@type":"TouristAttraction","name":"Palm Džumeira"},{"@type":"TouristAttraction","name":"Dubai Mall"}]},{"@type":"FAQPage","@id":"https://letto.live/letovi-dubai#faq","mainEntity":[{"@type":"Question","name":"Koliko košta let za Dubai iz Beograda?","acceptedAnswer":{"@type":"Answer","text":"Tipičan raspon je €220–€600 u sezoni. Letto skenira deal-ove ispod €220 kad se ukažu (engine osvežava svaka 6 sata)."}},{"@type":"Question","name":"Koliko traje let Beograd–Dubai?","acceptedAnswer":{"@type":"Answer","text":"Direktnim letom oko 4h 50min. Sa presedanjem može biti znatno duže — Letto prikazuje obe opcije."}},{"@type":"Question","name":"Kada je najbolja sezona za putovanje u Dubai?","acceptedAnswer":{"@type":"Answer","text":"Najpovoljniji meseci su novembar, decembar, januar, februar, mart. Tada su i cene i vreme u najboljoj kombinaciji."}},{"@type":"Question","name":"Koliko košta hotel u Dubai po noći?","acceptedAnswer":{"@type":"Answer","text":"Hoteli idu od €80 za budget 3★ kategoriju do €400+ za 5★ luksuz, po noći."}},{"@type":"Question","name":"Da li je potrebna viza za Dubai?","acceptedAnswer":{"@type":"Answer","text":"Viza za UAE se dobija besplatno po dolasku za srpske pasoše, do 90 dana boravka."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Početna","item":"https://letto.live/"},{"@type":"ListItem","position":2,"name":"Sve ponude","item":"https://letto.live/#deals"},{"@type":"ListItem","position":3,"name":"Dubai","item":"https://letto.live/letovi-dubai"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Place","@id":"https://letto.live/letovi-dubai#place","name":"Dubai","address":{"@type":"PostalAddress","addressCountry":"AE"},"geo":{"@type":"GeoCoordinates","latitude":25.2048,"longitude":55.2708}},{"@type":"TouristDestination","@id":"https://letto.live/letovi-dubai#destination","name":"Dubai","description":"Letovi za Dubai — Letto skenira 50+ izvora svaka 6h i čuva samo ponude ~30% ispod proseka. Plus hoteli, Mix paketi, daily deals.","url":"https://letto.live/letovi-dubai","image":"https://images.pexels.com/photos/19612315/pexels-photo-19612315.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200","isAccessibleForFree":false,"publicAccess":true,"address":{"@type":"PostalAddress","addressCountry":"AE"},"geo":{"@type":"GeoCoordinates","latitude":25.2048,"longitude":55.2708},"touristType":["Luxury travel","Shopping","Family travel"],"includesAttraction":[{"@type":"TouristAttraction","name":"Burdž Halifa"},{"@type":"TouristAttraction","name":"Palm Džumeira"},{"@type":"TouristAttraction","name":"Dubai Mall"}]},{"@type":"FAQPage","@id":"https://letto.live/letovi-dubai#faq","mainEntity":[{"@type":"Question","name":"Koliko košta let za Dubai iz Beograda?","acceptedAnswer":{"@type":"Answer","text":"Tipičan raspon je €220–€600 u sezoni. Letto skenira deal-ove ispod €220 kad se ukažu (engine osvežava svaka 6 sata)."}},{"@type":"Question","name":"Koliko traje let Beograd–Dubai?","acceptedAnswer":{"@type":"Answer","text":"Direktnim letom oko 4h 50min. Sa presedanjem može biti znatno duže — Letto prikazuje obe opcije."}},{"@type":"Question","name":"Kada je najbolja sezona za putovanje u Dubai?","acceptedAnswer":{"@type":"Answer","text":"Najpovoljniji meseci su novembar, decembar, januar, februar, mart. Tada su i cene i vreme u najboljoj kombinaciji."}},{"@type":"Question","name":"Koliko košta hotel u Dubai po noći?","acceptedAnswer":{"@type":"Answer","text":"Hoteli idu od €80 za budget 3★ kategoriju do €400+ za 5★ luksuz, po noći."}},{"@type":"Question","name":"Da li je potrebna viza za Dubai?","acceptedAnswer":{"@type":"Answer","text":"Viza za UAE se dobija besplatno po dolasku za srpske pasoše, do 90 dana boravka."}}]},{"@type":"Offer","@id":"https://letto.live/letovi-dubai#offer","name":"Letovi za Dubai","priceCurrency":"EUR","price":"220","priceValidUntil":"2026-07-07","availability":"https://schema.org/InStock","url":"https://letto.live/letovi-dubai","priceSpecification":{"@type":"PriceSpecification","priceCurrency":"EUR","minPrice":220,"maxPrice":1000},"itemOffered":{"@id":"https://letto.live/letovi-dubai#destination"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Početna","item":"https://letto.live/"},{"@type":"ListItem","position":2,"name":"Sve ponude","item":"https://letto.live/#deals"},{"@type":"ListItem","position":3,"name":"Letovi za Dubai","item":"https://letto.live/letovi-dubai"}]}]}</script>
 </head>
 <body>
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TR2FLLW8" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=2513952102382319&ev=PageView&noscript=1"/></noscript>
 
-<header class="hero">
-  <p class="tag">Letto · pronalazimo ponude koje vredi videti</p>
-  <h1>Letovi za Dubai</h1>
-  
+<header class="hero grain">
+  <img class="hero-img" src="https://images.pexels.com/photos/19612315/pexels-photo-19612315.jpeg?auto=compress&amp;cs=tinysrgb&amp;fit=crop&amp;h=627&amp;w=1200" alt="Dubai Marina with luxury yachts against a skyline of iconic skyscrapers in the morning light." fetchpriority="high" width="1200" height="627" decoding="async">
+  <div class="hero-inner">
+    <p class="eyebrow">Letto · pronalazimo ponude koje vredi videti</p>
+    <h1>Letovi za Dubai</h1>
+    <p class="tagline">Direktan let ~4h 50min · ponude ~30% ispod proseka</p>
+  </div>
+  <p class="photo-credit">Foto: <a href="https://www.pexels.com/@rockwell-branding-agency-85164430" rel="nofollow noopener" target="_blank">Rockwell branding agency</a> / Pexels</p>
 </header>
 
 <nav class="breadcrumbs" aria-label="Putanja">
   <ol>
     <li><a href="/">Početna</a></li>
     <li><a href="/#deals">Sve ponude</a></li>
-    <li aria-current="page">Dubai</li>
+    <li aria-current="page">Letovi za Dubai</li>
   </ol>
 </nav>
 
 <main>
-  <p class="intro">Letovi za Dubai — direktan let iz Beograda od ~5h. Burj Khalifa, Marina, pustinja na sat od centra. Sezona novembar–mart (van leta su ekstremne temperature). Letto bira hotele u Marini ili Downtown-u, blizu metroa.</p>
+  <section class="intro reveal">
+      <p>Letovi za Dubai — direktan let iz Beograda od ~5h. Burj Khalifa, Marina, pustinja na sat od centra. Sezona novembar–mart (van leta su ekstremne temperature). Letto bira hotele u Marini ili Downtown-u, blizu metroa.</p>
+  </section>
+  <p class="byline">Urednik: Miroslav Paunov · Ažurirano 07.06.2026.</p>
 
-  <h2>Trenutne ponude</h2>
-  <p class="deals-empty">Trenutno proveravamo ponude za Dubai — najbrži način je da odeš direktno na pretragu.</p>
+  <div class="divider"><span class="rule"></span><svg class="compass-divider" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="cdg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7C5B22"/><stop offset="35%" stop-color="#D9A94A"/>
+          <stop offset="50%" stop-color="#F0D795"/><stop offset="65%" stop-color="#D9A94A"/>
+          <stop offset="100%" stop-color="#7C5B22"/></linearGradient></defs>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="url(#cdg)" stroke-width="1"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#cdg)" stroke-width="0.4" opacity="0.6"/>
+        <g stroke="url(#cdg)" stroke-width="1.4"><line x1="50" y1="6" x2="50" y2="94"/><line x1="6" y1="50" x2="94" y2="50"/></g>
+        <g stroke="url(#cdg)" stroke-width="0.6" opacity="0.7"><line x1="19" y1="19" x2="81" y2="81"/><line x1="81" y1="19" x2="19" y2="81"/></g>
+        <circle cx="50" cy="50" r="4" fill="url(#cdg)"/>
+      </svg><span class="rule"></span></div>
 
-  <div class="cta-wrap">
-    <a class="cta" href="https://letto.live/results?destination_iata=DXB">Plus paketi za Dubai →</a>
-  </div>
+  <section class="reveal">
+    <h2>Trenutne ponude</h2>
+    <div id="live-prices" class="deals" data-origin="" data-dest="DXB"
+         data-perpkg="paket" data-empty="Trenutno proveravamo ponude za Dubai — najbrži način je da otvoriš Mix." data-badge="Ulovili smo %PCT% ispod proseka">
+      <p class="deals-note">Poslednja provera: let od €220 · hotel od €80/noć</p>
+    </div>
+    <div class="cta-wrap"><a class="cta" href="https://letto.live/results?destination_iata=DXB">Otvori Letto Mix →</a></div>
+  </section>
 
-  <section class="other">
+  <div class="divider"><span class="rule"></span><svg class="compass-divider" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="cdg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7C5B22"/><stop offset="35%" stop-color="#D9A94A"/>
+          <stop offset="50%" stop-color="#F0D795"/><stop offset="65%" stop-color="#D9A94A"/>
+          <stop offset="100%" stop-color="#7C5B22"/></linearGradient></defs>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="url(#cdg)" stroke-width="1"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#cdg)" stroke-width="0.4" opacity="0.6"/>
+        <g stroke="url(#cdg)" stroke-width="1.4"><line x1="50" y1="6" x2="50" y2="94"/><line x1="6" y1="50" x2="94" y2="50"/></g>
+        <g stroke="url(#cdg)" stroke-width="0.6" opacity="0.7"><line x1="19" y1="19" x2="81" y2="81"/><line x1="81" y1="19" x2="19" y2="81"/></g>
+        <circle cx="50" cy="50" r="4" fill="url(#cdg)"/>
+      </svg><span class="rule"></span></div>
+
+  <section class="faq reveal">
+    <h2>Česta pitanja</h2>
+    
+        <details class="faq-item reveal">
+          <summary>Koliko košta let za Dubai iz Beograda?<span class="faq-chev" aria-hidden="true"></span></summary>
+          <div class="faq-a">Tipičan raspon je €220–€600 u sezoni. Letto skenira deal-ove ispod €220 kad se ukažu (engine osvežava svaka 6 sata).</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Koliko traje let Beograd–Dubai?<span class="faq-chev" aria-hidden="true"></span></summary>
+          <div class="faq-a">Direktnim letom oko 4h 50min. Sa presedanjem može biti znatno duže — Letto prikazuje obe opcije.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Kada je najbolja sezona za putovanje u Dubai?<span class="faq-chev" aria-hidden="true"></span></summary>
+          <div class="faq-a">Najpovoljniji meseci su novembar, decembar, januar, februar, mart. Tada su i cene i vreme u najboljoj kombinaciji.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Koliko košta hotel u Dubai po noći?<span class="faq-chev" aria-hidden="true"></span></summary>
+          <div class="faq-a">Hoteli idu od €80 za budget 3★ kategoriju do €400+ za 5★ luksuz, po noći.</div>
+        </details>
+        <details class="faq-item reveal">
+          <summary>Da li je potrebna viza za Dubai?<span class="faq-chev" aria-hidden="true"></span></summary>
+          <div class="faq-a">Viza za UAE se dobija besplatno po dolasku za srpske pasoše, do 90 dana boravka.</div>
+        </details>
+  </section>
+
+  <div class="divider"><span class="rule"></span><svg class="compass-divider" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="cdg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7C5B22"/><stop offset="35%" stop-color="#D9A94A"/>
+          <stop offset="50%" stop-color="#F0D795"/><stop offset="65%" stop-color="#D9A94A"/>
+          <stop offset="100%" stop-color="#7C5B22"/></linearGradient></defs>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="url(#cdg)" stroke-width="1"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#cdg)" stroke-width="0.4" opacity="0.6"/>
+        <g stroke="url(#cdg)" stroke-width="1.4"><line x1="50" y1="6" x2="50" y2="94"/><line x1="6" y1="50" x2="94" y2="50"/></g>
+        <g stroke="url(#cdg)" stroke-width="0.6" opacity="0.7"><line x1="19" y1="19" x2="81" y2="81"/><line x1="81" y1="19" x2="19" y2="81"/></g>
+        <circle cx="50" cy="50" r="4" fill="url(#cdg)"/>
+      </svg><span class="rule"></span></div>
+
+  <section class="reveal">
     <h2>Drugi gradovi</h2>
-    <p class="other-links"><a href="/letovi-rim">Rim</a> · <a href="/letovi-palma">Palma de Mallorca</a> · <a href="/letovi-atina">Atina</a> · <a href="/letovi-barselona">Barselona</a> · <a href="/letovi-pariz">Pariz</a> · <a href="/letovi-valeta">Valeta</a> · <a href="/letovi-budimpesta">Budimpešta</a> · <a href="/letovi-lisabon">Lisabon</a></p>
+    <div class="tile-grid">
+          <a class="tile tile-g0" href="/letovi-rim"><span class="tile-name">Rim</span></a>
+          <a class="tile tile-g1" href="/letovi-palma"><span class="tile-name">Palma de Mallorca</span></a>
+          <a class="tile tile-g2" href="/letovi-atina"><span class="tile-name">Atina</span></a>
+          <a class="tile tile-g3" href="/letovi-barselona"><span class="tile-name">Barselona</span></a>
+          <a class="tile tile-g0" href="/letovi-pariz"><span class="tile-name">Pariz</span></a>
+          <a class="tile tile-g1" href="/letovi-valeta"><span class="tile-name">Valeta</span></a></div>
+    
+  </section>
+
+  <section class="newsletter reveal">
+    <h2>Dobij najbolje ponude na email</h2>
+    <p>Šaljemo 1–3 odabrana deala nedeljno. Bez spama, 1 klik odjava.</p>
+    <form class="nl-form" id="nl-form" novalidate>
+      <input type="email" name="email" placeholder="email@adresa.com" required aria-label="email@adresa.com">
+      <button type="submit">Prijavi se</button>
+    </form>
+    <p class="nl-done" id="nl-done" hidden>Hvala — prijava primljena.</p>
   </section>
 </main>
 
@@ -97,5 +261,99 @@
   <p><a href="/">Početna</a> · <a href="/results">Sve ponude</a> · <a href="/about">O nama</a></p>
   <p style="margin-top:8px;">© 2026 SIAL Consulting d.o.o. · Brežice, Slovenia</p>
 </footer>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var reveals = [].slice.call(document.querySelectorAll('.reveal'));
+  if (reduce || !('IntersectionObserver' in window)) {
+    reveals.forEach(function (el) { el.classList.add('in'); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    reveals.forEach(function (el) { io.observe(el); });
+  }
+
+  function countUp(el, value) {
+    if (reduce || !value) { el.textContent = '€' + value; return; }
+    var start = null, dur = 600;
+    function step(ts) {
+      if (start === null) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = '€' + Math.round(value * eased);
+      if (p < 1) requestAnimationFrame(step); else el.textContent = '€' + value;
+    }
+    requestAnimationFrame(step);
+  }
+
+  function fireVC(tries) {
+    if (window.lettoTrackPixel && window.fbq && window.fbq.loaded) {
+      window.lettoTrackPixel('ViewContent', { content_type: 'destination', content_ids: ['DXB'] });
+    } else if ((tries || 0) < 40) {
+      setTimeout(function () { fireVC((tries || 0) + 1); }, 150);
+    }
+  }
+  fireVC(0);
+
+  // LivePriceCard · keeps any server-rendered last-known note (S1) if the live
+  // fetch returns nothing / fails — only swaps to the empty message when there
+  // was no server note to preserve.
+  var box = document.getElementById('live-prices');
+  if (box) {
+    var origin = box.getAttribute('data-origin');
+    var dest = box.getAttribute('data-dest');
+    var perPkg = box.getAttribute('data-perpkg');
+    var emptyMsg = box.getAttribute('data-empty');
+    var badgeTpl = box.getAttribute('data-badge');
+    var hadNote = !!box.querySelector('.deals-note');
+    function keepOrEmpty() { if (!hadNote) box.innerHTML = '<p class="deals-empty">' + emptyMsg + '</p>'; }
+    var sid = null;
+    try { sid = localStorage.getItem('letto_premium_session') || localStorage.getItem('letto_mix_session'); } catch (e) {}
+    var qs = (origin ? 'origin=' + encodeURIComponent(origin) + '&' : '') + 'dest=' + encodeURIComponent(dest) + '&limit=3' + (sid ? '&auth=1' : '');
+    var opts = { headers: { 'Accept': 'application/json' } };
+    if (sid) opts.headers['X-Letto-Session'] = sid;
+    fetch('/api/packages?' + qs, opts)
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) {
+        var arr = (data && Array.isArray(data.packages)) ? data.packages : [];
+        if (!arr.length) { keepOrEmpty(); return; }
+        box.innerHTML = '';
+        arr.slice(0, 3).forEach(function (p) {
+          var price = p && p.pricing && p.pricing.total ? Math.round(p.pricing.total) : null;
+          var nights = (p && p.nights) || (p && p.dates && p.dates.nights) || null;
+          var disc = (p && (p.discountPct || p.savingsPct)) || (p && p.pricing && p.pricing.discountPct) || null;
+          var dep = (p && p.dates && p.dates.departure) ? p.dates.departure : '';
+          var meta = [nights ? (nights + (' noći')) : '', dep].filter(Boolean).join(' · ');
+          var badge = disc ? '<span class="deal-badge"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>' + badgeTpl.replace('%PCT%', Math.round(disc) + '%') + '</span>' : '';
+          var el = document.createElement('div');
+          el.className = 'deal';
+          el.innerHTML = '<div><div class="deal-meta">' + meta + '</div>' + badge + '</div>' +
+            '<div class="deal-price"><span class="amt">' + (price ? '€' + price : '—') + '</span><span class="per">' + perPkg + '</span></div>';
+          box.appendChild(el);
+          if (price) countUp(el.querySelector('.amt'), price);
+        });
+      })
+      .catch(function () { keepOrEmpty(); });
+  }
+
+  var nf = document.getElementById('nl-form');
+  if (nf) {
+    nf.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = (nf.email.value || '').trim();
+      if (!email || email.indexOf('@') < 1) return;
+      if (window.lettoSetPixelEmail) window.lettoSetPixelEmail(email);
+      fetch('/api/lead-capture', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, source: 'catalog' }) }).catch(function () {});
+      if (window.lettoTrackPixel) window.lettoTrackPixel('Lead', { content_name: 'pseo_newsletter' });
+      nf.hidden = true;
+      var done = document.getElementById('nl-done'); if (done) done.hidden = false;
+    });
+  }
+})();
+</script>
 </body>
 </html>

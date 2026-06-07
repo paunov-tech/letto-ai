@@ -1,0 +1,186 @@
+{
+  "FCO": {
+    "url": "https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Beautiful view of Ponte Sant'Angelo spanning the Tiber River in Rome, Italy under a clear sky.",
+    "credit": "AXP Photography",
+    "creditUrl": "https://www.pexels.com/@axp-photography-500641970",
+    "pexelsId": 33008929,
+    "sourceUrl": "https://www.pexels.com/photo/scenic-view-of-ponte-sant-angelo-in-rome-33008929/"
+  },
+  "PMI": {
+    "url": "https://images.pexels.com/photos/28990411/pexels-photo-28990411.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Explore the picturesque skyline of Palma de Mallorca featuring La Seu Cathedral and the bustling marina.",
+    "credit": "David Vives",
+    "creditUrl": "https://www.pexels.com/@david-vives-1474251",
+    "pexelsId": 28990411,
+    "sourceUrl": "https://www.pexels.com/photo/scenic-view-of-palma-de-mallorca-skyline-28990411/"
+  },
+  "ATH": {
+    "url": "https://images.pexels.com/photos/13356918/pexels-photo-13356918.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Aerial view of Athens cityscape showcasing urban density with mountains in the background.",
+    "credit": "David Iglesias",
+    "creditUrl": "https://www.pexels.com/@iglp11",
+    "pexelsId": 13356918,
+    "sourceUrl": "https://www.pexels.com/photo/dense-architecture-of-city-13356918/"
+  },
+  "BCN": {
+    "url": "https://images.pexels.com/photos/8910324/pexels-photo-8910324.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "A panoramic view of Barcelona's skyline with Torre Glòries during a clear morning.",
+    "credit": "Rockwell branding agency",
+    "creditUrl": "https://www.pexels.com/@rockwell-branding-agency-85164430",
+    "pexelsId": 8910324,
+    "sourceUrl": "https://www.pexels.com/photo/city-in-the-morning-8910324/"
+  },
+  "CDG": {
+    "url": "https://images.pexels.com/photos/29731407/pexels-photo-29731407.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Stunning nighttime aerial cityscape of Paris highlighting iconic landmarks.",
+    "credit": "Artūras Kokorevas",
+    "creditUrl": "https://www.pexels.com/@kokorevas",
+    "pexelsId": 29731407,
+    "sourceUrl": "https://www.pexels.com/photo/nighttime-aerial-view-of-paris-cityscape-29731407/"
+  },
+  "MLA": {
+    "url": "https://images.pexels.com/photos/37807535/pexels-photo-37807535.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Beautiful view of Valletta with boats in foreground, highlighting iconic architecture under a clear blue sky.",
+    "credit": "X1ntao ZHOU",
+    "creditUrl": "https://www.pexels.com/@x1ntao-zhou-1257907212",
+    "pexelsId": 37807535,
+    "sourceUrl": "https://www.pexels.com/photo/scenic-view-of-valletta-skyline-with-boats-37807535/"
+  },
+  "BUD": {
+    "url": "https://images.pexels.com/photos/18815996/pexels-photo-18815996.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Scenic view of the iconic Hungarian Parliament Building along the Danube River in Budapest.",
+    "credit": "Efrem  Efre",
+    "creditUrl": "https://www.pexels.com/@efrem-efre-2786187",
+    "pexelsId": 18815996,
+    "sourceUrl": "https://www.pexels.com/photo/parliament-building-in-budapest-18815996/"
+  },
+  "LIS": {
+    "url": "https://images.pexels.com/photos/33659330/pexels-photo-33659330.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Beautiful sunset over Lisbon with a view of the iconic 25 de Abril Bridge, framed by trees.",
+    "credit": "thorl5",
+    "creditUrl": "https://www.pexels.com/@thorl5-2154653228",
+    "pexelsId": 33659330,
+    "sourceUrl": "https://www.pexels.com/photo/lisbon-cityscape-with-25-de-abril-bridge-at-sunset-33659330/"
+  },
+  "VIE": {
+    "url": "https://images.pexels.com/photos/31750014/pexels-photo-31750014.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Aerial view of Vienna showcasing the town hall, Votivkirche, and architectural landmarks.",
+    "credit": "Alfred Franz",
+    "creditUrl": "https://www.pexels.com/@alfred-franz-114875410",
+    "pexelsId": 31750014,
+    "sourceUrl": "https://www.pexels.com/photo/scenic-view-of-vienna-s-historic-architecture-31750014/"
+  },
+  "DXB": {
+    "url": "https://images.pexels.com/photos/19612315/pexels-photo-19612315.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Dubai Marina with luxury yachts against a skyline of iconic skyscrapers in the morning light.",
+    "credit": "Rockwell branding agency",
+    "creditUrl": "https://www.pexels.com/@rockwell-branding-agency-85164430",
+    "pexelsId": 19612315,
+    "sourceUrl": "https://www.pexels.com/photo/cruise-ships-moored-in-dubai-19612315/"
+  },
+  "SKG": {
+    "url": "https://images.pexels.com/photos/37845033/pexels-photo-37845033.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Stunning aerial night view of Thessaloniki's illuminated waterfront in Greece.",
+    "credit": "K",
+    "creditUrl": "https://www.pexels.com/@kelly",
+    "pexelsId": 37845033,
+    "sourceUrl": "https://www.pexels.com/photo/aerial-night-view-of-thessaloniki-s-waterfront-37845033/"
+  },
+  "IST": {
+    "url": "https://images.pexels.com/photos/14819994/pexels-photo-14819994.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "A captivating view of Istanbul's skyline at sunset, highlighting iconic minarets.",
+    "credit": "enaerguvan .",
+    "creditUrl": "https://www.pexels.com/@enaerguvan-397715279",
+    "pexelsId": 14819994,
+    "sourceUrl": "https://www.pexels.com/photo/sunbeams-over-buildings-and-minarets-in-city-14819994/"
+  },
+  "MUC": {
+    "url": "https://images.pexels.com/photos/22702101/pexels-photo-22702101.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Scenic view of Munich skyline featuring the Frauenkirche and surrounding architecture at sunset.",
+    "credit": "Bastian Riccardi",
+    "creditUrl": "https://www.pexels.com/@shutter-speed",
+    "pexelsId": 22702101,
+    "sourceUrl": "https://www.pexels.com/photo/buildings-in-a-city-22702101/"
+  },
+  "SPU": {
+    "url": "https://images.pexels.com/photos/6701514/pexels-photo-6701514.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Discover the picturesque coastal cityscape of Split, Croatia, with its charming harbor and mountain backdrop.",
+    "credit": "Salim Chauhan",
+    "creditUrl": "https://www.pexels.com/@scpffm",
+    "pexelsId": 6701514,
+    "sourceUrl": "https://www.pexels.com/photo/city-view-from-the-sea-6701514/"
+  },
+  "DBV": {
+    "url": "https://images.pexels.com/photos/5273410/pexels-photo-5273410.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Cityscape of residential houses with tiled roofs and brick walls on hills near calm ocean in overcast weather",
+    "credit": "Julia Volk",
+    "creditUrl": "https://www.pexels.com/@julia-volk",
+    "pexelsId": 5273410,
+    "sourceUrl": "https://www.pexels.com/photo/old-town-in-mountainous-terrain-near-sea-5273410/"
+  },
+  "PRG": {
+    "url": "https://images.pexels.com/photos/16922421/pexels-photo-16922421.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Explore the historic charm of Prague's bridges and architecture with this stunning aerial cityscape.",
+    "credit": "Diego F. Parra",
+    "creditUrl": "https://www.pexels.com/@diego-f-parra-33199",
+    "pexelsId": 16922421,
+    "sourceUrl": "https://www.pexels.com/photo/a-view-of-prague-16922421/"
+  },
+  "TIA": {
+    "url": "https://images.pexels.com/photos/188033/pexels-photo-188033.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "View of modern skyscrapers and lush greenery in Tirana, Albania during daylight.",
+    "credit": "Ingo Joseph",
+    "creditUrl": "https://www.pexels.com/@ingo",
+    "pexelsId": 188033,
+    "sourceUrl": "https://www.pexels.com/photo/high-rise-buildings-near-green-leaf-trees-under-white-sky-during-daytime-188033/"
+  },
+  "AMS": {
+    "url": "https://images.pexels.com/photos/30586451/pexels-photo-30586451.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Aerial view showcasing Amsterdam's historic architecture, highlighting a stunning skyline.",
+    "credit": "Jimmyk photos",
+    "creditUrl": "https://www.pexels.com/@jimmykphotos",
+    "pexelsId": 30586451,
+    "sourceUrl": "https://www.pexels.com/photo/aerial-view-of-amsterdam-with-historic-buildings-30586451/"
+  },
+  "CMN": {
+    "url": "https://images.pexels.com/photos/30362133/pexels-photo-30362133.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "High-angle view of Casablanca's urban skyline under a vibrant blue sky.",
+    "credit": "Aymane Hanni",
+    "creditUrl": "https://www.pexels.com/@aymane-hanni-2148955127",
+    "pexelsId": 30362133,
+    "sourceUrl": "https://www.pexels.com/photo/panoramic-view-of-casablanca-urban-skyline-30362133/"
+  },
+  "HER": {
+    "url": "https://images.pexels.com/photos/37844581/pexels-photo-37844581.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Discover the vibrant cityscape of Heraklion, Crete, captured from above with a stunning view of buildings and mountains.",
+    "credit": "K",
+    "creditUrl": "https://www.pexels.com/@kelly",
+    "pexelsId": 37844581,
+    "sourceUrl": "https://www.pexels.com/photo/aerial-view-of-heraklion-cityscape-crete-greece-37844581/"
+  },
+  "IBZ": {
+    "url": "https://images.pexels.com/photos/29041772/pexels-photo-29041772.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "A scenic aerial view of Ibiza's marina at dusk, showcasing vibrant city lights and bustling harbor in Spain.",
+    "credit": "Raymond Petrik",
+    "creditUrl": "https://www.pexels.com/@raymond-petrik-1448389535",
+    "pexelsId": 29041772,
+    "sourceUrl": "https://www.pexels.com/photo/scenic-evening-view-of-ibiza-marina-29041772/"
+  },
+  "LHR": {
+    "url": "https://images.pexels.com/photos/14936005/pexels-photo-14936005.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Dramatic night view of London's skyline featuring modern skyscrapers and the historical Tower of London.",
+    "credit": "Manzoni Studios",
+    "creditUrl": "https://www.pexels.com/@manzoni-studios-59597719",
+    "pexelsId": 14936005,
+    "sourceUrl": "https://www.pexels.com/photo/20-fenchurch-street-skyscraper-and-tower-of-london-at-night-14936005/"
+  },
+  "MAD": {
+    "url": "https://images.pexels.com/photos/22922043/pexels-photo-22922043.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
+    "alt": "Beautiful cityscape of Madrid, Spain, captured during twilight with iconic landmarks visible.",
+    "credit": "Emilio Garcia",
+    "creditUrl": "https://www.pexels.com/@emilio-garcia-96280844",
+    "pexelsId": 22922043,
+    "sourceUrl": "https://www.pexels.com/photo/cityscape-of-madrid-22922043/"
+  }
+}
