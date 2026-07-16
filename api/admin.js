@@ -2,15 +2,14 @@
 // Lists pending packages, handles approve (to public/premium) / reject / edit.
 // Protected by ADMIN_TOKEN env variable.
 //
-// Auth: Bearer ADMIN_TOKEN OR (for /retry-failed-emails) Vercel cron with
-// `Authorization: Bearer <CRON_SECRET>` (Vercel injects this header on
-// scheduled invocations).
+// Auth: Bearer ADMIN_TOKEN for human/admin operations. Vercel cron may use
+// CRON_SECRET only for the four explicitly scheduled actions in vercel.json.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { withSentry } from '../lib/sentry-backend.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { Storage } from '@google-cloud/storage';
-import { sendMixConfirmationEmail, sendWelcomeEmailWithRetry, postSlackAlert } from './stripe-webhook.js';
+import { authorizeAdminRequest } from '../lib/admin-auth.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -25,18 +24,48 @@ if (!getApps().length) {
 const db = getFirestore();
 const COLL = 'letto_packages';
 
-function checkAuth(req) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token && token === process.env.ADMIN_TOKEN) return true;
-  // Vercel cron sends Authorization: Bearer ${CRON_SECRET}. Allow that path
-  // for /retry-failed-emails so the daily scheduler can invoke without
-  // sharing the human admin token.
-  if (token && process.env.CRON_SECRET && token === process.env.CRON_SECRET) return true;
-  return false;
+// stripe-webhook initializes Stripe at module load. Load its helper exports
+// only after authorization and only in actions that need email/Slack work.
+// This keeps unauthorized/admin-read requests independent of Stripe config.
+let stripeHelpersPromise;
+function stripeHelpers() {
+  stripeHelpersPromise ||= import('./stripe-webhook.js');
+  return stripeHelpersPromise;
+}
+
+async function sendMixConfirmationEmail(...args) {
+  const helpers = await stripeHelpers();
+  return helpers.sendMixConfirmationEmail(...args);
+}
+
+async function sendWelcomeEmailWithRetry(...args) {
+  const helpers = await stripeHelpers();
+  return helpers.sendWelcomeEmailWithRetry(...args);
+}
+
+async function postSlackAlert(...args) {
+  const helpers = await stripeHelpers();
+  return helpers.postSlackAlert(...args);
+}
+
+async function writeAdminAudit({ actor, action, packageId = null, detail = null }) {
+  try {
+    await db.collection('letto_admin_audit').add({
+      actor,
+      action,
+      packageId,
+      detail,
+      ts: new Date().toISOString(),
+    });
+  } catch (err) {
+    // Audit must never break an otherwise successful admin operation.
+    console.error('[admin-audit] write failed:', err.message);
+  }
 }
 
 async function handler(req, res) {
-  if (!checkAuth(req)) {
+  const auth = authorizeAdminRequest(req);
+  if (!auth.ok) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -61,6 +90,7 @@ async function handler(req, res) {
         approvedAt: new Date().toISOString(),
         approvedBy: 'admin'
       });
+      await writeAdminAudit({ actor: auth.actor, action: 'approve', packageId, detail: { target } });
 
       if (process.env.N8N_WEBHOOK_URL) {
         fetch(process.env.N8N_WEBHOOK_URL, {
@@ -81,6 +111,7 @@ async function handler(req, res) {
         rejectedAt: new Date().toISOString(),
         rejectionReason: reason || 'No reason provided'
       });
+      await writeAdminAudit({ actor: auth.actor, action: 'reject', packageId, detail: { reason: reason || 'No reason provided' } });
       return res.status(200).json({ success: true, id: packageId });
     }
 
@@ -93,6 +124,7 @@ async function handler(req, res) {
         ...updates,
         editedAt: new Date().toISOString()
       });
+      await writeAdminAudit({ actor: auth.actor, action: 'edit', packageId, detail: { fields: Object.keys(updates).sort() } });
       return res.status(200).json({ success: true });
     }
 
@@ -102,6 +134,7 @@ async function handler(req, res) {
         status: 'pending_review',
         unpublishedAt: new Date().toISOString()
       });
+      await writeAdminAudit({ actor: auth.actor, action: 'unpublish', packageId });
       return res.status(200).json({ success: true, id: packageId });
     }
 

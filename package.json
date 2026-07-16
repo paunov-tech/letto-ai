@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test tests/*.test.js",
     "deploy": "vercel --prod",
     "build:seo": "node scripts/generate-sitemap.mjs && node scripts/generate-destination-pages.mjs && node scripts/generate-destination-matrix.mjs",
     "build:sitemap": "node scripts/generate-sitemap.mjs",
