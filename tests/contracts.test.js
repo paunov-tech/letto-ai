@@ -23,7 +23,9 @@ test('critical public entry points and API rewrites remain present', async () =>
   assert.equal(rewrites.get('/api/(.*)'), '/api/$1');
 
   for (const file of ['public/index.html', 'public/results.html', 'public/me.html', 'public/trip.html']) {
-    assert.ok((await read(file)).length > 1_000, `${file} should remain a populated entry point`);
+    const source = await read(file);
+    assert.ok(source.length > 1_000, `${file} should remain a populated entry point`);
+    assert.match(source, /<link rel="stylesheet" href="\/css\/ui-finish\.20260716\.css">/);
   }
 });
 

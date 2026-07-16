@@ -1,0 +1,48 @@
+/* LETTO UI finish — additive interaction/accessibility polish only. */
+:root {
+  color-scheme: light;
+  --ui-focus: #d9a94a;
+  --ui-selection-bg: rgba(161, 116, 51, 0.24);
+  --ui-selection-ink: #0a0d11;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--ui-selection-bg);
+  color: var(--ui-selection-ink);
+}
+
+:where(button, [role="button"], input[type="button"], input[type="submit"], select) {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(161, 116, 51, 0.16);
+}
+
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
