@@ -106,6 +106,13 @@ npm install
 vercel dev               # local Vercel runtime za api/ + public/
 ```
 
+Read-only produkcioni smoke test (bez kredencijala i bez upisa):
+
+```bash
+npm test
+npm run smoke:prod
+```
+
 Env vars: kopiraj `.env.example` → `.env.local`, popuni vrednosti. Stripe / Firebase / Telegram tokens u `.env.stripe`, `.env.engine`, `.env.telegram` (svi gitignored).
 
 ## Deploy

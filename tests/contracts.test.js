@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
@@ -43,4 +43,45 @@ test('admin authorization runs before Stripe-heavy helpers can load', async () =
   assert.equal(source.includes("import { sendMixConfirmationEmail, sendWelcomeEmailWithRetry, postSlackAlert } from './stripe-webhook.js'"), false);
   assert.match(source, /stripeHelpersPromise \|\|= import\('\.\/stripe-webhook\.js'\)/);
   assert.match(source, /if \(!auth\.ok\) \{\s*return res\.status\(401\)/);
+});
+
+test('static rewrite destinations exist on disk', async () => {
+  const config = JSON.parse(await read('vercel.json'));
+  const staticDestinations = config.rewrites
+    .map(({ destination }) => destination.split('?')[0])
+    .filter((destination) => destination.endsWith('.html') && !destination.includes(':'));
+
+  for (const destination of staticDestinations) {
+    await assert.doesNotReject(access(new URL(`public${destination}`, root)), `${destination} must exist`);
+  }
+});
+
+test('robots keeps private surfaces out of search and advertises the sitemap', async () => {
+  const robots = await read('public/robots.txt');
+  assert.match(robots, /^Disallow: \/admin\.html$/m);
+  assert.match(robots, /^Disallow: \/metrics\.html$/m);
+  assert.match(robots, /^Disallow: \/api\/$/m);
+  assert.match(robots, /^Sitemap: https:\/\/letto\.live\/sitemap\.xml$/m);
+});
+
+test('main sitemap entries are unique and point at HTTPS production URLs', async () => {
+  const sitemap = await read('public/sitemap-main.xml');
+  const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+  assert.ok(locations.length > 10, 'main sitemap should contain the core and destination pages');
+  assert.equal(new Set(locations).size, locations.length, 'sitemap locations must be unique');
+  for (const location of locations) assert.match(location, /^https:\/\/letto\.live\//);
+});
+
+test('generated destination pages retain canonical and hreflang metadata', async () => {
+  const pairs = [
+    ['public/letovi-rim.html', 'https://letto.live/letovi-rim', 'https://letto.live/flights-rome'],
+    ['public/flights-rome.html', 'https://letto.live/flights-rome', 'https://letto.live/letovi-rim'],
+    ['public/letovi-prag.html', 'https://letto.live/letovi-prag', 'https://letto.live/flights-prague'],
+    ['public/flights-prague.html', 'https://letto.live/flights-prague', 'https://letto.live/letovi-prag'],
+  ];
+  for (const [file, canonical, alternate] of pairs) {
+    const source = await read(file);
+    assert.ok(source.includes(`rel="canonical" href="${canonical}"`), `${file} canonical`);
+    assert.ok(source.includes(alternate), `${file} paired hreflang`);
+  }
 });
