@@ -143,7 +143,11 @@ async function handler(req, res) {
       });
     }
   }
-  const rankedPool = rankItineraries(packages, { from, to, pax }, 40);
+  // Keep the complete candidate set until category-aware diversification below.
+  // A self-transfer commonly ranks below many regular hotel pairings because of
+  // its explicit risk penalty; slicing at 40 here would silently remove it
+  // before it can receive its reserved, clearly-labelled alternative slot.
+  const rankedPool = rankItineraries(packages, { from, to, pax }, Math.max(40, packages.length));
   const itineraries = diversifyItineraries(rankedPool, 8, flexible ? 3 : 8, item =>
     `${item?.dates?.departure}|${item?.dates?.return}|${item?.flight?.selfTransfer?.required ? 'self' : 'standard'}`
   );

@@ -5325,13 +5325,25 @@ if (document.readyState === 'loading') {
     section.hidden = rankedState.raw.length === 0;
     if (section.hidden) { mount.innerHTML = ''; return; }
     var l = lang();
-    mount.innerHTML = rankedState.raw.slice(0, 3).map(function (pkg) {
+    // Preserve two best regular combinations and one explicitly-labelled
+    // self-transfer alternative when such a verified alternative exists.
+    // It should be visible, but never be misrepresented as the default best match.
+    var visibleMixes = rankedState.raw.slice(0, 3);
+    var selfTransferMix = rankedState.raw.find(function (item) {
+      return item && item.flight && item.flight.selfTransfer && item.flight.selfTransfer.required;
+    });
+    if (selfTransferMix && !visibleMixes.some(function (item) { return item.id === selfTransferMix.id; })) {
+      visibleMixes = rankedState.raw.slice(0, 2).concat(selfTransferMix);
+    }
+    mount.innerHTML = visibleMixes.map(function (pkg) {
       var d = pkg.dates || {}, f = pkg.flight || {}, h = pkg.hotel || {}, price = pkg.pricing || {};
       var flightPrice = Number(f.totalPrice || 0);
       var hotelPrice = Number(h.totalWithTaxes || h.totalPrice || 0);
       var total = Number(price.total || (flightPrice + hotelPrice));
       var why = (pkg.why || []).map(function (text) { return '<li>' + escapeHtml(text) + '</li>'; }).join('');
-      var rankLabel = pkg.rank === 1 ? (l === 'en' ? 'Best match' : 'Najbolji izbor') : '#' + pkg.rank;
+      var rankLabel = f.selfTransfer && f.selfTransfer.required
+        ? (l === 'en' ? 'Self-transfer alternative' : 'Self-transfer alternativa')
+        : (pkg.rank === 1 ? (l === 'en' ? 'Best match' : 'Najbolji izbor') : '#' + pkg.rank);
       var verify = pkg.itinerary && pkg.itinerary.level === 'segment_confirmed'
         ? (l === 'en' ? 'Exact segments verified' : 'Tačni segmenti potvrđeni')
         : (l === 'en' ? 'Round-trip search + property verified' : 'Povratna pretraga + hotel potvrđeni');
