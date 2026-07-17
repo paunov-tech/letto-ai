@@ -5434,6 +5434,7 @@ if (document.readyState === 'loading') {
         return;
       }
       try { showStage3(); } catch (e) { console.error('[mix-v2] ranked selection failed:', e); }
+      enrichSelectedHotelProperty(getState());
     });
   }
 
@@ -6104,6 +6105,7 @@ if (document.readyState === 'loading') {
     var hasHotel = !!(state.hotel && state.hotel.selected);
     if (hasHotel) {
       try { showStage3(); } catch (e) { console.error('[mix-v2] showStage3 after selectPackage failed:', e); }
+      enrichSelectedHotelProperty(getState());
     } else {
       // Nudge user to pick a hotel — show toast / scroll on mobile
       if (typeof showToast === 'function') {
@@ -6193,6 +6195,7 @@ if (document.readyState === 'loading') {
     var hasHotel  = !!(state.hotel  && state.hotel.selected);
     if (hasFlight && hasHotel) {
       try { showStage3(); } catch (e) { console.error('[mix-v2] showStage3 after selectHotel failed:', e); }
+      enrichSelectedHotelProperty(getState());
     }
   }
 
@@ -6813,6 +6816,33 @@ if (document.readyState === 'loading') {
       amenities: amenities,
       verified: Object.assign({}, previous.verified || {}, fresh.verified || {}, { amenities: amenities.length > 0 })
     };
+  }
+
+  function enrichSelectedHotelProperty(state) {
+    var h = state && state.hotel && state.hotel.selected;
+    if (!h || !h.bookingUrl || h.stayDetails?.propertyAmenityCheckedAt) return Promise.resolve(false);
+    return fetch('/api/hotel-stay-details', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingUrl: h.bookingUrl })
+    }).then(function (response) {
+      return response.ok ? response.json() : null;
+    }).then(function (data) {
+      if (!data || !data.stayDetails) return false;
+      var current = getState();
+      var selected = current && current.hotel && current.hotel.selected;
+      if (!selected || selected.bookingUrl !== h.bookingUrl) return false;
+      var amenities = Array.isArray(data.stayDetails.amenities) && data.stayDetails.amenities.length
+        ? data.stayDetails.amenities : (selected.stayDetails?.amenities || []);
+      selected.stayDetails = Object.assign({}, selected.stayDetails || {}, {
+        amenities: amenities,
+        propertyAmenitySource: data.stayDetails.source || 'unavailable',
+        propertyAmenityCheckedAt: data.checkedAt || new Date().toISOString(),
+        verified: Object.assign({}, selected.stayDetails?.verified || {}, { amenities: amenities.length > 0 })
+      });
+      setState(current);
+      paintFromState(current);
+      return amenities.length > 0;
+    }).catch(function () { return false; });
   }
 
   function applyFreshRevalidation(state, result) {
