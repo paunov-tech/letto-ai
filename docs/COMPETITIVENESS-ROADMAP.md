@@ -19,7 +19,7 @@ core product.
 - [x] 3. Flexible dates and stay durations
 - [x] 4. Multi-city and self-transfer combinations
 - [x] 5. Price revalidation before display/click
-- [ ] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities — in progress
+- [x] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities
 - [ ] 7. AI ranking personalization
 - [ ] 8. Saved searches, price history, alerts and automatic recommendations
 - [ ] 9. Provider fallback, retries, circuit breakers and observability
@@ -88,9 +88,28 @@ property URL, the endpoint returned `bookable: true` and €726.59 total, and a
 headless browser click displayed “Price refreshed — the total above has
 changed.” before booking.
 
-Phase 6 is now active: retain and present room/rate details, meal plan,
-tax/fee breakdown, cancellation terms, and amenities for a selected hotel;
-only compare combinations with the same transparent stay scope.
+Phase 6 completed in production on 2026-07-17 (`71d9a5f`, `382bf41`,
+`ebec73f`). Every hotel carries a normalized stay scope: room/rate name,
+meal plan, cancellation, taxes/fees and amenities are shown only when a
+provider or property page explicitly states them; each missing term remains
+"confirm at partner" instead of being inferred from generic copy. The
+selected property is additionally checked through a rate-limited, same-origin
+Bright Data endpoint. It removes date/availability parameters and requests
+the canonical property page, so durable amenities are enriched without
+mistaking page-level text for a chosen room's cancellation, breakfast or tax
+terms. Booking's visible "Most popular amenities" list and structured data
+are parsed, while unavailable page metadata remains explicitly unavailable.
+Production proof: Bright Data's configured `web_unlocker1` returned the
+canonical Booking property HTML and the parser extracted Free Wifi, Family
+rooms, Non-smoking rooms, 24-hour front desk and Air conditioning. A
+production browser selection for BEG-JFK completed the independent mix and
+price revalidation; its selected property had no published amenities list, so
+the Stage 3 screen truthfully retained the three partner-confirmation labels
+rather than inventing them. Price comparisons therefore retain only the
+source-confirmed stay scope and visibly disclose all unknown terms.
+
+Phase 7 is now active: personalize ranking without changing source facts or
+silently hiding viable independent combinations.
 
 Relevant files:
 
@@ -100,6 +119,10 @@ Relevant files:
 - `lib/itinerary-contract.js`
 - `lib/flexible-date-matrix.js`
 - `lib/price-revalidation.js`
+- `lib/hotel-stay-details.js`
+- `lib/hotel-page-details.js`
+- `api/hotel-stay-details.js`
+- `scrapers/lib/brightdata.mjs`
 - `api/revalidate-mix.js`
 - `public/results.html`
 - `tests/booking-flight-provider.test.js`
