@@ -24,6 +24,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { buildCacheKey, getCached, setCached } from '../lib/hotels-cache.js';
 import { applyRateLimit } from '../lib/rate-limit.js';
 import {
+  getBookingHotelProperty,
   resolveAirportCity,
   resolveBookingHotelDestination
 } from '../lib/booking-destination-provider.js';
@@ -125,11 +126,12 @@ async function searchBookingFallback({ destination, cityEn, checkIn, checkOut, a
     const nights = Math.max(1, Math.round((Date.parse(checkOut) - Date.parse(checkIn)) / 86400000));
     const hotels = rows.slice(0, limit).flatMap(row => {
       const p = row.property || row;
+      const hotelId = String(row.hotel_id || p.id || '');
       const total = Number(p?.priceBreakdown?.grossPrice?.value ?? p?.priceBreakdown?.grossPrice?.amount ?? p?.priceBreakdown?.all_inclusive_price ?? 0);
       if (!p?.name || !total) return [];
       const direct = [p.url, p.bookingUrl, row.url].find(value => /^https:\/\/(www\.)?booking\.com\//i.test(value || '')) || null;
       return [{
-        id: 'booking-' + String(row.hotel_id || p.id || p.name), name: String(p.name),
+        id: 'booking-' + String(hotelId || p.name), providerHotelId: hotelId || null, name: String(p.name),
         stars: Number(p.accuratePropertyClass || p.propertyClass || 0) || null,
         guestRating: Number(p.reviewScore || 0) || null,
         reviewCount: Number(p.reviewCount || 0) || null,
@@ -141,6 +143,18 @@ async function searchBookingFallback({ destination, cityEn, checkIn, checkOut, a
         source: 'booking-com15'
       }];
     });
+    const enriched = await Promise.all(hotels.slice(0, 5).map(async hotel => {
+      if (hotel.bookingUrl || !hotel.providerHotelId) return hotel;
+      const details = await getBookingHotelProperty({
+        hotelId: hotel.providerHotelId, checkIn, checkOut, adults
+      });
+      return details ? {
+        ...hotel,
+        ...details,
+        bookingPartner: 'booking.com'
+      } : hotel;
+    }));
+    hotels.splice(0, enriched.length, ...enriched);
     return { hotels, provider: 'booking-com15' };
   } catch (error) {
     return { hotels: [], error: 'booking_exception', detail: error.message };

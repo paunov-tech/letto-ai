@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  getBookingHotelProperty,
   resolveAirportCity,
   resolveBookingHotelDestination,
   searchGlobalAirports
@@ -27,6 +28,26 @@ test('normalizes only unique airport results from global discovery', async () =>
   assert.equal(result.airports.length, 1);
   assert.equal(result.airports[0].iata, 'JFK');
   assert.equal(result.airports[0].cityEn, 'New York');
+});
+
+test('enriches a hotel with a date-specific property handoff', async () => {
+  const property = await getBookingHotelProperty({
+    hotelId: '1663551', checkIn: '2026-09-17', checkOut: '2026-09-27', adults: 2
+  }, {
+    key,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ data: {
+        url: 'https://www.booking.com/hotel/us/manhattan-bowery-lodge.html',
+        address: 'Bowery, New York',
+        latitude: 40.7,
+        longitude: -74
+      } })
+    })
+  });
+  assert.match(property.bookingUrl, /booking\.com\/hotel\/us\/manhattan-bowery-lodge\.html/);
+  assert.match(property.bookingUrl, /checkin=2026-09-17/);
+  assert.equal(property.address, 'Bowery, New York');
 });
 
 test('resolves an exact IATA airport to its hotel city', async () => {
