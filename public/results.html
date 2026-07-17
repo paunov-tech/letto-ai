@@ -5294,16 +5294,27 @@ if (document.readyState === 'loading') {
       origin: p.origin, dest: p.dest, from: p.depart, to: p.ret,
       pax: String((p.adults || 2) + (p.children || 0)), limit: '6'
     });
-    fetch('/api/mix-search?' + qs.toString(), { headers: { Accept: 'application/json' } })
+    function fetchCatalogFallback() {
+      return fetch('/api/mix-search?' + qs.toString(), { headers: { Accept: 'application/json' } })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    }
+    fetch('/api/live-mix-search?' + qs.toString(), { headers: { Accept: 'application/json' } })
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (data) {
+        return Array.isArray(data.itineraries) && data.itineraries.length ? data : fetchCatalogFallback();
+      })
       .then(function (data) {
         rankedState.raw = Array.isArray(data.itineraries) ? data.itineraries : [];
         rankedState.loadedFor = key;
         paintRankedMixes();
       })
       .catch(function (e) {
-        console.warn('[mix-v2] ranked mixes unavailable:', e.message);
-        section.hidden = true;
+        console.warn('[mix-v2] live mixes unavailable, trying catalog:', e.message);
+        fetchCatalogFallback().then(function (data) {
+          rankedState.raw = Array.isArray(data.itineraries) ? data.itineraries : [];
+          rankedState.loadedFor = key;
+          paintRankedMixes();
+        }).catch(function () { section.hidden = true; });
       });
   }
 

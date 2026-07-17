@@ -1,0 +1,73 @@
+import { withSentry } from '../lib/sentry-backend.js';
+import { searchTravelpayoutsFlights } from '../lib/live-flight-provider.js';
+import { rankItineraries } from '../lib/mix-ranker.js';
+
+const IATA = /^[A-Z]{3}$/;
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+async function handler(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' });
+  const origin = String(req.query.origin || '').toUpperCase();
+  const dest = String(req.query.dest || '').toUpperCase();
+  const from = String(req.query.from || '');
+  const to = String(req.query.to || '');
+  const pax = Math.max(1, Math.min(7, Number(req.query.pax) || 2));
+  if (!IATA.test(origin) || !IATA.test(dest) || !ISO.test(from) || !ISO.test(to) || from >= to) {
+    return res.status(400).json({ error: 'invalid_search' });
+  }
+
+  res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=1800');
+  const hotelUrl = new URL('/api/hotels-search', `https://${req.headers.host || 'letto.live'}`);
+  hotelUrl.search = new URLSearchParams({
+    destination: dest, checkIn: from, checkOut: to, adults: String(pax), limit: '12'
+  }).toString();
+
+  const [flightResult, hotelResponse] = await Promise.all([
+    searchTravelpayoutsFlights({ origin, destination: dest, from, to, pax }),
+    fetch(hotelUrl, {
+      headers: { Accept: 'application/json', Referer: `https://${req.headers.host || 'letto.live'}/results.html` },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(22000) : undefined
+    }).catch(() => null)
+  ]);
+  const hotelPayload = hotelResponse?.ok ? await hotelResponse.json().catch(() => ({})) : {};
+  const hotels = Array.isArray(hotelPayload.hotels) ? hotelPayload.hotels : [];
+  const nights = Math.round((Date.parse(to) - Date.parse(from)) / 86400000);
+  const packages = [];
+  for (const flight of flightResult.flights) {
+    const flightNights = Math.round((Date.parse(flight.ret) - Date.parse(flight.depart)) / 86400000);
+    for (const hotel of hotels.slice(0, 8)) {
+      if (flight.depart !== from || flight.ret !== to || flightNights !== nights) continue;
+      packages.push({
+        id: `live-${flight.id}-${hotel.id}`,
+        origin: { code: origin },
+        destination: { code: dest },
+        dates: { departure: from, return: to, nights },
+        flight: { ...flight },
+        hotel: {
+          name: hotel.name, rating: hotel.stars, reviewScore: hotel.guestRating,
+          reviewCount: hotel.reviewCount, photo: hotel.photo, nights,
+          totalWithTaxes: Number(hotel.priceTotal), totalPrice: Number(hotel.priceTotal),
+          bookingUrl: hotel.bookingUrl, bookingPartner: hotel.bookingPartner
+        },
+        pricing: {
+          total: Number(flight.totalPrice) + Number(hotel.priceTotal),
+          currency: 'EUR'
+        },
+        metadata: { source: 'live_orchestrator_v1', createdAt: new Date().toISOString() }
+      });
+    }
+  }
+  const itineraries = rankItineraries(packages, { from, to, pax }, 8);
+  return res.status(200).json({
+    itineraries,
+    count: itineraries.length,
+    requested: { origin, dest, from, to, pax },
+    providers: {
+      flights: { name: flightResult.provider, count: flightResult.flights.length, error: flightResult.error || null },
+      hotels: { name: hotelPayload?.meta?.provider || 'hotels-com-provider', count: hotels.length }
+    },
+    mode: 'live_independent_mix'
+  });
+}
+
+export default withSentry('live-mix-search', handler);

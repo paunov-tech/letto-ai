@@ -39,3 +39,12 @@ test('rejects a declared stay that disagrees with calendar dates', () => {
   assert.equal(c.dateAligned, false);
   assert.equal(c.complete, false);
 });
+
+test('accepts a concrete Hotels.com property handoff', () => {
+  const c = itineraryContract({
+    ...base,
+    hotel: { ...base.hotel, bookingUrl: 'https://www.hotels.com/ho694842/classic-hotel-budapest/' }
+  });
+  assert.equal(c.hotel.verification, 'property_price_confirmed');
+  assert.equal(c.complete, true);
+});

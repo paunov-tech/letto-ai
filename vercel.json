@@ -5,6 +5,7 @@
   "framework": null,
   "functions": {
     "api/hotels-search.js": { "maxDuration": 25 },
+    "api/live-mix-search.js": { "maxDuration": 30 },
     "api/cj-refresh.js":    { "maxDuration": 60 },
     "api/admin.js":         { "maxDuration": 60 },
     "api/pseo-route.js":    { "maxDuration": 15 }
