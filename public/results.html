@@ -5339,7 +5339,10 @@ if (document.readyState === 'loading') {
         '<div class="ranked-card__top"><span class="ranked-card__rank">' + rankLabel + '</span><span class="ranked-card__score">LETTO ' + Number(pkg.lettoScore || 0) + '/100</span></div>' +
         '<h3>' + escapeHtml((pkg.origin && pkg.origin.code) || '') + ' ↔ ' + escapeHtml((pkg.destination && pkg.destination.code) || '') + ' · ' + escapeHtml(h.name || (l === 'en' ? 'Hotel' : 'Hotel')) + '</h3>' +
         '<div class="ranked-card__dates">' + escapeHtml(fmtDateRange(d.departure, d.return, l)) + ' · ' + Number(d.nights || h.nights || 0) + (l === 'en' ? ' nights' : ' noći') + '</div>' +
-        '<div class="ranked-card__parts">✈ ' + escapeHtml(f.airline || (l === 'en' ? 'Flight option' : 'Opcija leta')) + ' · €' + Math.round(flightPrice) + '<br>⌂ ' + escapeHtml(h.name || 'Hotel') + ' · €' + Math.round(hotelPrice) + '</div>' +
+        '<div class="ranked-card__parts">✈ ' + escapeHtml(f.airline || (l === 'en' ? 'Flight option' : 'Opcija leta')) +
+          (f.flightNumber ? ' ' + escapeHtml(f.flightNumber) : '') +
+          (f.inbound && f.inbound.flightNumber ? ' / ' + escapeHtml(f.inbound.flightNumber) : '') +
+          ' · €' + Math.round(flightPrice) + '<br>⌂ ' + escapeHtml(h.name || 'Hotel') + ' · €' + Math.round(hotelPrice) + '</div>' +
         '<ul class="ranked-card__why">' + why + '</ul>' +
         '<div class="ranked-card__price"><span>' + (l === 'en' ? 'Complete trip' : 'Kompletno putovanje') + '</span><strong>€' + Math.round(total) + '</strong></div>' +
         '<button class="ranked-card__cta" type="button" data-select-ranked-mix="' + escapeHtml(pkg.id) + '">' + (l === 'en' ? 'Choose this complete trip →' : 'Izaberi kompletno putovanje →') + '</button>' +
@@ -5355,11 +5358,13 @@ if (document.readyState === 'loading') {
     var state = getState() || newState();
     state.flight.selected = {
       airline:f.airline || '', flightNumber:f.flightNumber || '', departureTime:f.departureTime || '',
+      arrivalTime:f.arrivalTime || '',
       duration:f.duration || '', stops:f.stops || 0, origin:(pkg.origin || {}).code || '',
       dest:(pkg.destination || {}).code || '', depart:d.departure || '', ret:d.return || '',
       nights:d.nights || 0, totalPrice:Number(f.totalPrice || 0), priceNum:Number(f.totalPrice || 0),
       currency:(pkg.pricing || {}).currency || 'EUR', bookingUrl:f.bookingUrl || '',
-      bookingPartner:f.bookingPartner || '', pkgId:pkg.id, tier:pkg.tier || 'value', capturedAt:Date.now()
+      bookingPartner:f.bookingPartner || '', inbound:f.inbound || null,
+      pkgId:pkg.id, tier:pkg.tier || 'value', capturedAt:Date.now()
     };
     state.hotel.selected = {
       id:'ranked-' + pkg.id, name:h.name || 'Hotel', stars:Number(h.stars || h.rating || 0),
@@ -7838,20 +7843,21 @@ if (document.readyState === 'loading') {
     setText('modalOutMeta', [fl.flightNumber, dates.departure].filter(Boolean).join(' · '));
     setText('modalOutPrice', fl.totalPrice ? '€' + fl.totalPrice : '');
     setText('modalOutDep', fl.departureTime);
-    setText('modalOutArr', '');
+    setText('modalOutArr', fl.arrivalTime || '');
     setText('modalOutFrom', origCode);
     setText('modalOutTo', destCode);
     setText('modalOutDuration', [fl.duration, stopsLabel(fl.stops)].filter(Boolean).join(' · '));
 
-    // Return row: same airline/route, return date — round-trip price already shown above
-    setText('modalRetAirline', fl.airline);
-    setText('modalRetMeta', [fl.flightNumber, dates.return].filter(Boolean).join(' · '));
+    // Return row uses the independently sourced inbound segment when available.
+    const inbound = fl.inbound || {};
+    setText('modalRetAirline', inbound.airline || fl.airline);
+    setText('modalRetMeta', [inbound.flightNumber, dates.return].filter(Boolean).join(' · '));
     setText('modalRetPrice', '');
-    setText('modalRetDep', '');
-    setText('modalRetArr', '');
-    setText('modalRetFrom', destCode);
-    setText('modalRetTo', origCode);
-    setText('modalRetDuration', stopsLabel(fl.stops));
+    setText('modalRetDep', inbound.departureTime || '');
+    setText('modalRetArr', inbound.arrivalTime || '');
+    setText('modalRetFrom', inbound.origin || destCode);
+    setText('modalRetTo', inbound.destination || origCode);
+    setText('modalRetDuration', [inbound.duration, stopsLabel(inbound.stops)].filter(Boolean).join(' · '));
 
     setText('modalHotelName', ho.name);
     const stars = parseInt(ho.rating) || 0;

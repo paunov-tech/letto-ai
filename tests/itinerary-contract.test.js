@@ -48,3 +48,30 @@ test('accepts a concrete Hotels.com property handoff', () => {
   assert.equal(c.hotel.verification, 'property_price_confirmed');
   assert.equal(c.complete, true);
 });
+
+test('only confirms inbound segments that came from a structured source', () => {
+  const c = itineraryContract({
+    ...base,
+    flight: {
+      ...base.flight,
+      inbound: {
+        origin: 'BUD', destination: 'BEG', departureTime: '18:45',
+        arrivalTime: '19:50', flightNumber: 'JU145', sourceProvided: true
+      }
+    }
+  });
+  assert.equal(c.level, 'segment_confirmed');
+  assert.equal(c.aiMayClaimExactSegments, true);
+
+  const synthesized = itineraryContract({
+    ...base,
+    flight: {
+      ...base.flight,
+      inbound: {
+        origin: 'BUD', destination: 'BEG', departureTime: '18:45',
+        arrivalTime: '19:50', flightNumber: 'JU145', sourceProvided: false
+      }
+    }
+  });
+  assert.equal(synthesized.level, 'search_confirmed');
+});
