@@ -75,3 +75,16 @@ test('only confirms inbound segments that came from a structured source', () => 
   });
   assert.equal(synthesized.level, 'search_confirmed');
 });
+
+test('distinguishes an offer-specific flight handoff from a repeated search', () => {
+  const c = itineraryContract({
+    ...base,
+    flight: {
+      ...base.flight,
+      bookingHandoff: 'offer_specific',
+      bookingUrl: 'https://www.aviasales.com/search/BEG1709BUD24091?itinerary_key=abc&expected_price_uuid=uuid'
+    }
+  });
+  assert.equal(c.flight.handoff, 'offer_specific');
+  assert.equal(itineraryContract(base).flight.handoff, 'roundtrip_search');
+});

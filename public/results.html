@@ -5335,6 +5335,9 @@ if (document.readyState === 'loading') {
       var verify = pkg.itinerary && pkg.itinerary.level === 'segment_confirmed'
         ? (l === 'en' ? 'Exact segments verified' : 'Tačni segmenti potvrđeni')
         : (l === 'en' ? 'Round-trip search + property verified' : 'Povratna pretraga + hotel potvrđeni');
+      var handoff = pkg.itinerary && pkg.itinerary.flight && pkg.itinerary.flight.handoff === 'offer_specific'
+        ? (l === 'en' ? 'specific flight offer' : 'konkretna avionska ponuda')
+        : (l === 'en' ? 'flight search will be repeated' : 'pretraga leta se ponavlja');
       return '<article class="ranked-card">' +
         '<div class="ranked-card__top"><span class="ranked-card__rank">' + rankLabel + '</span><span class="ranked-card__score">LETTO ' + Number(pkg.lettoScore || 0) + '/100</span></div>' +
         '<h3>' + escapeHtml((pkg.origin && pkg.origin.code) || '') + ' ↔ ' + escapeHtml((pkg.destination && pkg.destination.code) || '') + ' · ' + escapeHtml(h.name || (l === 'en' ? 'Hotel' : 'Hotel')) + '</h3>' +
@@ -5346,7 +5349,7 @@ if (document.readyState === 'loading') {
         '<ul class="ranked-card__why">' + why + '</ul>' +
         '<div class="ranked-card__price"><span>' + (l === 'en' ? 'Complete trip' : 'Kompletno putovanje') + '</span><strong>€' + Math.round(total) + '</strong></div>' +
         '<button class="ranked-card__cta" type="button" data-select-ranked-mix="' + escapeHtml(pkg.id) + '">' + (l === 'en' ? 'Choose this complete trip →' : 'Izaberi kompletno putovanje →') + '</button>' +
-        '<div class="ranked-card__verify">' + verify + ' · ' + (l === 'en' ? 'final price at partners' : 'konačna cena kod partnera') + '</div>' +
+        '<div class="ranked-card__verify">' + verify + ' · ' + handoff + ' · ' + (l === 'en' ? 'final price at partners' : 'konačna cena kod partnera') + '</div>' +
       '</article>';
     }).join('');
   }
