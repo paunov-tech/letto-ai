@@ -19,6 +19,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { cleanAviasalesUrl, buildAviasalesUrl } from '../lib/aviasales-url.js';
 import { verifyPremiumSession, getSessionIdFromRequest } from '../lib/auth.js';
 import { passThroughFull, scrubToPreview } from '../lib/package-shape.js';
+import { itineraryContract } from '../lib/itinerary-contract.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -347,7 +348,10 @@ async function handler(req, res) {
       const out = unlocked ? passThroughFull(p) : scrubToPreview(p);
       out.daily_try_it = isDailyTryIt;
       out.top_deal = isTopDeal;
-      out.round_trip = true;
+      out.itinerary = itineraryContract(p);
+      // Compatibility badge means a verified round-trip search, not that
+      // LETTO owns exact inbound segment data.
+      out.round_trip = out.itinerary.flight.verification !== 'unavailable';
       return out;
     });
 

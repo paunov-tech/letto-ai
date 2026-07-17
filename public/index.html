@@ -2093,15 +2093,23 @@
     setText('modalOutTo', destCode);
     setText('modalOutDuration', [fl.duration, stopsLabel(fl.stops)].filter(Boolean).join(' · '));
 
-    // Return row: same airline/route, return date — round-trip price already shown above
-    setText('modalRetAirline', fl.airline);
-    setText('modalRetMeta', [fl.flightNumber, dates.return].filter(Boolean).join(' · '));
+    // Never synthesize an inbound segment by reversing the outbound. Most
+    // current TP records prove a dated round-trip search, but do not expose
+    // exact inbound flight number/times.
+    const inbound = fl.inbound || p.returnFlight || null;
+    const exactInbound = !!(inbound && inbound.origin && inbound.destination && inbound.departureTime);
+    setText('modalRetAirline', exactInbound ? inbound.airline : 'Partner confirms');
+    setText('modalRetMeta', exactInbound
+      ? [inbound.flightNumber, dates.return].filter(Boolean).join(' · ')
+      : [dates.return, 'round-trip search'].filter(Boolean).join(' · '));
     setText('modalRetPrice', '');
-    setText('modalRetDep', '');
-    setText('modalRetArr', '');
+    setText('modalRetDep', exactInbound ? inbound.departureTime : '');
+    setText('modalRetArr', exactInbound ? inbound.arrivalTime : '');
     setText('modalRetFrom', destCode);
     setText('modalRetTo', origCode);
-    setText('modalRetDuration', stopsLabel(fl.stops));
+    setText('modalRetDuration', exactInbound
+      ? [inbound.duration, stopsLabel(inbound.stops)].filter(Boolean).join(' · ')
+      : 'Exact segment shown before booking');
 
     setText('modalHotelName', ho.name);
     const stars = parseInt(ho.rating) || 0;
