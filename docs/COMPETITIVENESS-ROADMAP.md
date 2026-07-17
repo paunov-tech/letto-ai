@@ -16,8 +16,8 @@ core product.
 
 - [x] 1. Exact flight booking handoff for the selected offer
 - [x] 2. Broader destination network and discovery
-- [ ] 3. Flexible dates and stay durations — in progress
-- [ ] 4. Multi-city and self-transfer combinations
+- [x] 3. Flexible dates and stay durations
+- [ ] 4. Multi-city and self-transfer combinations — in progress
 - [ ] 5. Price revalidation before display/click
 - [ ] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities
 - [ ] 7. AI ranking personalization
@@ -50,9 +50,18 @@ handoffs. Production proof for BEG-JFK: 17 flight offers, 30 hotel rows and 8
 complete ranked itineraries; the leading results had confirmed outbound and
 inbound segments plus concrete Booking hotel URLs.
 
-Phase 3 is now active: search a controlled matrix of nearby departure/return
-dates and stay durations, deduplicate the resulting trips, and rank exact and
-flexible alternatives without hiding the date difference.
+Phase 3 completed in production on 2026-07-17 (`a22bd9c`, `e2f6865`,
+`8a267a0`). Every live search now evaluates a bounded five-window matrix:
+exact dates, three days earlier/later, and stays two nights shorter/longer.
+Hotel searches run with bounded concurrency, empty results receive only a
+short cache lifetime, and final recommendations guarantee date-pair diversity.
+Production proof for BEG-BUD: 42 flights, 60 hotels, zero failed hotel
+searches, 8 complete itineraries spanning all five date pairs with explicit
+labels for exact, shifted, shorter and longer stays.
+
+Phase 4 is now active: construct and verify multi-city/self-transfer
+itineraries with explicit legs, minimum connection times, airport-change
+warnings and honest protection/risk labels.
 
 Relevant files:
 
