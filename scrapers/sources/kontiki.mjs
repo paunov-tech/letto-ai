@@ -1,8 +1,6 @@
 // Kontiki structured search API scraper.
 // Uses the same public ASMX endpoints as kontiki.rs search, then parses the
 // server-rendered pagingData JSON. No browser or brittle card regex required.
-import { renderHtml } from '../lib/browser-render.mjs';
-import { parseCharterCards } from '../lib/charter-html.mjs';
 
 const BASE = 'https://kontiki.rs';
 
@@ -84,29 +82,11 @@ function cheapestAvailableOffer(hotel) {
     .sort((a, b) => a.price.amount - b.price.amount)[0];
 }
 
-function findDirectSupplierUrl(value, siteBase, depth = 0, seen = new Set()) {
-  if (depth > 6 || value == null) return null;
-  if (typeof value === 'string') {
-    if (/\/sr\/(hotel|tour)\//i.test(value)) {
-      try { return new URL(value, siteBase).toString(); } catch (_) { return null; }
-    }
-    return null;
-  }
-  if (typeof value !== 'object' || seen.has(value)) return null;
-  seen.add(value);
-  for (const child of Object.values(value)) {
-    const found = findDirectSupplierUrl(child, siteBase, depth + 1, seen);
-    if (found) return found;
-  }
-  return null;
-}
-
 function normalizeHotels(pagingData, bookingUrl, siteBase = BASE, searchDestination = null) {
   return (pagingData?.body?.hotels || []).flatMap(hotel => {
     const offer = cheapestAvailableOffer(hotel);
     if (!offer) return [];
     const room = offer.rooms?.[0] || {};
-    const directBookingUrl = findDirectSupplierUrl({ hotel, offer }, siteBase);
     return [{
       title: hotel.name,
       destination: hotel.city?.name || hotel.location?.name || null,
@@ -124,9 +104,7 @@ function normalizeHotels(pagingData, bookingUrl, siteBase = BASE, searchDestinat
       room: room.roomName || null,
       allInclusive: /all\s*inclusive/i.test(room.boardName || ''),
       available: offer.isAvailable !== false,
-      bookingUrl: directBookingUrl || bookingUrl,
-      searchUrl: bookingUrl,
-      bookingKind: directBookingUrl ? 'direct_supplier_offer' : 'supplier_search_session',
+      bookingUrl,
       image: hotel.thumbnailFull || (hotel.thumbnail ? new URL(hotel.thumbnail, siteBase).toString() : null),
       badges: (hotel.badges || hotel.themes || []).map(item => item.name).filter(Boolean),
       sourceOfferId: offer.offerId || null
@@ -211,16 +189,7 @@ export async function scrapeStructuredPackages(siteBase, destinations = null) {
 }
 
 export async function scrapeKontiki() {
-  const [structured, catalog] = await Promise.allSettled([
-    scrapeStructuredPackages(BASE),
-    renderHtml(BASE).then(html => parseCharterCards(html, { baseUrl: BASE }))
-  ]);
-  const rows = [
-    ...(catalog.status === 'fulfilled' ? catalog.value : []),
-    ...(structured.status === 'fulfilled' ? structured.value : [])
-  ];
-  if (!rows.length) throw (structured.reason || catalog.reason || new Error('Kontiki returned no offers'));
-  return rows;
+  return scrapeStructuredPackages(BASE);
 }
 
-export { extractAssignedJson, normalizeHotels, findDirectSupplierUrl };
+export { extractAssignedJson, normalizeHotels };
