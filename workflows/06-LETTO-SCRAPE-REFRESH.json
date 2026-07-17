@@ -9,7 +9,7 @@
       "position": [240, 300],
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 */4 * * *" }]
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
         }
       }
     },
@@ -20,7 +20,7 @@
       "typeVersion": 1,
       "position": [460, 300],
       "parameters": {
-        "command": "node /opt/letto-scrapers/run-all.mjs"
+        "command": "/opt/letto-scrapers/run-production.sh"
       },
       "executeOnce": true
     },

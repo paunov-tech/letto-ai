@@ -1,5 +1,5 @@
-// scrapers/lib/smartproxy.mjs — Smartproxy Web Scraping API client (uni_scraper target).
-// Replaces Puppeteer entirely. ~1500 req/month plan budget.
+// Unified scraping provider. Bright Data is preferred when configured;
+// Smartproxy remains a zero-downtime fallback during migration.
 //
 // Auth: Basic base64(user:pass) via SMARTPROXY_AUTH env var (full "Basic xyz==" string)
 //       OR via SMARTPROXY_USER + SMARTPROXY_PASS pair.
@@ -7,6 +7,14 @@
 const ENDPOINT = process.env.SMARTPROXY_ENDPOINT || 'https://scraper.smartproxy.org/v1/query';
 const DEFAULT_GEO = process.env.SMARTPROXY_GEO || 'RS';
 const DEFAULT_LOCALE = process.env.SMARTPROXY_LOCALE || 'en-US';
+import {
+  getBrightDataCalls,
+  isBrightDataConfigured,
+  scrapeWithBrightData
+} from './brightdata.mjs';
+
+let smartproxyCount = 0;
+let fallbackCount = 0;
 
 function authHeader() {
   if (process.env.SMARTPROXY_AUTH) {
@@ -33,6 +41,18 @@ function authHeader() {
  * @returns {Promise<{html?: string, status?: number, results?: any[]}>}
  */
 export async function scrape(url, opts = {}) {
+  if (isBrightDataConfigured()) {
+    try {
+      return await scrapeWithBrightData(url, opts);
+    } catch (error) {
+      const canFallback = process.env.BRIGHT_DATA_FALLBACK !== 'false'
+        && (process.env.SMARTPROXY_AUTH || (process.env.SMARTPROXY_USER && process.env.SMARTPROXY_PASS));
+      if (!canFallback) throw error;
+      fallbackCount++;
+      console.error(`[scraper-provider] Bright Data failed, using Smartproxy: ${error.message}`);
+    }
+  }
+
   const body = {
     geo: opts.geo || DEFAULT_GEO,
     locale: opts.locale || DEFAULT_LOCALE,
@@ -49,6 +69,7 @@ export async function scrape(url, opts = {}) {
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs || 90000);
   let r;
   try {
+    smartproxyCount++;
     r = await fetch(ENDPOINT, {
       method: 'POST',
       headers: {
@@ -77,7 +98,8 @@ export async function scrape(url, opts = {}) {
     html: typeof first.content === 'string' ? first.content : JSON.stringify(first.content),
     status: first.status_code,
     finalUrl: first.url,
-    raw: data
+    raw: data,
+    provider: 'smartproxy'
   };
 }
 
@@ -88,3 +110,10 @@ export async function scrape(url, opts = {}) {
 let _localCount = 0;
 export function getLocalQuotaUsed() { return _localCount; }
 export function bumpQuotaCounter() { _localCount++; }
+export function getProviderStats() {
+  return {
+    brightdataCalls: getBrightDataCalls(),
+    smartproxyCalls: smartproxyCount,
+    fallbackCalls: fallbackCount
+  };
+}

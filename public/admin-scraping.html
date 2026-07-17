@@ -95,7 +95,7 @@
 
     <div class="section-title">Recent runs (last 5)</div>
     <table>
-      <thead><tr><th>Ran at</th><th>Duration</th><th>Counts</th><th>Errors</th></tr></thead>
+      <thead><tr><th>Ran at</th><th>Duration</th><th>Provider calls</th><th>Counts</th><th>Errors</th></tr></thead>
       <tbody id="runsTbody"></tbody>
     </table>
   </div>
@@ -152,11 +152,16 @@ function render(d) {
   // Recent runs table
   const runs = (d.recentRuns || []).map(r => {
     const dur = r.durationMs ? Math.round(r.durationMs / 1000) + 's' : '—';
+    const providers = [
+      r.brightdataCalls ? 'Bright Data=' + r.brightdataCalls : '',
+      r.smartproxyCalls ? 'Smartproxy=' + r.smartproxyCalls : '',
+      r.fallbackCalls ? 'fallback=' + r.fallbackCalls : ''
+    ].filter(Boolean).join(' · ') || '—';
     const counts = r.counts ? Object.entries(r.counts).map(([k, v]) => k + '=' + v).join(' · ') : '—';
     const errs = (r.errors && r.errors.length) ? '<span class="badge err">' + r.errors.length + '</span>' : '<span class="badge ok">0</span>';
-    return '<tr><td class="mono">' + (r.ranAt || '').slice(0, 19).replace('T', ' ') + '</td><td>' + dur + '</td><td class="mono">' + counts + '</td><td>' + errs + '</td></tr>';
+    return '<tr><td class="mono">' + (r.ranAt || '').slice(0, 19).replace('T', ' ') + '</td><td>' + dur + '</td><td class="mono">' + providers + '</td><td class="mono">' + counts + '</td><td>' + errs + '</td></tr>';
   });
-  document.getElementById('runsTbody').innerHTML = runs.join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);">no runs yet</td></tr>';
+  document.getElementById('runsTbody').innerHTML = runs.join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">no runs yet</td></tr>';
 }
 
 function statCard(label, value, sublabel) {

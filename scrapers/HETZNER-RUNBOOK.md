@@ -1,6 +1,6 @@
-# Hetzner runbook — LETTO Scrapers (Smartproxy Web Scraping API)
+# Hetzner runbook — LETTO Scrapers (Bright Data Web Unlocker API)
 
-**Goal:** deploy scrapers to Hetzner, configure Smartproxy auth, activate WF06 cron.
+**Goal:** deploy scrapers to Hetzner, configure the provider, and activate the daily refresh.
 
 **Server:** sial-workhorse (CPX52, 12 vCPU / 24 GB RAM / 80 GB disk)
 **Container:** sial-factory-n8n-1
@@ -10,8 +10,8 @@
 
 ## STEP 0 — Prerequisites (Miroslav-side)
 
-- [x] Smartproxy Web Scraping API account (1500 req/mo plan)
-- [x] Web Scraping API credentials (provided): user `smart-pcymhfgoa42e`, pass `CahhcDflaIGmSqPr`
+- [ ] Bright Data account with an active Web Unlocker zone
+- [ ] Store credentials only in the server env file; never paste them into this runbook
 - [ ] **Whitelist Hetzner IP in Smartproxy dashboard** — without this, requests from Hetzner hang indefinitely (verified locally: connection accepts but server never responds). Dashboard → Web Scraping API → Authentication → Add IP whitelist → `204.168.153.192`.
 
 ---
@@ -59,11 +59,15 @@ ssh root@204.168.153.192 'docker exec sial-factory-n8n-1 ls /opt/letto-scrapers'
 Append to Hetzner `/opt/n8n/.env` (or wherever container env file lives):
 
 ```bash
-# Smartproxy Web Scraping API (1500 req/mo plan)
-SMARTPROXY_AUTH=Basic c21hcnQtcGN5bWhmZ29hNDJlOkNhaGhjRGZsYUlHbVNxUHI=
-SMARTPROXY_ENDPOINT=https://scraper.smartproxy.org/v1/query
-SMARTPROXY_GEO=RS
-SMARTPROXY_LOCALE=en-US
+# Bright Data Web Unlocker API
+BRIGHT_DATA_API_KEY=...
+# Optional; client auto-discovers the active Web Unlocker zone when omitted.
+BRIGHT_DATA_ZONE=...
+BRIGHT_DATA_COUNTRY=rs
+# Keep Smartproxy credentials temporarily only if fallback is desired.
+BRIGHT_DATA_FALLBACK=true
+# Emergency cost guard while airline upstream extraction is being repaired.
+FLIGHT_SCRAPES_ENABLED=false
 ```
 
 Restart n8n:
@@ -82,7 +86,7 @@ ssh root@204.168.153.192
 cd /opt/letto-scrapers
 
 # Test Smartproxy connection (1 quota call)
-SMARTPROXY_AUTH='Basic c21hcnQtcGN5bWhmZ29hNDJlOkNhaGhjRGZsYUlHbVNxUHI=' \
+BRIGHT_DATA_API_KEY='...' BRIGHT_DATA_ZONE='...' \
   node -e "
     import('./lib/smartproxy.mjs').then(async m => {
       const r = await m.scrape('https://httpbin.org/ip', { jsRender: false });
@@ -105,7 +109,7 @@ SMARTPROXY_AUTH='Basic ...' node /opt/letto-scrapers/run-all.mjs 2>/tmp/scrape-s
 
 Expect ~3-5 min runtime (12 routes × 3 sources × ~5s/req + sleeps), JSON summary to stdout. Healthy:
 ```json
-{"ok":true,"durationMs":280000,"smartproxyCalls":36,"wizzair":120,"ryanair":80,"pegasus":40,"kontiki":15,"bigblue":12,"errors":[]}
+{"ok":true,"durationMs":280000,"brightdataCalls":36,"smartproxyCalls":0,"fallbackCalls":0,"wizzair":120,"ryanair":80,"pegasus":40,"kontiki":15,"bigblue":12,"errors":[]}
 ```
 
 ---

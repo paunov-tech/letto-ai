@@ -61,7 +61,7 @@ Informacioni servis (ne turistička agencija) koji skenira ponude i šalje pretp
 | `api/` | serverless funkcije | Vercel functions |
 | `workflows/` | n8n workflow JSON-ovi (kanonska verzija) | Hetzner n8n |
 | `workflows/_legacy/` | pre-pivot workflow drafts (referenca) | — |
-| `scrapers/` | flight scraper-i (Smartproxy) | Hetzner |
+| `scrapers/` | flight scraper-i (Bright Data, Smartproxy fallback) | Hetzner |
 | `scripts/` | ops alati (env push, verify, image populate) | lokalno |
 | `ops/` | infra fix-evi (Hetzner Firebase token rotation) | lokalno → Hetzner |
 | `docs/` | handoff + audit + setup guide-ovi | repo |
@@ -114,6 +114,8 @@ npm run smoke:prod
 ```
 
 Env vars: kopiraj `.env.example` → `.env.local`, popuni vrednosti. Stripe / Firebase / Telegram tokens u `.env.stripe`, `.env.engine`, `.env.telegram` (svi gitignored).
+
+Scraper provider: `BRIGHT_DATA_API_KEY` aktivira Bright Data Web Unlocker kao primarni izvor. `BRIGHT_DATA_ZONE` je opcionalan jer se aktivna Unlocker zona automatski otkriva. Postojeći Smartproxy env ostaje fallback dok se Bright Data ne potvrdi u produkciji.
 
 ## Deploy
 

@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-// scrapers/run-all.mjs — Orchestrator. Smartproxy Web Scraping API based (NO Puppeteer).
+// scrapers/run-all.mjs — Orchestrator. Bright Data + Smartproxy fallback (NO Puppeteer).
 //
 // Architecture per Option A (1500 req/mo budget):
-//   Top 12 BEG routes × 3 flight sources = 36 req/cycle
-//   Cron: 1×/day at 07:00 UTC = ~1080 req/month (420 buffer)
-//   Charter scrapers (Kontiki, BigBlue) plain HTTP — no quota impact
+//   Only routes actually operated by each airline are queried in both directions.
+//   Cron: 1×/day at 07:00 UTC. Charter pages render in local Chromium and do
+//   not consume provider quota.
 //
 // Required env vars:
 //   FIREBASE_SERVICE_ACCOUNT_JSON  OR  /opt/letto-scrapers/firebase-admin-sa.json
-//   SMARTPROXY_AUTH (full "Basic xyz==" string)  OR  SMARTPROXY_USER + SMARTPROXY_PASS
+//   BRIGHT_DATA_API_KEY (+ optional BRIGHT_DATA_ZONE; auto-discovered otherwise)
+//   Optional fallback: SMARTPROXY_AUTH or SMARTPROXY_USER + SMARTPROXY_PASS
 //
 // Output: JSON to stdout for n8n capture.
 
@@ -17,24 +18,11 @@ import { scrapeRyanair } from './sources/ryanair.mjs';
 import { scrapePegasus } from './sources/pegasus.mjs';
 import { scrapeKontiki } from './sources/kontiki.mjs';
 import { scrapeBigBlue } from './sources/bigblue.mjs';
-import { getLocalQuotaUsed } from './lib/smartproxy.mjs';
+import { getProviderStats } from './lib/smartproxy.mjs';
+import { directBookingUrl, inventoryId, pairRoundTrips, SOURCE_ROUTES } from './lib/flight-inventory.mjs';
 
 const SCRAPE_TTL_HOURS = 24;
-// Top 12 BEG routes (Option A — derived from Air Serbia CJ inventory popularity).
-const TOP_ROUTES = [
-  { origin: 'BEG', destination: 'IST' },
-  { origin: 'BEG', destination: 'FCO' },
-  { origin: 'BEG', destination: 'CDG' },
-  { origin: 'BEG', destination: 'BCN' },
-  { origin: 'BEG', destination: 'MAD' },
-  { origin: 'BEG', destination: 'ATH' },
-  { origin: 'BEG', destination: 'BUD' },
-  { origin: 'BEG', destination: 'VIE' },
-  { origin: 'BEG', destination: 'MUC' },
-  { origin: 'BEG', destination: 'LHR' },
-  { origin: 'BEG', destination: 'AMS' },
-  { origin: 'BEG', destination: 'ZRH' }
-];
+const FLIGHT_SCRAPES_ENABLED = process.env.FLIGHT_SCRAPES_ENABLED !== 'false';
 
 // Firestore REST helpers (no firebase-admin dep — runs anywhere)
 async function getFirestoreToken() {
@@ -45,7 +33,11 @@ async function getFirestoreToken() {
 }
 async function readKey() {
   const { readFileSync } = await import('node:fs');
-  for (const p of ['/opt/letto-scrapers/firebase-admin-sa.json', '/home/zlfzr/letto-ai/.secrets/firebase-admin-sa.json']) {
+  for (const p of [
+    '/letto-server-key.json',
+    '/opt/letto-scrapers/firebase-admin-sa.json',
+    '/home/zlfzr/letto-ai/.secrets/firebase-admin-sa.json'
+  ]) {
     try { return readFileSync(p, 'utf8'); } catch (e) {}
   }
   throw new Error('No SA key found');
@@ -79,13 +71,24 @@ async function fsCreate(token, path, body) {
   return r.ok;
 }
 
+async function fsUpsert(token, path, body) {
+  const url = `https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/${path}`;
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: body })
+  });
+  if (!r.ok) throw new Error(`Firestore upsert ${r.status}: ${(await r.text()).slice(0, 180)}`);
+  return true;
+}
+
 async function writeInventoryEntry(token, entry) {
   const fields = {};
   for (const [k, v] of Object.entries(entry)) {
     const fv = toFsValue(v);
     if (fv !== null) fields[k] = fv;
   }
-  return fsCreate(token, 'letto_scrape_inventory', fields);
+  return fsUpsert(token, `letto_scrape_inventory/${inventoryId(entry)}`, fields);
 }
 
 async function main() {
@@ -94,7 +97,7 @@ async function main() {
   let token;
   try { token = await getFirestoreToken(); } catch (e) { console.error('Firestore auth failed:', e.message); }
 
-  // ─── Charter scrapers (no Smartproxy budget) ─────────────────────
+  // ─── Charter scrapers (local browser, no provider budget) ───────────
   for (const [src, fn] of [['kontiki', scrapeKontiki], ['bigblue', scrapeBigBlue]]) {
     try {
       const items = await fn();
@@ -117,31 +120,43 @@ async function main() {
     }
   }
 
-  // ─── Flight scrapers via Smartproxy ──────────────────────────────
-  // Sequential to respect quota / rate limits (1 req/2s effective)
-  for (const route of TOP_ROUTES) {
-    for (const [src, fn] of [['wizzair', scrapeWizzair], ['ryanair', scrapeRyanair], ['pegasus', scrapePegasus]]) {
+  // ─── Direct flight sources ────────────────────────────────────────
+  // Query only routes each airline operates and require both directions.
+  if (!FLIGHT_SCRAPES_ENABLED) {
+    console.error('[flights] disabled by FLIGHT_SCRAPES_ENABLED=false');
+  }
+  if (FLIGHT_SCRAPES_ENABLED) for (const [src, fn] of [['wizzair', scrapeWizzair], ['ryanair', scrapeRyanair], ['pegasus', scrapePegasus]]) {
+    for (const [origin, destination] of SOURCE_ROUTES[src]) {
       try {
-        const rows = await fn({ ...route, jsRender: false });
-        for (const r of rows) {
+        const [outboundRows, returnRows] = await Promise.all([
+          fn({ origin, destination, jsRender: true }),
+          fn({ origin: destination, destination: origin, jsRender: true })
+        ]);
+        const pairs = pairRoundTrips(outboundRows, returnRows);
+        for (const pair of pairs) {
           if (token) {
             await writeInventoryEntry(token, {
               source: src,
-              origin: route.origin,
-              destination: route.destination,
-              outbound: { date: r.date, price: r.price, currency: r.currency },
+              type: 'roundtrip_flight',
+              origin,
+              destination,
+              outbound: pair.outbound,
+              return: pair.inbound,
+              nights: pair.nights,
+              totalPrice: pair.totalPrice,
+              currency: pair.currency,
+              bookingUrl: directBookingUrl(src, origin, destination),
               scrapedAt: new Date().toISOString(),
               validUntil: new Date(Date.now() + SCRAPE_TTL_HOURS * 3600000).toISOString()
             });
           }
         }
-        summary[src] += rows.length;
-        console.error(`[${src} ${route.origin}→${route.destination}] ${rows.length} rows`);
+        summary[src] += pairs.length;
+        console.error(`[${src} ${origin}→${destination}] ${pairs.length} round trips (${outboundRows.length}+${returnRows.length} one-way rows)`);
       } catch (e) {
-        summary.errors.push(`${src} ${route.origin}→${route.destination}: ${e.message.slice(0, 100)}`);
-        console.error(`[${src} ${route.origin}→${route.destination}] ERROR ${e.message.slice(0, 200)}`);
+        summary.errors.push(`${src} ${origin}→${destination}: ${e.message.slice(0, 100)}`);
+        console.error(`[${src} ${origin}→${destination}] ERROR ${e.message.slice(0, 200)}`);
       }
-      // Rate limit: ~1 req/2s
       await new Promise(r => setTimeout(r, 1500));
     }
   }
@@ -149,7 +164,7 @@ async function main() {
   const result = {
     ok: true,
     durationMs: Date.now() - startTime,
-    smartproxyCalls: getLocalQuotaUsed(),
+    ...getProviderStats(),
     ...summary
   };
 
@@ -158,6 +173,8 @@ async function main() {
       ranAt: { timestampValue: new Date().toISOString() },
       durationMs: { integerValue: String(result.durationMs) },
       smartproxyCalls: { integerValue: String(result.smartproxyCalls) },
+      brightdataCalls: { integerValue: String(result.brightdataCalls) },
+      fallbackCalls: { integerValue: String(result.fallbackCalls) },
       counts: toFsValue({
         wizzair: summary.wizzair,
         ryanair: summary.ryanair,
