@@ -9,6 +9,7 @@ import {
 } from '../lib/flexible-date-matrix.js';
 import { mapWithConcurrency } from '../lib/concurrency.js';
 import { searchSelfTransferRoundTrip } from '../lib/self-transfer-provider.js';
+import { providerHealthSnapshot, withProviderResilience } from '../lib/provider-resilience.js';
 
 const IATA = /^[A-Z]{3}$/;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,6 +35,31 @@ function dedupeFlights(flights) {
   });
 }
 
+function resultFailure(result) {
+  const error = String(result?.error || '');
+  // Missing configuration and an intentionally unsupported route are not
+  // transient outages and must not burn a circuit or trigger retries.
+  return Boolean(error && !(result?.flights || []).length && !['not_configured', 'unsupported_destination', 'disabled'].includes(error));
+}
+
+function retryTransientError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  // Long provider timeouts have already consumed their budget. Do not turn a
+  // 28-second Booking timeout into a 56-second request that starves hotels.
+  if (message === 'timeout' || message === 'aborterror' || message === 'aborted') return false;
+  return !/^http_4(?!29)/.test(message);
+}
+
+async function resilientProvider(provider, task) {
+  const run = await withProviderResilience(provider, task, {
+    retries: 1,
+    isFailure: resultFailure,
+    shouldRetry: retryTransientError
+  });
+  if (run.ok) return { ...run.value, resilience: { ...run.health, attempts: run.attempts } };
+  return { flights: [], provider, error: run.error === 'circuit_open' ? 'circuit_open' : 'provider_unavailable', resilience: { ...run.health, attempts: run.attempts || 0 } };
+}
+
 async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' });
   const origin = String(req.query.origin || '').toUpperCase();
@@ -55,15 +81,15 @@ async function handler(req, res) {
   const origins = [{ code: origin, distanceKm: 0 }, ...alternatives];
   const dateWindows = buildFlexibleDateMatrix({ from, to, enabled: flexible });
   const searches = [
-    ...dateWindows.map(window => searchBookingFlights({
+    ...dateWindows.map(window => resilientProvider('booking-flights', () => searchBookingFlights({
       origin, destination: dest, from: window.from, to: window.to, pax, limit: 8
-    }).then(result => ({ ...result, window }))),
-    ...origins.map(item => searchTravelpayoutsFlights({
+    })).then(result => ({ ...result, window }))),
+    ...origins.map(item => resilientProvider('travelpayouts-flights', () => searchTravelpayoutsFlights({
       origin: item.code, destination: dest, from, to, pax
-    }))
+    })))
   ];
   const selfTransferPromise = includeSelfTransfer
-    ? searchSelfTransferRoundTrip({ origin, destination: dest, from, to, pax, hub: via })
+    ? resilientProvider('booking-self-transfer', () => searchSelfTransferRoundTrip({ origin, destination: dest, from, to, pax, hub: via }))
     : Promise.resolve({ flights: [], provider: 'booking-self-transfer', error: 'disabled' });
   const [standardResults, selfTransferResult] = await Promise.all([
     Promise.all(searches),
@@ -88,17 +114,22 @@ async function handler(req, res) {
       destination: dest, checkIn: flight.depart, checkOut: flight.ret,
       adults: String(pax), limit: '12'
     }).toString();
-    const response = await fetch(hotelUrl, {
-      headers: { Accept: 'application/json', Referer: `https://${req.headers.host || 'letto.live'}/results.html` },
-      signal: AbortSignal.timeout ? AbortSignal.timeout(35000) : undefined
-    }).catch(() => null);
-    const payload = response?.ok ? await response.json().catch(() => ({})) : {};
+    const run = await withProviderResilience('hotel-search', async () => {
+      const response = await fetch(hotelUrl, {
+        headers: { Accept: 'application/json', Referer: `https://${req.headers.host || 'letto.live'}/results.html` },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(22000) : undefined
+      });
+      if (!response.ok) throw new Error(`http_${response.status}`);
+      return response.json().catch(() => ({}));
+    }, { retries: 1, shouldRetry: retryTransientError });
+    const payload = run.ok ? run.value : {};
     return {
       flight,
       payload,
       hotels: Array.isArray(payload.hotels) ? payload.hotels : [],
-      status: response?.status || null,
-      error: response ? (response.ok ? null : `http_${response.status}`) : 'request_failed'
+      status: run.ok ? 200 : null,
+      error: run.ok ? null : (run.error === 'circuit_open' ? 'circuit_open' : 'request_failed'),
+      resilience: { ...run.health, attempts: run.attempts || 0 }
     };
   }
   const standardHotelCandidates = selectDateDiverseFlights(
@@ -181,7 +212,8 @@ async function handler(req, res) {
         sources: flightResults.map(result => ({
           name: result.provider,
           count: result.flights?.length || 0,
-          error: result.error || null
+          error: result.error || null,
+          resilience: result.resilience || null
         }))
       },
       hotels: {
@@ -193,8 +225,10 @@ async function handler(req, res) {
           to: batch.flight.ret,
           error: batch.error,
           status: batch.status
-        }))
-      }
+        })),
+        resilience: batches[0]?.resilience || null
+      },
+      resilience: providerHealthSnapshot(['booking-flights', 'travelpayouts-flights', 'booking-self-transfer', 'hotel-search'])
     },
     selfTransfer: {
       enabled: includeSelfTransfer,

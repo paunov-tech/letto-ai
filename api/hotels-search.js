@@ -187,32 +187,31 @@ async function returnBookingFallback(res, ctx, primaryFailure, debug) {
 }
 
 async function searchRegion(cityEn) {
-  const url = new URL('https://' + RAPIDAPI_HOST + '/v2/regions');
-  url.searchParams.set('query', cityEn);
-  url.searchParams.set('domain', 'DE');
-  url.searchParams.set('locale', 'de_DE');
-  const r = await fetch(url, {
-    headers: rapidHeaders(),
-    signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
-  });
-  const text = await r.text();
-  if (!r.ok) {
-    return { error: 'region_lookup_failed', status: r.status, body: text.slice(0, 200) };
+  try {
+    const url = new URL('https://' + RAPIDAPI_HOST + '/v2/regions');
+    url.searchParams.set('query', cityEn);
+    url.searchParams.set('domain', 'DE');
+    url.searchParams.set('locale', 'de_DE');
+    const r = await fetch(url, {
+      headers: rapidHeaders(),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+    });
+    const text = await r.text();
+    if (!r.ok) return { error: 'region_lookup_failed', status: r.status, body: text.slice(0, 200) };
+    let j;
+    try { j = JSON.parse(text); } catch (e) { return { error: 'region_non_json', body: text.slice(0, 200) }; }
+    const results = (j && Array.isArray(j.data)) ? j.data : [];
+    let winner = results.find(r => r.type === 'CITY');
+    if (!winner) winner = results[0];
+    if (!winner) return { error: 'no_city_match', results: results.length };
+    return {
+      regionId: winner.gaiaId,
+      cityFullName: winner.regionNames && winner.regionNames.fullName,
+      coords: winner.coordinates ? { lat: Number(winner.coordinates.lat), lng: Number(winner.coordinates.long) } : null
+    };
+  } catch (error) {
+    return { error: 'region_exception', detail: error.name === 'TimeoutError' ? 'timeout' : 'exception' };
   }
-  let j;
-  try { j = JSON.parse(text); } catch (e) {
-    return { error: 'region_non_json', body: text.slice(0, 200) };
-  }
-  const results = (j && Array.isArray(j.data)) ? j.data : [];
-  // Pick best match: prefer CITY type. (winnerReasoning isn't always present.)
-  let winner = results.find(r => r.type === 'CITY');
-  if (!winner) winner = results[0];
-  if (!winner) return { error: 'no_city_match', results: results.length };
-  return {
-    regionId: winner.gaiaId,
-    cityFullName: winner.regionNames && winner.regionNames.fullName,
-    coords: winner.coordinates ? { lat: Number(winner.coordinates.lat), lng: Number(winner.coordinates.long) } : null
-  };
 }
 
 // Per-hotel detail: distance and source-confirmed amenities for top results.
@@ -264,37 +263,36 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 async function searchProperties({ regionId, checkIn, checkOut, adults, childrenAges, sortOrder }) {
-  const url = new URL('https://' + RAPIDAPI_HOST + '/v3/hotels/search');
-  url.searchParams.set('domain', 'DE');             // EUR currency
-  url.searchParams.set('locale', 'de_DE');          // EUR formatting
-  url.searchParams.set('region_id', String(regionId));
-  url.searchParams.set('checkin_date', checkIn);
-  url.searchParams.set('checkout_date', checkOut);
-  url.searchParams.set('adults_number', String(adults));
-  url.searchParams.set('sort_order', sortOrder || 'PRICE_LOW_TO_HIGH');
-  url.searchParams.set('available_filter', 'SHOW_AVAILABLE_ONLY');
-  if (childrenAges) url.searchParams.set('children_ages', childrenAges);
-
-  const r = await fetch(url, {
-    headers: rapidHeaders(),
-    signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined
-  });
-  const text = await r.text();
-  if (!r.ok) {
-    return { error: 'properties_failed', status: r.status, body: text.slice(0, 200) };
+  try {
+    const url = new URL('https://' + RAPIDAPI_HOST + '/v3/hotels/search');
+    url.searchParams.set('domain', 'DE');
+    url.searchParams.set('locale', 'de_DE');
+    url.searchParams.set('region_id', String(regionId));
+    url.searchParams.set('checkin_date', checkIn);
+    url.searchParams.set('checkout_date', checkOut);
+    url.searchParams.set('adults_number', String(adults));
+    url.searchParams.set('sort_order', sortOrder || 'PRICE_LOW_TO_HIGH');
+    url.searchParams.set('available_filter', 'SHOW_AVAILABLE_ONLY');
+    if (childrenAges) url.searchParams.set('children_ages', childrenAges);
+    const r = await fetch(url, {
+      headers: rapidHeaders(),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined
+    });
+    const text = await r.text();
+    if (!r.ok) return { error: 'properties_failed', status: r.status, body: text.slice(0, 200) };
+    let j;
+    try { j = JSON.parse(text); } catch (e) { return { error: 'properties_non_json', body: text.slice(0, 200) }; }
+    return {
+      json: j,
+      rateLimit: {
+        limit: r.headers.get('x-ratelimit-requests-limit'),
+        remaining: r.headers.get('x-ratelimit-requests-remaining'),
+        reset: r.headers.get('x-ratelimit-requests-reset')
+      }
+    };
+  } catch (error) {
+    return { error: 'properties_exception', detail: error.name === 'TimeoutError' ? 'timeout' : 'exception' };
   }
-  let j;
-  try { j = JSON.parse(text); } catch (e) {
-    return { error: 'properties_non_json', body: text.slice(0, 200) };
-  }
-  return {
-    json: j,
-    rateLimit: {
-      limit:     r.headers.get('x-ratelimit-requests-limit'),
-      remaining: r.headers.get('x-ratelimit-requests-remaining'),
-      reset:     r.headers.get('x-ratelimit-requests-reset')
-    }
-  };
 }
 
 // ── Normalizer (DE locale: "108 €", comma decimal "5,4") ──

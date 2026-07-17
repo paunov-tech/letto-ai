@@ -3491,6 +3491,7 @@
   .ranked-mixes__eyebrow { font:700 10px/1 'JetBrains Mono',monospace; letter-spacing:.18em; color:var(--gold-deep); text-transform:uppercase; }
   .ranked-mixes__title { margin:6px 0 2px; font:500 25px/1.15 'Fraunces',serif; }
   .ranked-mixes__note { margin:0; color:var(--muted); font-size:13px; }
+  .ranked-mixes__provider-note { margin:8px 0 0; color:#825d19; font-size:12px; font-weight:600; }
   .ranked-mixes__preferences { display:flex; flex-wrap:wrap; gap:7px; margin-top:13px; }
   .ranked-preference { appearance:none; border:1px solid var(--line-soft); border-radius:999px; background:rgba(255,255,255,.72); padding:7px 10px; color:var(--ink); font:600 11px/1.1 'IBM Plex Sans',sans-serif; cursor:pointer; }
   .ranked-preference:hover { border-color:var(--gold-deep); }
@@ -4768,6 +4769,7 @@ if (document.readyState === 'loading') {
           <span class="ranked-mixes__eyebrow">LETTO MATCH</span>
           <h2 class="ranked-mixes__title"><span data-en>Complete trips, ranked for you</span><span data-sr>Kompletna putovanja, rangirana za tebe</span></h2>
           <p class="ranked-mixes__note"><span data-en>Flight and hotel are date-aligned. Pick a complete mix first, then change either part below.</span><span data-sr>Let i hotel su datumski upareni. Prvo izaberi kompletan miks, pa po želji promeni bilo koji deo ispod.</span></p>
+          <p class="ranked-mixes__provider-note" id="ranked-provider-notice" hidden></p>
           <div class="ranked-mixes__preferences" id="ranked-preferences" role="group" aria-label="Ranking priority">
             <button class="ranked-preference" type="button" data-ranked-preference="balanced"><span data-en>Balanced</span><span data-sr>Uravnoteženo</span></button>
             <button class="ranked-preference" type="button" data-ranked-preference="budget"><span data-en>Lowest total</span><span data-sr>Najniža cena</span></button>
@@ -5394,7 +5396,16 @@ if (document.readyState === 'loading') {
         }).catch(function () { setPriceAlertStatus(lang() === 'en' ? 'We could not create the alert. Please try again.' : 'Nismo uspeli da kreiramo alert. Pokušaj ponovo.'); });
     });
   }
-  var rankedState = { raw: [], loadedFor: '' };
+  var rankedState = { raw: [], loadedFor: '', providerNotice: '' };
+  function rankedProviderNotice(data) {
+    var sources = data && data.providers && data.providers.flights && data.providers.flights.sources || [];
+    var outage = sources.some(function (source) { return source.error && !['not_configured', 'disabled'].includes(source.error); });
+    var failedHotels = data && data.providers && data.providers.hotels && data.providers.hotels.failedSearches || [];
+    if (!outage && !failedHotels.length) return '';
+    return lang() === 'en'
+      ? 'Some providers are temporarily unavailable. Results use the available verified sources.'
+      : 'Neki izvori su trenutno nedostupni. Rezultati koriste dostupne potvrđene izvore.';
+  }
   var agencyState = { raw: [], loadedFor: '' };
   function packagesKey(p) {
     return [(p.origin || ''), (p.dest || ''), (p.depart || ''), (p.ret || ''), packagesState.priceTier].join('|');
@@ -5430,6 +5441,7 @@ if (document.readyState === 'loading') {
       })
       .then(function (data) {
         rankedState.raw = Array.isArray(data.itineraries) ? data.itineraries : [];
+        rankedState.providerNotice = rankedProviderNotice(data);
         rankedState.loadedFor = key;
         paintRankedMixes();
       })
@@ -5437,6 +5449,7 @@ if (document.readyState === 'loading') {
         console.warn('[mix-v2] live mixes unavailable, trying catalog:', e.message);
         fetchCatalogFallback().then(function (data) {
           rankedState.raw = Array.isArray(data.itineraries) ? data.itineraries : [];
+          rankedState.providerNotice = rankedProviderNotice(data);
           rankedState.loadedFor = key;
           paintRankedMixes();
         }).catch(function () { section.hidden = true; });
@@ -5451,6 +5464,11 @@ if (document.readyState === 'loading') {
     if (section.hidden) { mount.innerHTML = ''; return; }
     var l = lang();
     paintRankedPreferenceControls();
+    var providerNotice = $('ranked-provider-notice');
+    if (providerNotice) {
+      providerNotice.hidden = !rankedState.providerNotice;
+      providerNotice.textContent = rankedState.providerNotice || '';
+    }
     // Preserve two best regular combinations and one explicitly-labelled
     // self-transfer alternative when such a verified alternative exists.
     // It should be visible, but never be misrepresented as the default best match.
