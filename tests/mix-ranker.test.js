@@ -46,3 +46,13 @@ test('does not present very distant inventory as a recommendation', () => {
   ], { from: '2026-08-03', to: '2026-08-10' });
   assert.equal(ranked.length, 0);
 });
+
+test('labels a partial date mismatch as near rather than exact', () => {
+  const shiftedReturn = pkg('shifted-return', '2026-08-03', 600);
+  shiftedReturn.dates.return = '2026-08-12';
+  shiftedReturn.dates.nights = 9;
+  shiftedReturn.hotel.nights = 9;
+  const ranked = rankItineraries([shiftedReturn], { from: '2026-08-03', to: '2026-08-10' });
+  assert.equal(ranked[0].dateMatch, 'near');
+  assert.match(ranked[0].why[0], /Najbliži/);
+});
