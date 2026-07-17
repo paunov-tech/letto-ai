@@ -732,7 +732,56 @@
         mle: 'maldives', nrt: 'tokyo', cpt: 'capetown'
       };
 
+      function renderAgencyCard(p) {
+        var id = esc(p.id || '');
+        var h = p.hotel || {};
+        var d = p.destination || {};
+        var dates = p.dates || {};
+        var stay = p.stay || {};
+        var pricing = p.pricing || {};
+        var source = esc(p.sourceLabel || p.source || 'Supplier');
+        var city = esc(d.name || d.code || '');
+        var country = esc(d.country || '');
+        var hotel = esc(h.name || '');
+        var nights = parseInt(dates.nights, 10) || 0;
+        var total = Math.round(Number(pricing.total) || 0);
+        var oldTotal = Math.round(Number(pricing.oldTotal) || 0);
+        var photo = String(h.image || '').replace(/[<>"']/g, '');
+        var booking = String(p.bookingUrl || '').replace(/[<>"']/g, '');
+        var stars = Number(h.stars) > 0 ? '★'.repeat(Math.min(5, Number(h.stars))) : '';
+        var services = [stay.board, stay.room].filter(Boolean).map(esc).join(' · ');
+        var dateText = [dates.departure, dates.return].filter(Boolean).join(' → ');
+        var oldHtml = oldTotal > total ? '<s class="deal-median">€' + oldTotal.toLocaleString('en-US') + '</s>' : '';
+        var photoLayer = photo
+          ? '<img src="' + photo + '" alt="' + hotel + '" width="480" height="320" loading="lazy" class="card-photo-img" onerror="this.style.display=\'none\'">'
+            + '<div class="photo-scene photo-default" aria-hidden="true"></div>'
+          : '<div class="photo-scene photo-default"></div>';
+        var beachCodes = ['AYT','ALANYA','BODRUM','IZMIR','KUSADASI','MARMARIS','HURGADA','MIR','SOUSSE','RODOS','KRIT','KRF','ZAKINTOS','LARNACA','MALLORCA','MALTAISLAN','ZANZIBAR'];
+        var category = beachCodes.indexOf(String(d.code || '').toUpperCase()) >= 0 ? 'beach' : (String(d.code || '').toUpperCase() === 'DUBAI' ? 'luxury' : 'city');
+        return '<article class="deal-card deal-card--verified-package" data-external-package="true" data-category="' + category + '">' +
+          '<div class="deal-photo">' + photoLayer + '<div class="gradient-overlay"></div>' +
+            '<div class="badge-top-right"><span class="badge-top-deal">LIVE</span><span class="badge-package">VERIFIED PACKAGE</span></div>' +
+          '</div>' +
+          '<div class="deal-body">' +
+            '<div class="deal-meta-row"><span class="deal-meta-top">' + source + ' · ' + country + '</span><span class="deal-nights">' + nightsSr(nights) + '</span></div>' +
+            '<div class="deal-name">' + city + '</div>' +
+            '<div class="deal-hotel"><span class="deal-hotel-name">' + hotel + '</span><span class="deal-hotel-stars">' + stars + '</span></div>' +
+            '<div class="deal-month">' + esc(dateText) + '</div>' +
+            '<div class="deal-route">' + esc((p.origin && p.origin.code) || 'BEG') + '<span class="rr-arrow">→</span>' + city +
+              '<span class="rr-sep">·</span><span class="rr-direct">aranžman operatera</span></div>' +
+            (services ? '<div class="deal-flight">' + services + '</div>' : '') +
+            '<div class="deal-prices"><div class="total">' + oldHtml + '<div class="value">€' + total.toLocaleString('en-US') + '</div>' +
+              '<div class="per" data-en>supplier total · 2 adults</div><div class="per" data-sr>ukupno kod operatera · 2 osobe</div></div></div>' +
+            '<div class="deal-actions">' +
+              (booking ? '<a class="deal-book-btn deal-book-btn--hotel" href="' + booking + '" target="_blank" rel="noopener sponsored" onclick="event.stopPropagation()">' +
+                '<span aria-hidden="true">✓</span><span data-en>Open verified supplier offer</span><span data-sr>Otvori proverenu ponudu operatera</span><span class="deal-book-btn__arrow">→</span></a>' :
+                '<span class="deal-book-btn is-locked" aria-disabled="true"><span data-en>Offer expired</span><span data-sr>Ponuda je istekla</span></span>') +
+            '</div>' +
+          '</div></article>';
+      }
+
       function renderCard(p) {
+        if (p && p.kind === 'complete_agency_package') return renderAgencyCard(p);
         // 2026-05-15 narrow-scrub revision: every catalog field renders
         // unblurred. Image, hotel.name, hotel.rating, dates.*, pricing.total,
         // deal ratio, transport, top_deal/round_trip markers are visible to
@@ -1009,7 +1058,9 @@
       } catch (_) {}
       // Sessioned → distinct URL (&auth=1) so the Vercel CDN can't serve the
       // cached anonymous (scrubbed) response under the plain URL's cache key.
-      var pkgUrl = '/api/packages?limit=50' + (pkgSid ? '&auth=1' : '');
+      // Homepage shows only complete supplier offers. Component-only flight
+      // records stay in Custom Mix, where their exact limitations are clear.
+      var pkgUrl = '/api/agency-packages?limit=30&origin=BEG';
       fetch(pkgUrl, pkgSid ? { headers: { 'X-Letto-Session': pkgSid } } : undefined)
         .then(function (r) { return r.ok ? r.json() : Promise.reject('http_' + r.status); })
         .then(function (data) {
@@ -1234,9 +1285,7 @@
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- Full catalog · surfaced below #pricing per 2026-05-15 spec.       -->
-<!-- Populated by the same /api/packages?limit=50 fetch as the hero    -->
-<!-- carousel above; renderCard is reused so locked/try-it/top-deal/   -->
-<!-- round-trip badges and softer .locked treatment all carry through. -->
+<!-- Populated from verified, structured supplier inventory.            -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <section class="section-full-deals" id="all-deals">
   <div class="container">
@@ -1248,18 +1297,16 @@
         <span data-sr>Svi <span class="italic gold-foil">današnji deal-ovi.</span></span>
       </h2>
       <p class="full-deals-sub">
-        <span data-en>Premium unlocks every card. Try-it picks rotate daily.</span>
-        <span data-sr>Premium otključava svaki card. Try-it picks rotiraju svaki dan.</span>
+        <span data-en>Live supplier price, real hotel and dated offer. No synthetic return segments.</span>
+        <span data-sr>Živa cena operatera, stvaran hotel i konkretan termin. Bez izmišljenih povratnih segmenata.</span>
       </p>
     </div>
     <!-- v44-A.2 · M4 theme filter chips · client-side, maps to p.category -->
     <div class="cat-chips" id="cat-chips" role="group" aria-label="Filter po temi">
       <button type="button" class="cat-chip is-active" data-cats="" aria-pressed="true"><span data-en>All</span><span data-sr>Sve</span></button>
       <button type="button" class="cat-chip" data-cats="beach" aria-pressed="false"><span data-en>Beach</span><span data-sr>Plaža</span></button>
-      <button type="button" class="cat-chip" data-cats="cultural,architecture" aria-pressed="false"><span data-en>Culture</span><span data-sr>Kultura</span></button>
-      <button type="button" class="cat-chip" data-cats="city" aria-pressed="false"><span data-en>City</span><span data-sr>City</span></button>
+      <button type="button" class="cat-chip" data-cats="city" aria-pressed="false"><span data-en>City</span><span data-sr>Grad</span></button>
       <button type="button" class="cat-chip" data-cats="luxury" aria-pressed="false"><span data-en>Luxury</span><span data-sr>Luksuz</span></button>
-      <button type="button" class="cat-chip" data-cats="romantic" aria-pressed="false"><span data-en>Romantic</span><span data-sr>Romantika</span></button>
     </div>
     <div id="full-deals-grid" class="full-deals-grid"></div>
 

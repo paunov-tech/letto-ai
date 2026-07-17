@@ -1,12 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractAssignedJson, normalizeHotels } from '../scrapers/sources/kontiki.mjs';
+import { extractAssignedJson, normalizeHotels, findDirectSupplierUrl } from '../scrapers/sources/kontiki.mjs';
 
 test('extracts server-rendered pagingData without being confused by braces in strings', () => {
   const html = '<script>HotelSearchProperties.Prm.pagingData = {"body":{"note":"x } y","hotels":[]}}; next();</script>';
   assert.deepEqual(extractAssignedJson(html, 'HotelSearchProperties.Prm.pagingData ='), {
     body: { note: 'x } y', hotels: [] }
   });
+});
+
+test('finds a direct supplier hotel URL inside nested structured data', () => {
+  assert.equal(
+    findDirectSupplierUrl({ offer: { links: { detail: '/sr/hotel/turska/alanja/test-hotel' } } }, 'https://bigblue.rs'),
+    'https://bigblue.rs/sr/hotel/turska/alanja/test-hotel'
+  );
 });
 
 test('normalizes the cheapest available structured package offer', () => {

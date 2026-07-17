@@ -347,7 +347,14 @@ async function handler(req, res) {
       const out = unlocked ? passThroughFull(p) : scrubToPreview(p);
       out.daily_try_it = isDailyTryIt;
       out.top_deal = isTopDeal;
-      out.round_trip = true;
+      // Never infer a return flight from a return date. Older engine records
+      // only carry one flight object; claiming ROUND-TRIP made the UI invent
+      // an inbound row by reversing the route. Require an actual inbound
+      // segment before exposing the badge.
+      out.round_trip = !!(
+        (p.flight?.inbound?.origin && p.flight?.inbound?.destination && p.flight?.inbound?.departureTime) ||
+        (p.returnFlight?.origin && p.returnFlight?.destination && p.returnFlight?.departureTime)
+      );
       return out;
     });
 

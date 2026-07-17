@@ -34,6 +34,8 @@ function normalize(doc) {
   const returnDate = departure && nights
     ? new Date(Date.parse(departure + 'T00:00:00Z') + nights * 86400000).toISOString().slice(0, 10)
     : null;
+  const bookingUrl = /^https:\/\//.test(p.bookingUrl || '') ? p.bookingUrl : null;
+  const directBooking = /\/sr\/(hotel|tour)\//i.test(bookingUrl || '');
   return {
     id: doc.id, kind: 'complete_agency_package', source: p.source,
     sourceLabel: p.source === 'kontiki' ? 'KonTiki' : (p.source === 'bigblue' ? 'Big Blue' : p.source),
@@ -43,9 +45,10 @@ function normalize(doc) {
     dates: { departure, return: returnDate, nights },
     stay: { board: p.board || null, room: p.room || null, allInclusive: !!p.allInclusive },
     pricing: { total: Number(p.price) || null, oldTotal: Number(p.oldPrice) || null, currency: p.currency || 'EUR', basis: 'supplier_package' },
-    bookingUrl: /^https:\/\//.test(p.bookingUrl || '') ? p.bookingUrl : null,
+    bookingUrl,
+    bookingKind: directBooking ? 'direct_supplier_offer' : 'supplier_search_session',
     freshness: { scrapedAt: p.scrapedAt || null, validUntil: p.validUntil || null },
-    complete: !!(p.title && Number(p.price) > 0 && departure && p.bookingUrl),
+    complete: !!(p.title && Number(p.price) > 0 && departure && directBooking),
     provenance: ['structured_supplier_api']
   };
 }
@@ -56,15 +59,19 @@ async function handler(req, res) {
   const origin = String(req.query.origin || 'BEG').toUpperCase().slice(0, 3);
   const from = isoMs(req.query.from ? req.query.from + 'T00:00:00Z' : null);
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 30);
-  if (!/^[A-Z]{3}$/.test(destination)) return res.status(400).json({ error: 'destination_required' });
+  const isListing = !destination;
+  if (!isListing && !/^[A-Z]{3}$/.test(destination)) return res.status(400).json({ error: 'invalid_destination' });
 
   try {
     const snap = await db.collection('letto_scrape_inventory')
-      .where('type', '==', 'charter_package').limit(500).get();
+      .where('type', '==', 'charter_package').limit(1000).get();
     const aliases = new Set(DEST_ALIASES[destination] || [destination]);
+    const todayUtc = Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
     let packages = snap.docs.map(normalize).filter(p => {
       if (!p.complete || p.origin.code !== origin) return false;
-      if (!aliases.has(String(p.destination.code || '').toUpperCase())) return false;
+      if (!isListing && !aliases.has(String(p.destination.code || '').toUpperCase())) return false;
+      const departure = isoMs(p.dates.departure ? p.dates.departure + 'T00:00:00Z' : null);
+      if (departure == null || departure < todayUtc) return false;
       const validUntil = isoMs(p.freshness.validUntil);
       return validUntil == null || validUntil > Date.now() - 6 * 3600000;
     });
@@ -75,9 +82,23 @@ async function handler(req, res) {
       p.dateMatch = p.dateDeltaDays == null ? 'unknown' : (p.dateDeltaDays <= 14 ? 'tight' : p.dateDeltaDays <= 45 ? 'near' : 'alternative');
     });
     packages.sort((a, b) => (a.dateDeltaDays ?? 9999) - (b.dateDeltaDays ?? 9999) || a.pricing.total - b.pricing.total);
+    if (isListing) {
+      // Homepage: broad, genuinely bookable coverage. Keep at most one offer
+      // per supplier + destination before allowing duplicates.
+      const seen = new Set();
+      const diverse = [];
+      const overflow = [];
+      for (const p of packages) {
+        const key = `${p.source}:${p.destination.code || p.destination.name}`;
+        (seen.has(key) ? overflow : diverse).push(p);
+        seen.add(key);
+      }
+      packages = [...diverse, ...overflow];
+    }
     packages = packages.slice(0, limit);
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
-    return res.status(200).json({ packages, count: packages.length, destination, origin,
+    return res.status(200).json({ packages, count: packages.length, destination: destination || null, origin,
+      mode: isListing ? 'listing' : 'search',
       coverage: { sources: [...new Set(packages.map(p => p.source))], complete: packages.filter(p => p.complete).length } });
   } catch (error) {
     console.error('[agency-packages]', error.message);
