@@ -167,7 +167,12 @@ async function returnBookingFallback(res, ctx, primaryFailure, debug) {
   const destinationPayload = { iata: ctx.destination, cityEn: ctx.cityEn };
   setCached(db, buildCacheKey(ctx), { hotels: fallback.hotels, destination: destinationPayload })
     .catch(e => console.warn('[hotels-search] fallback cache write failed:', e.message));
-  res.setHeader('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=21600');
+  if (ctx.fresh) {
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'no-store');
+  } else {
+    res.setHeader('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=21600');
+  }
   res.status(200).json({ hotels: fallback.hotels, destination: destinationPayload, meta: {
     totalReturned: fallback.hotels.length, limit: ctx.limit, cacheHit: false,
     provider: fallback.provider, failover: true,
@@ -379,6 +384,7 @@ function normalizeProperty(prop, ctx) {
     pricePerNight: Math.round(perNight),
     priceTotal:    Math.round(total),
     currency: 'EUR',
+    source: 'hotels-com-provider',
     distanceToCenter: null, // populated by Faza 5
     bookingUrl,
     bookingPartner: bookingUrl ? 'hotels.com' : null
@@ -440,6 +446,10 @@ async function handler(req, res) {
   const children = Math.min(Math.max(parseInt(q.children, 10) || 0, 0), 6);
   const limit    = Math.min(Math.max(parseInt(q.limit, 10) || 20, 1), 50);
   const debug    = q.debug === '1';
+  // Revalidation must not be satisfied by the six-hour discovery cache.
+  // The caller is rate-limited separately and receives a no-store response.
+  const fresh    = q.fresh === '1';
+  const skipDetails = q.revalidate === '1';
 
   if (!/^[A-Z]{3}$/.test(destinationRaw)) {
     return res.status(400).json({ error: 'destination must be a 3-letter IATA code' });
@@ -466,7 +476,7 @@ async function handler(req, res) {
   // Cache check — skip the entire RapidAPI pipeline if we have a fresh hit
   // for this destination + date + pax combo within the 6h TTL.
   const cacheKey = buildCacheKey({ destination: destinationRaw, checkIn, checkOut, adults, children });
-  const cached = await getCached(db, cacheKey);
+  const cached = fresh ? null : await getCached(db, cacheKey);
   if (cached) {
     res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
     res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
@@ -490,7 +500,7 @@ async function handler(req, res) {
   // Hotels.com region pipeline can exceed the serverless request window.
   if (dynamicallyResolved) {
     if (await returnBookingFallback(res, {
-      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit
+      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit, fresh
     }, { reason: 'dynamic_destination' }, debug)) return;
   }
 
@@ -498,7 +508,7 @@ async function handler(req, res) {
   const region = await searchRegion(cityEn);
   if (region.error) {
     if (await returnBookingFallback(res, {
-      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit
+      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit, fresh
     }, region, debug)) return;
     // Graceful partial result: the package and flight sources still work. A
     // provider outage must not turn the entire Mix page into an error state or
@@ -521,7 +531,7 @@ async function handler(req, res) {
 
   if (propsResult.error) {
     if (await returnBookingFallback(res, {
-      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit
+      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit, fresh
     }, propsResult, debug)) return;
     return res.status(200).json({
       hotels: [],
@@ -546,7 +556,7 @@ async function handler(req, res) {
   // the whole batch (each fetchHotelDetail returns null on error already,
   // but allSettled is the belt+braces guarantee).
   let distancesEnriched = 0;
-  if (region.coords && hotels.length > 0) {
+  if (!skipDetails && region.coords && hotels.length > 0) {
     const top5 = hotels.slice(0, Math.min(5, hotels.length));
     const settled = await Promise.allSettled(top5.map(h => fetchHotelDetail(h.id)));
     for (let i = 0; i < top5.length; i++) {
@@ -563,8 +573,13 @@ async function handler(req, res) {
   // Edge cache 1h. Vercel-specific CDN-Cache-Control engages the edge cache
   // even when the browser-facing Cache-Control says "always revalidate"
   // (which is what we want — prices can shift, browser shouldn't pin).
-  res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-  res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+  if (fresh) {
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', 'no-store');
+  } else {
+    res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+  }
 
   const destinationPayload = {
     iata: destinationRaw,

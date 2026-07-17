@@ -4007,6 +4007,16 @@
     font-size: 12px;
     color: rgba(245, 239, 224, 0.7);
   }
+  .mix-final__revalidation {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--muted);
+    text-align: center;
+  }
+  .mix-final__revalidation.is-ok { color: #31714b; }
+  .mix-final__revalidation.is-changed { color: #8b5b10; }
+  .mix-final__revalidation.is-blocked { color: #a33a2d; }
   @media (max-width: 720px) {
     .mix-final { padding: 22px 14px 18px; }
     .mix-final__summary { grid-template-columns: 1fr; }
@@ -4949,6 +4959,7 @@ if (document.readyState === 'loading') {
           <span class="mix-final__total-value" id="final-total-value">—</span>
           <span class="mix-final__total-meta" id="final-total-meta">—</span>
         </div>
+        <p class="mix-final__revalidation" id="price-revalidation-status" aria-live="polite"></p>
 
         <!-- Premium · finish & deliver the Mix (Commit 5) -->
         <button type="button" class="btn-gold" id="mix-finish-cta"
@@ -5385,6 +5396,7 @@ if (document.readyState === 'loading') {
       bookingPartner:f.bookingPartner || '', inbound:f.inbound || null,
       bookingUrls:f.bookingUrls || null, segments:f.segments || null,
       selfTransfer:f.selfTransfer || null, ticketing:f.ticketing || null,
+      offerId:f.id || null, source:f.source || null, sourceOfferKey:f.sourceOfferKey || null,
       pkgId:pkg.id, tier:pkg.tier || 'value', capturedAt:Date.now()
     };
     state.hotel.selected = {
@@ -5393,11 +5405,22 @@ if (document.readyState === 'loading') {
       photo:h.photo || h.image || '', pricePerNight:Number(h.pricePerNight || 0),
       priceTotal:Number(h.totalWithTaxes || h.totalPrice || 0), currency:(pkg.pricing || {}).currency || 'EUR',
       nights:Number(h.nights || d.nights || 0), bookingUrl:h.bookingUrl || null,
-      bookingPartner:h.bookingPartner || 'Booking.com', capturedAt:Date.now()
+      bookingPartner:h.bookingPartner || 'Booking.com',
+      sourceHotelId:h.id || h.sourceHotelId || null,
+      providerHotelId:h.providerHotelId || null, source:h.source || null,
+      capturedAt:Date.now()
     };
     setState(state);
-    paintFromState(state);
-    try { showStage3(); } catch (e) { console.error('[mix-v2] ranked selection failed:', e); }
+    showToast(lang() === 'en' ? 'Refreshing the selected flight and hotel price…' : 'Osvežavamo cenu izabranog leta i hotela…', 6000);
+    revalidateMixSelection(state, true).then(function (bookable) {
+      if (!bookable) {
+        showToast(lang() === 'en'
+          ? 'This combination is no longer available at the displayed price. Pick another option.'
+          : 'Ova kombinacija više nije dostupna po prikazanoj ceni. Izaberi drugu opciju.', 5500);
+        return;
+      }
+      try { showStage3(); } catch (e) { console.error('[mix-v2] ranked selection failed:', e); }
+    });
   }
 
   function loadAgencyPackages() {
@@ -6015,6 +6038,14 @@ if (document.readyState === 'loading') {
       currency:       (pkg.pricing && pkg.pricing.currency) || 'EUR',
       bookingUrl:     fl.bookingUrl || '',
       bookingPartner: fl.bookingPartner || '',
+      offerId:        fl.id || null,
+      source:         fl.source || null,
+      sourceOfferKey: fl.sourceOfferKey || null,
+      inbound:         fl.inbound || null,
+      bookingUrls:     fl.bookingUrls || null,
+      segments:        fl.segments || null,
+      selfTransfer:    fl.selfTransfer || null,
+      ticketing:       fl.ticketing || null,
       pkgId:          pkg.id,
       // Final 2 · tier badge propagation. Default 'value' if missing
       // (pre-tier seeds didn't have it; backfill covered all known but
@@ -6108,6 +6139,9 @@ if (document.readyState === 'loading') {
         // builds the full URL and passes it through.
         bookingUrl: hotel.bookingUrl || null,
         bookingPartner: hotel.bookingPartner || null,
+        sourceHotelId: hotel.id || null,
+        providerHotelId: hotel.providerHotelId || null,
+        source: hotel.source || null,
         capturedAt: Date.now()
       };
     }
@@ -6625,6 +6659,33 @@ if (document.readyState === 'loading') {
         ? ('for ' + pax + (pax === 1 ? ' person' : ' people') + ' · ' + nights + (nights === 1 ? ' night' : ' nights'))
         : ('za ' + adults + ' osobe · ' + nights + ' noći');
     }
+    var revalidationStatus = $('price-revalidation-status');
+    var revalidation = state.meta && state.meta.priceRevalidation;
+    if (revalidationStatus) {
+      revalidationStatus.className = 'mix-final__revalidation';
+      if (!revalidation) {
+        revalidationStatus.textContent = '';
+      } else if (revalidation.status === 'checking') {
+        revalidationStatus.textContent = l === 'en'
+          ? 'Refreshing the current flight and hotel price…'
+          : 'Osvežavamo trenutnu cenu leta i hotela…';
+      } else if (revalidation.bookable && revalidation.changed) {
+        revalidationStatus.classList.add('is-changed');
+        revalidationStatus.textContent = l === 'en'
+          ? 'Price refreshed — the total above has changed.'
+          : 'Cena je osvežena — ukupan iznos iznad je promenjen.';
+      } else if (revalidation.bookable) {
+        revalidationStatus.classList.add('is-ok');
+        revalidationStatus.textContent = l === 'en'
+          ? 'Price checked with both providers just now.'
+          : 'Cena je upravo proverena kod oba partnera.';
+      } else {
+        revalidationStatus.classList.add('is-blocked');
+        revalidationStatus.textContent = l === 'en'
+          ? 'Current price could not be confirmed. Choose another option or try again.'
+          : 'Trenutna cena nije potvrđena. Izaberi drugu opciju ili pokušaj ponovo.';
+      }
+    }
 
     // Hotel-only · the premium "Finish Mix · save & send" CTA reads as
     // let+hotel by default; in no_flight mode relabel to match the rest
@@ -6655,7 +6716,117 @@ if (document.readyState === 'loading') {
     }, durationMs || 3000);
   }
 
-  function bookFlight() {
+  var PRICE_REVALIDATION_TTL_MS = 5 * 60 * 1000;
+  var priceRevalidationInFlight = null;
+
+  function canRevalidateMix(state) {
+    var f = state && state.flight && state.flight.selected;
+    var h = state && state.hotel && state.hotel.selected;
+    return !!(f && h && ['booking-com15', 'travelpayouts', 'booking-self-transfer'].indexOf(f.source) !== -1 &&
+      (h.sourceHotelId || h.providerHotelId));
+  }
+
+  function revalidationKey(state) {
+    var f = state && state.flight && state.flight.selected || {};
+    var h = state && state.hotel && state.hotel.selected || {};
+    return [f.offerId || f.id || '', f.sourceOfferKey || '', f.source || '', f.depart || '', f.ret || '',
+      h.sourceHotelId || h.providerHotelId || '', h.priceTotal || ''].join('|');
+  }
+
+  function revalidationPayload(state) {
+    var f = state.flight.selected;
+    var h = state.hotel.selected;
+    var adults = Number(state.searchParams && state.searchParams.adults) || 2;
+    var children = Number(state.searchParams && state.searchParams.children) || 0;
+    return {
+      search: { origin: f.origin, destination: f.dest, from: f.depart, to: f.ret, pax: adults + children },
+      flight: {
+        id: f.offerId || null, source: f.source || null, sourceOfferKey: f.sourceOfferKey || null,
+        origin: f.origin, dest: f.dest, depart: f.depart, ret: f.ret,
+        flightNumber: f.flightNumber || '', departureTime: f.departureTime || '',
+        totalPrice: f.totalPrice, selfTransfer: f.selfTransfer || null
+      },
+      hotel: {
+        sourceHotelId: h.sourceHotelId || null, providerHotelId: h.providerHotelId || null,
+        priceTotal: h.priceTotal
+      }
+    };
+  }
+
+  function applyFreshRevalidation(state, result) {
+    var f = state.flight.selected;
+    var h = state.hotel.selected;
+    if (result.flight && result.flight.fresh) {
+      var freshFlight = result.flight.fresh;
+      Object.assign(f, freshFlight, {
+        offerId: freshFlight.id || f.offerId || null,
+        totalPrice: result.flight.freshPrice,
+        priceNum: result.flight.freshPrice,
+        capturedAt: Date.now()
+      });
+    }
+    if (result.hotel && result.hotel.fresh) {
+      var freshHotel = result.hotel.fresh;
+      Object.assign(h, freshHotel, {
+        priceTotal: result.hotel.freshPrice,
+        capturedAt: Date.now()
+      });
+    }
+    state.meta = state.meta || {};
+    state.meta.priceRevalidation = {
+      status: result.bookable ? (result.changed ? 'changed' : 'confirmed') : 'unavailable',
+      bookable: result.bookable === true,
+      changed: result.changed === true,
+      checkedAt: result.checkedAt || new Date().toISOString(),
+      total: result.total || null,
+      flight: result.flight || null,
+      hotel: result.hotel || null
+    };
+    setState(state);
+    paintFromState(state);
+  }
+
+  function revalidateMixSelection(state, force) {
+    if (!canRevalidateMix(state)) return Promise.resolve(true);
+    var existing = state.meta && state.meta.priceRevalidation;
+    var checkedAt = existing && Date.parse(existing.checkedAt || '');
+    if (!force && existing && existing.bookable && Number.isFinite(checkedAt) &&
+        Date.now() - checkedAt < PRICE_REVALIDATION_TTL_MS) return Promise.resolve(true);
+    if (priceRevalidationInFlight) return priceRevalidationInFlight;
+    var selectionKey = revalidationKey(state);
+    state.meta = state.meta || {};
+    state.meta.priceRevalidation = { status: 'checking', bookable: false, checkedAt: new Date().toISOString() };
+    setState(state);
+    paintFromState(state);
+    priceRevalidationInFlight = fetch('/api/revalidate-mix', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(revalidationPayload(state))
+    }).then(function (response) {
+      return response.json().catch(function () { return {}; }).then(function (data) {
+        return { ok: response.ok, data: data };
+      });
+    }).then(function (response) {
+      var current = getState();
+      if (!current || revalidationKey(current) !== selectionKey) return false;
+      if (!response.ok) {
+        response.data.bookable = false;
+        response.data.checkedAt = new Date().toISOString();
+      }
+      applyFreshRevalidation(current, response.data);
+      return response.data.bookable === true;
+    }).catch(function () {
+      var current = getState();
+      if (current && revalidationKey(current) === selectionKey) {
+        applyFreshRevalidation(current, { bookable: false, changed: false, checkedAt: new Date().toISOString() });
+      }
+      return false;
+    }).finally(function () {
+      priceRevalidationInFlight = null;
+    });
+    return priceRevalidationInFlight;
+  }
+
+  async function bookFlight() {
     var state = getState();
     if (!state) return;
     state.flight = state.flight || {};
@@ -6679,6 +6850,15 @@ if (document.readyState === 'loading') {
       return;
     }
 
+    if (!await revalidateMixSelection(state, false)) {
+      showToast(l === 'en'
+        ? 'We could not confirm the current price. Please choose another option or retry.'
+        : 'Nismo potvrdili trenutnu cenu. Izaberi drugu opciju ili pokušaj ponovo.', 5000);
+      return;
+    }
+    state = getState();
+    fSel = state && state.flight && state.flight.selected;
+
     var url = (fSel && fSel.bookingUrl) || '';
     if (!url) {
       window.alert(l === 'en' ? 'No flight booking URL captured. Re-pick the flight from the list.'
@@ -6700,9 +6880,19 @@ if (document.readyState === 'loading') {
     updateStages(true, hotelIsSet(state), bothBooked);
   }
 
-  function bookHotel() {
+  async function bookHotel() {
     var state = getState();
     var h = state && state.hotel && state.hotel.selected;
+    if (!h) return;
+    if (!await revalidateMixSelection(state, false)) {
+      var currentLang = lang();
+      showToast(currentLang === 'en'
+        ? 'We could not confirm the current price. Please choose another option or retry.'
+        : 'Nismo potvrdili trenutnu cenu. Izaberi drugu opciju ili pokušaj ponovo.', 5000);
+      return;
+    }
+    state = getState();
+    h = state && state.hotel && state.hotel.selected;
     if (!h) return;
     var p = readUrlParams();
     // A · hotel deeplink fix: prefer the property-level URL when the API

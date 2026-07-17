@@ -130,6 +130,7 @@ async function handler(req, res) {
         dates: { departure: flight.depart, return: flight.ret, nights: flightNights },
         flight: { ...flight },
         hotel: {
+          id: hotel.id, providerHotelId: hotel.providerHotelId || null, source: hotel.source || null,
           name: hotel.name, rating: hotel.stars, reviewScore: hotel.guestRating,
           reviewCount: hotel.reviewCount, photo: hotel.photo, nights: flightNights,
           totalWithTaxes: Number(hotel.priceTotal), totalPrice: Number(hotel.priceTotal),
