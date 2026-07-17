@@ -6,6 +6,7 @@ import {
   buildFlexibleDateMatrix,
   selectDateDiverseFlights
 } from '../lib/flexible-date-matrix.js';
+import { mapWithConcurrency } from '../lib/concurrency.js';
 
 const IATA = /^[A-Z]{3}$/;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -76,13 +77,22 @@ async function handler(req, res) {
     }).toString();
     const response = await fetch(hotelUrl, {
       headers: { Accept: 'application/json', Referer: `https://${req.headers.host || 'letto.live'}/results.html` },
-      signal: AbortSignal.timeout ? AbortSignal.timeout(22000) : undefined
+      signal: AbortSignal.timeout ? AbortSignal.timeout(35000) : undefined
     }).catch(() => null);
     const payload = response?.ok ? await response.json().catch(() => ({})) : {};
-    return { flight, payload, hotels: Array.isArray(payload.hotels) ? payload.hotels : [] };
+    return {
+      flight,
+      payload,
+      hotels: Array.isArray(payload.hotels) ? payload.hotels : [],
+      status: response?.status || null,
+      error: response ? (response.ok ? null : `http_${response.status}`) : 'request_failed'
+    };
   }
   const hotelCandidates = selectDateDiverseFlights(flights, { from, to }, flexible ? 5 : 3);
-  const batches = await Promise.all(hotelCandidates.map(hotelsFor));
+  // Hotels.com becomes unstable when five region/property/detail pipelines hit
+  // it simultaneously. Two workers retain date diversity without sacrificing
+  // the exact-date baseline to upstream timeouts.
+  const batches = await mapWithConcurrency(hotelCandidates, 2, hotelsFor);
   const packages = [];
   for (const batch of batches) {
     const { flight, hotels } = batch;
@@ -114,6 +124,9 @@ async function handler(req, res) {
     }
   }
   const itineraries = rankItineraries(packages, { from, to, pax }, 8);
+  if (!itineraries.length) {
+    res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+  }
   return res.status(200).json({
     itineraries,
     count: itineraries.length,
@@ -140,7 +153,13 @@ async function handler(req, res) {
       hotels: {
         name: batches[0]?.payload?.meta?.provider || 'hotels-com-provider',
         count: batches.reduce((sum, batch) => sum + batch.hotels.length, 0),
-        searches: batches.length
+        searches: batches.length,
+        failedSearches: batches.filter(batch => batch.error).map(batch => ({
+          from: batch.flight.depart,
+          to: batch.flight.ret,
+          error: batch.error,
+          status: batch.status
+        }))
       }
     },
     mode: 'live_independent_mix'
