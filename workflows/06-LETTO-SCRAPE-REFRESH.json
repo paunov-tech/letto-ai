@@ -1,5 +1,5 @@
 {
-  "id": "lettoScrapeRef06",
+  "id": "JfocgS4yBLph2GVH",
   "name": "06-LETTO-SCRAPE-REFRESH",
   "nodes": [
     {
@@ -7,10 +7,18 @@
       "name": "Trigger · every 4h",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "parameters": {
         "rule": {
-          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */4 * * *"
+            }
+          ]
         }
       }
     },
@@ -19,7 +27,10 @@
       "name": "Run all scrapers",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [460, 300],
+      "position": [
+        460,
+        300
+      ],
       "parameters": {
         "command": "/opt/letto-scrapers/run-production.sh"
       },
@@ -30,7 +41,10 @@
       "name": "Parse JSON result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300],
+      "position": [
+        680,
+        300
+      ],
       "parameters": {
         "jsCode": "const out = $input.first().json;\nconst raw = (out.stdout || out.output || '').trim();\nlet parsed = {};\ntry {\n  // last line is JSON\n  const lastLine = raw.split('\\n').filter(Boolean).pop() || '{}';\n  parsed = JSON.parse(lastLine);\n} catch (e) {\n  parsed = { ok: false, parseError: e.message, stdout: raw.slice(0, 1000) };\n}\nreturn [{ json: parsed }];"
       }
@@ -40,28 +54,72 @@
       "name": "Notify · scrape complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 300],
+      "position": [
+        900,
+        300
+      ],
       "parameters": {
         "url": "https://letto.live/api/notify-admin",
         "method": "POST",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{$env.NOTIFY_SECRET}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.NOTIFY_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"event\": \"scrape_cycle_complete\",\n  \"workflow\": \"06-SCRAPE-REFRESH\",\n  \"detail\": {\n    \"durationMs\": {{$json.durationMs}},\n    \"wizzair\": {{$json.wizzair}},\n    \"ryanair\": {{$json.ryanair}},\n    \"pegasus\": {{$json.pegasus}},\n    \"kontiki\": {{$json.kontiki}},\n    \"bigblue\": {{$json.bigblue}},\n    \"errorCount\": {{ ($json.errors || []).length }}\n  }\n}",
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       }
     }
   ],
   "connections": {
-    "Trigger · every 4h": { "main": [[{ "node": "Run all scrapers", "type": "main", "index": 0 }]] },
-    "Run all scrapers": { "main": [[{ "node": "Parse JSON result", "type": "main", "index": 0 }]] },
-    "Parse JSON result": { "main": [[{ "node": "Notify · scrape complete", "type": "main", "index": 0 }]] }
+    "Trigger · every 4h": {
+      "main": [
+        [
+          {
+            "node": "Run all scrapers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run all scrapers": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON result": {
+      "main": [
+        [
+          {
+            "node": "Notify · scrape complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1", "saveDataErrorExecution": "all" }
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all"
+  }
 }

@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { withSentry } from '../lib/sentry-backend.js';
 import { cleanAviasalesUrl, buildAviasalesUrl } from '../lib/aviasales-url.js';
 import { rankItineraries } from '../lib/mix-ranker.js';
+import { itineraryContract } from '../lib/itinerary-contract.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -17,6 +18,15 @@ if (!getApps().length) {
 const db = getFirestore();
 const IATA = /^[A-Z]{3}$/;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+function timestampMs(value) {
+  if (!value) return null;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value._seconds === 'number') return value._seconds * 1000;
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -48,6 +58,12 @@ async function handler(req, res) {
         ? cleanAviasalesUrl(pkg.flight.bookingUrl)
         : buildAviasalesUrl(pkg);
     }
+    const validated = packages.filter(pkg => itineraryContract(pkg).complete);
+    const freshCutoff = Date.now() - 48 * 3600000;
+    const fresh = validated.filter(pkg => {
+      const stamp = timestampMs(pkg?.metadata?.createdAt || pkg?.metadata?.updatedAt);
+      return stamp !== null && stamp >= freshCutoff;
+    });
     const itineraries = rankItineraries(packages, { from, to, pax }, limit);
     return res.status(200).json({
       itineraries,
@@ -55,8 +71,11 @@ async function handler(req, res) {
       requested: { origin, dest, from, to, pax },
       coverage: {
         scanned: packages.length,
-        complete: itineraries.length,
-        exactDates: itineraries.filter(item => item.dateMatch === 'exact').length
+        contractValid: validated.length,
+        relevantWithin60Days: itineraries.length,
+        exactDates: itineraries.filter(item => item.dateMatch === 'exact').length,
+        freshWithin48h: fresh.length,
+        health: itineraries.length > 0 ? 'available' : (validated.length > 0 ? 'date_gap' : 'source_gap')
       },
       mode: 'independent_ranked_mix',
       disclosure: 'LETTO ranks complete flight and hotel combinations. Partner pages confirm live availability and final price.'

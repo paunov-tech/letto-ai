@@ -1,4 +1,4 @@
-# Refresh verified external offer inventory once daily at 07:00 UTC.
+# Refresh verified external offer inventory every four hours.
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-0 7 * * * root /opt/letto-scrapers/run-production.sh >> /var/log/letto-scrapers.log 2>&1
+0 */4 * * * root /opt/letto-scrapers/run-production.sh >> /var/log/letto-scrapers.log 2>&1
