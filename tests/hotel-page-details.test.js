@@ -12,7 +12,19 @@ test('extracts only enabled structured property amenities from a hotel page', ()
   }</script>`;
   assert.deepEqual(extractPropertyPageAmenities(html), ['Free WiFi', 'Gym']);
   assert.deepEqual(propertyPageStayDetails(html), {
-    amenities: ['Free WiFi', 'Gym'], source: 'property_page_structured_data', scope: 'property_only'
+    amenities: ['Free WiFi', 'Gym'], source: 'property_page_amenities', scope: 'property_only'
+  });
+});
+
+test('extracts the visible Booking.com popular amenities list without inferring rate terms', () => {
+  const html = `
+    <h3>Most popular amenities</h3>
+    <ul><li><span>Free Wifi</span></li><li><span>Family rooms</span></li><li><span>24-hour front desk</span></li></ul>
+    <p>Breakfast may be available with some rates.</p>`;
+  assert.deepEqual(extractPropertyPageAmenities(html), ['Free Wifi', 'Family rooms', '24-hour front desk']);
+  assert.deepEqual(propertyPageStayDetails(html), {
+    amenities: ['Free Wifi', 'Family rooms', '24-hour front desk'],
+    source: 'property_page_amenities', scope: 'property_only'
   });
 });
 

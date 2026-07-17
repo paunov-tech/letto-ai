@@ -5511,6 +5511,8 @@ if (document.readyState === 'loading') {
         : (l === 'en' ? 'Taxes: confirm at partner' : 'Porezi: potvrdi kod partnera')));
     if (includeAmenities && Array.isArray(details.amenities) && details.amenities.length) {
       parts.push((l === 'en' ? 'Amenities: ' : 'Sadržaji: ') + details.amenities.slice(0, 4).join(', '));
+    } else if (includeAmenities && details.propertyAmenityChecking) {
+      parts.push(l === 'en' ? 'Checking property amenities…' : 'Proveravamo sadržaje smeštaja…');
     }
     return parts.join(' · ');
   }
@@ -6820,7 +6822,10 @@ if (document.readyState === 'loading') {
 
   function enrichSelectedHotelProperty(state) {
     var h = state && state.hotel && state.hotel.selected;
-    if (!h || !h.bookingUrl || h.stayDetails?.propertyAmenityCheckedAt) return Promise.resolve(false);
+    if (!h || !h.bookingUrl || h.stayDetails?.propertyAmenityCheckedAt || h.stayDetails?.propertyAmenityChecking) return Promise.resolve(false);
+    h.stayDetails = Object.assign({}, h.stayDetails || {}, { propertyAmenityChecking: true });
+    setState(state);
+    paintFromState(state);
     return fetch('/api/hotel-stay-details', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bookingUrl: h.bookingUrl })
@@ -6835,6 +6840,7 @@ if (document.readyState === 'loading') {
         ? data.stayDetails.amenities : (selected.stayDetails?.amenities || []);
       selected.stayDetails = Object.assign({}, selected.stayDetails || {}, {
         amenities: amenities,
+        propertyAmenityChecking: false,
         propertyAmenitySource: data.stayDetails.source || 'unavailable',
         propertyAmenityCheckedAt: data.checkedAt || new Date().toISOString(),
         verified: Object.assign({}, selected.stayDetails?.verified || {}, { amenities: amenities.length > 0 })
@@ -6842,7 +6848,16 @@ if (document.readyState === 'loading') {
       setState(current);
       paintFromState(current);
       return amenities.length > 0;
-    }).catch(function () { return false; });
+    }).catch(function () {
+      var current = getState();
+      var selected = current && current.hotel && current.hotel.selected;
+      if (selected && selected.bookingUrl === h.bookingUrl) {
+        selected.stayDetails = Object.assign({}, selected.stayDetails || {}, { propertyAmenityChecking: false });
+        setState(current);
+        paintFromState(current);
+      }
+      return false;
+    });
   }
 
   function applyFreshRevalidation(state, result) {

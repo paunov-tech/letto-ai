@@ -15,6 +15,16 @@ function isSupportedPropertyUrl(value) {
   }
 }
 
+function canonicalPropertyUrl(value) {
+  const url = new URL(value);
+  // Availability query parameters produce a slow, rate-specific Booking
+  // document. This endpoint deliberately extracts only durable amenities, so
+  // fetch the canonical property page and leave price/rate terms untouched.
+  url.search = '';
+  url.hash = '';
+  return url.toString();
+}
+
 function isLettoOrigin(value) {
   try {
     const host = new URL(value).hostname;
@@ -40,7 +50,12 @@ async function handler(req, res) {
   if (!isSupportedPropertyUrl(bookingUrl)) return res.status(400).json({ error: 'invalid_property_url' });
   if (!isBrightDataConfigured()) return res.status(503).json({ error: 'detail_provider_unavailable' });
   try {
-    const page = await scrapeWithBrightData(bookingUrl, { geo: 'rs', timeoutMs: 45000 });
+    const page = await scrapeWithBrightData(canonicalPropertyUrl(bookingUrl), {
+      // Amenities are property-level. Let Web Unlocker select the quickest
+      // suitable location instead of pinning the shopper's country.
+      geo: false,
+      timeoutMs: 35_000
+    });
     return res.status(200).json({
       stayDetails: propertyPageStayDetails(page.html),
       checkedAt: new Date().toISOString(),

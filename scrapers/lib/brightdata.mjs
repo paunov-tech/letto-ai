@@ -73,6 +73,10 @@ export async function resolveZone() {
 
 export async function scrapeWithBrightData(url, opts = {}) {
   const zone = await resolveZone();
+  // A caller can opt into Web Unlocker's own location selection. This is
+  // useful for non-rate property metadata: it is not country-specific, and
+  // forcing a shopper country can make a protected page unnecessarily slow.
+  const country = opts.geo === false ? null : String(opts.geo || DEFAULT_COUNTRY).toLowerCase();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs || 90000);
   localCount++;
@@ -85,7 +89,7 @@ export async function scrapeWithBrightData(url, opts = {}) {
         url,
         format: 'raw',
         method: 'GET',
-        country: String(opts.geo || DEFAULT_COUNTRY).toLowerCase()
+        ...(country ? { country } : {})
       }),
       signal: ctrl.signal
     });

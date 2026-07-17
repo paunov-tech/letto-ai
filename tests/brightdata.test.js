@@ -63,3 +63,29 @@ test('Bright Data errors redact the API key', async () => {
     process.env = originalEnv;
   }
 });
+
+test('Bright Data can defer country choice to Web Unlocker', async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = { ...process.env };
+  process.env.BRIGHT_DATA_API_KEY = 'test-secret';
+  process.env.BRIGHT_DATA_ZONE = 'zone';
+  process.env.BRIGHT_DATA_API_BASE = 'https://api.example.test';
+  const calls = [];
+  global.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    return new Response('<html>hotel</html>', { status: 200 });
+  };
+
+  try {
+    const moduleUrl = new URL('../scrapers/lib/brightdata.mjs', import.meta.url);
+    moduleUrl.searchParams.set('test', `${Date.now()}-automatic-country`);
+    const { scrapeWithBrightData } = await import(moduleUrl.href);
+    await scrapeWithBrightData('https://example.test/hotel', { geo: false });
+    assert.deepEqual(JSON.parse(calls[0].options.body), {
+      zone: 'zone', url: 'https://example.test/hotel', format: 'raw', method: 'GET'
+    });
+  } finally {
+    global.fetch = originalFetch;
+    process.env = originalEnv;
+  }
+});
