@@ -437,6 +437,7 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'checkOut must be after checkIn' });
   }
   let cityEn = IATA_TO_CITY_EN[destinationRaw];
+  const dynamicallyResolved = !cityEn;
   if (!cityEn) {
     const dynamicDestination = await resolveAirportCity(destinationRaw);
     cityEn = dynamicDestination?.cityEn;
@@ -467,6 +468,16 @@ async function handler(req, res) {
         ...(debug ? { source: 'firestore-cache' } : {})
       }
     });
+  }
+
+  // A destination discovered globally has no pre-warmed Hotels.com region or
+  // stable Booking city id. Resolve it once through Booking's own destination
+  // index and search there directly; chaining that lookup through the slower
+  // Hotels.com region pipeline can exceed the serverless request window.
+  if (dynamicallyResolved) {
+    if (await returnBookingFallback(res, {
+      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit
+    }, { reason: 'dynamic_destination' }, debug)) return;
   }
 
   // Region lookup
