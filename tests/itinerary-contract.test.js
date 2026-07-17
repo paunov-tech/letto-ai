@@ -88,3 +88,41 @@ test('distinguishes an offer-specific flight handoff from a repeated search', ()
   assert.equal(c.flight.handoff, 'offer_specific');
   assert.equal(itineraryContract(base).flight.handoff, 'roundtrip_search');
 });
+
+test('accepts only complete and explicitly unprotected self-transfer handoffs', () => {
+  const segment = (origin, destination, number) => ({
+    legs: [{
+      sourceProvided: true, origin, destination, flightNumber: number,
+      departureAt: '2026-09-17T06:00:00+02:00', arrivalAt: '2026-09-17T07:00:00+02:00'
+    }]
+  });
+  const url = route => `https://www.booking.com/flights/index.html?type=ONEWAY&depart=${route}&departDate=2026-09-17`;
+  const c = itineraryContract({
+    ...base,
+    flight: {
+      totalPrice: 320,
+      bookingHandoff: 'multi_ticket_search',
+      bookingUrl: url('BEG.AIRPORT-VIE.AIRPORT'),
+      bookingUrls: [
+        { url: url('BEG.AIRPORT-VIE.AIRPORT') },
+        { url: url('VIE.AIRPORT-BUD.AIRPORT') },
+        { url: url('BUD.AIRPORT-VIE.AIRPORT') },
+        { url: url('VIE.AIRPORT-BEG.AIRPORT') }
+      ],
+      ticketing: { type: 'self_transfer', providerProtection: 'unprotected' },
+      selfTransfer: {
+        protected: false,
+        outboundConnection: { safe: true },
+        inboundConnection: { safe: true }
+      },
+      segments: [
+        segment('BEG', 'VIE', 'JU1'), segment('VIE', 'BUD', 'OS2'),
+        segment('BUD', 'VIE', 'OS3'), segment('VIE', 'BEG', 'JU4')
+      ]
+    }
+  });
+  assert.equal(c.level, 'segment_confirmed');
+  assert.equal(c.handoffs, 5);
+  assert.equal(c.flight.handoff, 'multi_ticket_search');
+  assert.equal(c.flight.protection, 'unprotected_self_transfer');
+});

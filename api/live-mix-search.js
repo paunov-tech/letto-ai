@@ -8,6 +8,7 @@ import {
   selectDateDiverseFlights
 } from '../lib/flexible-date-matrix.js';
 import { mapWithConcurrency } from '../lib/concurrency.js';
+import { searchSelfTransferRoundTrip } from '../lib/self-transfer-provider.js';
 
 const IATA = /^[A-Z]{3}$/;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -41,6 +42,7 @@ async function handler(req, res) {
   const to = String(req.query.to || '');
   const pax = Math.max(1, Math.min(7, Number(req.query.pax) || 2));
   const flexible = String(req.query.flex || '1') !== '0';
+  const includeSelfTransfer = String(req.query.selfTransfer || '1') !== '0';
   if (!IATA.test(origin) || !IATA.test(dest) || !ISO.test(from) || !ISO.test(to) || from >= to) {
     return res.status(400).json({ error: 'invalid_search' });
   }
@@ -57,7 +59,14 @@ async function handler(req, res) {
       origin: item.code, destination: dest, from, to, pax
     }))
   ];
-  const flightResults = await Promise.all(searches);
+  const selfTransferPromise = includeSelfTransfer
+    ? searchSelfTransferRoundTrip({ origin, destination: dest, from, to, pax })
+    : Promise.resolve({ flights: [], provider: 'booking-self-transfer', error: 'disabled' });
+  const [standardResults, selfTransferResult] = await Promise.all([
+    Promise.all(searches),
+    selfTransferPromise
+  ]);
+  const flightResults = [...standardResults, selfTransferResult];
   const originDistance = new Map(origins.map(item => [item.code, item.distanceKm]));
   const flights = dedupeFlights(flightResults.flatMap(result => result.flights || []))
     .map(flight => ({
@@ -89,7 +98,15 @@ async function handler(req, res) {
       error: response ? (response.ok ? null : `http_${response.status}`) : 'request_failed'
     };
   }
-  const hotelCandidates = selectDateDiverseFlights(flights, { from, to }, flexible ? 5 : 3);
+  const standardHotelCandidates = selectDateDiverseFlights(
+    flights.filter(flight => !flight.selfTransfer?.required),
+    { from, to },
+    flexible ? 5 : 3
+  );
+  const selfTransferCandidate = flights.find(flight => flight.selfTransfer?.required);
+  const hotelCandidates = selfTransferCandidate
+    ? [...standardHotelCandidates, selfTransferCandidate]
+    : standardHotelCandidates;
   // Hotels.com becomes unstable when five region/property/detail pipelines hit
   // it simultaneously. Two workers retain date diversity without sacrificing
   // the exact-date baseline to upstream timeouts.
@@ -132,7 +149,7 @@ async function handler(req, res) {
   return res.status(200).json({
     itineraries,
     count: itineraries.length,
-    requested: { origin, dest, from, to, pax, flexible },
+    requested: { origin, dest, from, to, pax, flexible, includeSelfTransfer },
     flexibility: {
       enabled: flexible,
       windows: dateWindows.map(window => ({

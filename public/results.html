@@ -5337,7 +5337,9 @@ if (document.readyState === 'loading') {
         : (l === 'en' ? 'Round-trip search + property verified' : 'Povratna pretraga + hotel potvrđeni');
       var handoff = pkg.itinerary && pkg.itinerary.flight && pkg.itinerary.flight.handoff === 'offer_specific'
         ? (l === 'en' ? 'specific flight offer' : 'konkretna avionska ponuda')
-        : (l === 'en' ? 'flight search will be repeated' : 'pretraga leta se ponavlja');
+        : (pkg.itinerary && pkg.itinerary.flight && pkg.itinerary.flight.handoff === 'multi_ticket_search'
+          ? (l === 'en' ? '4 separate tickets · unprotected connection' : '4 odvojene karte · nezaštićena konekcija')
+          : (l === 'en' ? 'flight search will be repeated' : 'pretraga leta se ponavlja'));
       return '<article class="ranked-card">' +
         '<div class="ranked-card__top"><span class="ranked-card__rank">' + rankLabel + '</span><span class="ranked-card__score">LETTO ' + Number(pkg.lettoScore || 0) + '/100</span></div>' +
         '<h3>' + escapeHtml((pkg.origin && pkg.origin.code) || '') + ' ↔ ' + escapeHtml((pkg.destination && pkg.destination.code) || '') + ' · ' + escapeHtml(h.name || (l === 'en' ? 'Hotel' : 'Hotel')) + '</h3>' +
@@ -5345,6 +5347,7 @@ if (document.readyState === 'loading') {
         '<div class="ranked-card__parts">✈ ' + escapeHtml(f.airline || (l === 'en' ? 'Flight option' : 'Opcija leta')) +
           (f.flightNumber ? ' ' + escapeHtml(f.flightNumber) : '') +
           (f.inbound && f.inbound.flightNumber ? ' / ' + escapeHtml(f.inbound.flightNumber) : '') +
+          (f.selfTransfer && f.selfTransfer.hub ? ' · via ' + escapeHtml(f.selfTransfer.hub) : '') +
           ' · €' + Math.round(flightPrice) + '<br>⌂ ' + escapeHtml(h.name || 'Hotel') + ' · €' + Math.round(hotelPrice) + '</div>' +
         '<ul class="ranked-card__why">' + why + '</ul>' +
         '<div class="ranked-card__price"><span>' + (l === 'en' ? 'Complete trip' : 'Kompletno putovanje') + '</span><strong>€' + Math.round(total) + '</strong></div>' +
@@ -5367,6 +5370,8 @@ if (document.readyState === 'loading') {
       nights:d.nights || 0, totalPrice:Number(f.totalPrice || 0), priceNum:Number(f.totalPrice || 0),
       currency:(pkg.pricing || {}).currency || 'EUR', bookingUrl:f.bookingUrl || '',
       bookingPartner:f.bookingPartner || '', inbound:f.inbound || null,
+      bookingUrls:f.bookingUrls || null, segments:f.segments || null,
+      selfTransfer:f.selfTransfer || null, ticketing:f.ticketing || null,
       pkgId:pkg.id, tier:pkg.tier || 'value', capturedAt:Date.now()
     };
     state.hotel.selected = {
@@ -6543,6 +6548,33 @@ if (document.readyState === 'loading') {
       }
     }
 
+    // A self-transfer is four independent searches, not one protected ticket.
+    // Keep every handoff visible and never collapse it into a single CTA.
+    var transferLinks = $('self-transfer-booking-links');
+    if (!transferLinks && fBtn && fBtn.parentNode) {
+      transferLinks = document.createElement('div');
+      transferLinks.id = 'self-transfer-booking-links';
+      transferLinks.style.cssText = 'margin-top:12px;font-size:12px;line-height:1.5;';
+      fBtn.parentNode.appendChild(transferLinks);
+    }
+    if (transferLinks) {
+      var split = fSel && fSel.selfTransfer && Array.isArray(fSel.bookingUrls)
+        ? fSel.bookingUrls : [];
+      if (split.length) {
+        var warning = l === 'en'
+          ? '⚠ Self-transfer: separate tickets, baggage re-check, missed connections are not protected.'
+          : '⚠ Self-transfer: odvojene karte, ponovna predaja prtljaga i nema zaštite ako se konekcija propusti.';
+        transferLinks.innerHTML = '<strong>' + warning + '</strong><ol>' + split.map(function (item) {
+          var label = (item.order || '') + '. ' + (item.route || '') + ' · ' + (item.flightNumber || '');
+          return unlocked
+            ? '<li><a href="' + escapeHtml(item.url || '#') + '" target="_blank" rel="noopener sponsored">' + escapeHtml(label) + '</a></li>'
+            : '<li>' + escapeHtml(label) + '</li>';
+        }).join('') + '</ol>';
+      } else {
+        transferLinks.innerHTML = '';
+      }
+    }
+
     // Hotel section
     var hDesc = $('final-hotel-desc');
     var hPrice = $('final-hotel-price');
@@ -6643,8 +6675,12 @@ if (document.readyState === 'loading') {
     state.flight.bookingClickedAt = Date.now();
     setState(state);
     showToast(l === 'en'
-      ? 'Opening ' + (fSel.bookingPartner || 'partner') + ' · book directly there.'
-      : 'Otvaram ' + (fSel.bookingPartner || 'partnera') + ' · rezerviši direktno tamo.', 4000);
+      ? (fSel.selfTransfer
+        ? 'Opening ticket 1 of 4 · use the four links shown to book every segment.'
+        : 'Opening ' + (fSel.bookingPartner || 'partner') + ' · book directly there.')
+      : (fSel.selfTransfer
+        ? 'Otvaram kartu 1 od 4 · rezerviši sva četiri segmenta preko prikazanih linkova.'
+        : 'Otvaram ' + (fSel.bookingPartner || 'partnera') + ' · rezerviši direktno tamo.'), 4000);
     window.open(url, '_blank', 'noopener');
     var bothBooked = !!(state.flight.bookingClicked && state.hotel.bookingClicked);
     updateStages(true, hotelIsSet(state), bothBooked);
