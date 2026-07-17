@@ -14,8 +14,8 @@ core product.
 
 ## Execution order
 
-- [ ] 1. Exact flight booking handoff for the selected offer
-- [ ] 2. Broader destination network and discovery
+- [x] 1. Exact flight booking handoff for the selected offer
+- [ ] 2. Broader destination network and discovery — in progress
 - [ ] 3. Flexible dates and stay durations
 - [ ] 4. Multi-city and self-transfer combinations
 - [ ] 5. Price revalidation before display/click
@@ -29,7 +29,7 @@ production deploy, and a read-only production smoke test.
 
 ## Current state
 
-Phase 1 is in progress. Booking.com15 through RapidAPI returns structured
+Phase 1 completed in production on 2026-07-17 (`996a17f`). Booking.com15 through RapidAPI returns structured
 round-trip offers with outbound/inbound legs, flight numbers, times, baggage,
 total price, `token`, `flightKey`, and `searchId`. LETTO currently preserves
 the segments but its flight CTA reconstructs a Booking flights search URL. The
@@ -37,7 +37,12 @@ the segments but its flight CTA reconstructs a Booking flights search URL. The
 but no checkout/deep-link URL. Travelpayouts `prices_for_dates` does return an
 offer-specific Aviasales URL containing `itinerary_key`,
 `expected_price_uuid`, and expected price. LETTO must preserve that link when
-present and label Booking's reconstructed URL as a repeated search.
+present and label Booking's reconstructed URL as a repeated search. Production
+smoke result: 12 Booking structured offers, 2 Travelpayouts offers, 8 complete
+flight+hotel itineraries, including one preserved `offer_specific` handoff.
+
+Phase 2 is now active: broaden destination coverage and build discovery beyond
+the current small curated frontend list while retaining arbitrary IATA search.
 
 Relevant files:
 
