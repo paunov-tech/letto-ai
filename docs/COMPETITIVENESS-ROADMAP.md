@@ -20,7 +20,7 @@ core product.
 - [x] 4. Multi-city and self-transfer combinations
 - [x] 5. Price revalidation before display/click
 - [x] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities
-- [ ] 7. AI ranking personalization
+- [x] 7. AI-safe ranking personalization
 - [ ] 8. Saved searches, price history, alerts and automatic recommendations
 - [ ] 9. Provider fallback, retries, circuit breakers and observability
 
@@ -108,8 +108,23 @@ the Stage 3 screen truthfully retained the three partner-confirmation labels
 rather than inventing them. Price comparisons therefore retain only the
 source-confirmed stay scope and visibly disclose all unknown terms.
 
-Phase 7 is now active: personalize ranking without changing source facts or
-silently hiding viable independent combinations.
+Phase 7 completed in production on 2026-07-17 (`f76af44`). The user can choose
+Balanced, Lowest total, Fastest journey, Fewer stops, Better hotel, or Exact
+dates. The preference is stored only in that browser and is sent as a bounded
+ranking instruction, not as new travel inventory. It reorders only complete
+and verified independent combinations; provider prices, dates, links and
+verification cannot be changed or upgraded by the preference engine. A chosen
+priority has an explicit card label and a public API disclosure. In particular,
+the fewer-stops priority gives a self-transfer a low directness score, so the
+four-ticket unprotected option remains visibly labelled as an alternative.
+Production proof for BEG-BUD on 17–27 Sep: the `direct` request returned eight
+complete combinations with the first result a zero-stop,
+`segment_confirmed` return flight; the browser rendered all six priority
+controls, persisted `direct` locally after click, kept three cards visible,
+and rendered “Ranked for: fewer stops.”
+
+Phase 8 is now active: saved searches, price history, alerts and automatic
+recommendations.
 
 Relevant files:
 
@@ -121,7 +136,10 @@ Relevant files:
 - `lib/price-revalidation.js`
 - `lib/hotel-stay-details.js`
 - `lib/hotel-page-details.js`
+- `lib/mix-ranker.js`
 - `api/hotel-stay-details.js`
+- `api/live-mix-search.js`
+- `api/mix-search.js`
 - `scrapers/lib/brightdata.mjs`
 - `api/revalidate-mix.js`
 - `public/results.html`
