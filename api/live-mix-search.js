@@ -142,7 +142,9 @@ async function handler(req, res) {
     }
   }
   const rankedPool = rankItineraries(packages, { from, to, pax }, 40);
-  const itineraries = diversifyItineraries(rankedPool, 8, flexible ? 3 : 8);
+  const itineraries = diversifyItineraries(rankedPool, 8, flexible ? 3 : 8, item =>
+    `${item?.dates?.departure}|${item?.dates?.return}|${item?.flight?.selfTransfer?.required ? 'self' : 'standard'}`
+  );
   if (!itineraries.length) {
     res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
   }
@@ -180,6 +182,13 @@ async function handler(req, res) {
           status: batch.status
         }))
       }
+    },
+    selfTransfer: {
+      enabled: includeSelfTransfer,
+      hub: selfTransferResult.hub || null,
+      candidates: selfTransferResult.flights?.length || 0,
+      completePackages: packages.filter(pkg => pkg.flight?.selfTransfer?.required &&
+        rankItineraries([pkg], { from, to, pax }, 1).length > 0).length
     },
     mode: 'live_independent_mix'
   });

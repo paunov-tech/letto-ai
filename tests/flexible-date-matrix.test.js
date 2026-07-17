@@ -34,6 +34,18 @@ test('keeps multiple date pairs visible in the final recommendation set', () => 
   assert.deepEqual(result.map(item => item.rank), [1, 2, 3, 4, 5]);
 });
 
+test('can reserve a distinct recommendation slot for a self-transfer on the same date', () => {
+  const rows = [
+    { id: 'standard-1', dates: { departure: '2026-09-17', return: '2026-09-27' }, flight: {} },
+    { id: 'standard-2', dates: { departure: '2026-09-17', return: '2026-09-27' }, flight: {} },
+    { id: 'self', dates: { departure: '2026-09-17', return: '2026-09-27' }, flight: { selfTransfer: { required: true } } }
+  ];
+  const result = diversifyItineraries(rows, 3, 3, item =>
+    `${item.dates.departure}|${item.dates.return}|${item.flight.selfTransfer?.required ? 'self' : 'standard'}`
+  );
+  assert.deepEqual(result.map(item => item.id), ['standard-1', 'self', 'standard-2']);
+});
+
 test('can disable flexibility and never creates an invalid short stay', () => {
   assert.equal(buildFlexibleDateMatrix({
     from: '2026-09-17', to: '2026-09-19', enabled: false,
