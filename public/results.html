@@ -3497,6 +3497,11 @@
   .ranked-preference[aria-pressed="true"] { border-color:var(--ink); background:var(--ink); color:#fff; }
   .ranked-mixes__privacy { margin:8px 0 0; color:var(--muted); font-size:11px; }
   .ranked-card__preference { margin:8px 0 -2px; color:var(--gold-deep); font-size:11px; font-weight:700; }
+  .ranked-mixes__alerts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; padding-top:13px; border-top:1px solid rgba(161,116,51,.22); }
+  .ranked-mixes__alerts input { min-width:180px; max-width:220px; border:1px solid var(--line-soft); border-radius:8px; padding:9px 10px; background:#fffdf7; color:var(--ink); font:13px/1.2 'IBM Plex Sans',sans-serif; }
+  .ranked-mixes__alerts button { border:1px solid var(--ink); border-radius:8px; padding:9px 11px; background:var(--ink); color:#fff; font:700 12px/1.2 'IBM Plex Sans',sans-serif; cursor:pointer; }
+  .ranked-mixes__alerts button.ranked-alert__save { background:transparent; color:var(--ink); }
+  .ranked-mixes__alert-status { width:100%; margin:0; color:var(--muted); font-size:11px; }
   .ranked-mixes__list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
   .ranked-card { display:flex; flex-direction:column; min-width:0; padding:15px; background:var(--paper); border:1px solid var(--line-soft); border-radius:12px; }
   .ranked-card:first-child { border-color:var(--gold); box-shadow:0 8px 24px -18px rgba(80,55,0,.7); }
@@ -4772,6 +4777,13 @@ if (document.readyState === 'loading') {
             <button class="ranked-preference" type="button" data-ranked-preference="dates"><span data-en>Exact dates</span><span data-sr>Tačni datumi</span></button>
           </div>
           <p class="ranked-mixes__privacy"><span data-en>Your choice is saved only in this browser and only reorders verified options.</span><span data-sr>Izbor se čuva samo u ovom pregledaču i menja samo redosled potvrđenih opcija.</span></p>
+          <form class="ranked-mixes__alerts" id="price-alert-form">
+            <button class="ranked-alert__save" type="button" id="save-current-search"><span data-en>Save this search</span><span data-sr>Sačuvaj pretragu</span></button>
+            <input id="price-alert-email" type="email" required autocomplete="email" placeholder="email@address.com" aria-label="Email for price alert">
+            <input id="price-alert-target" type="number" min="50" max="20000" step="1" placeholder="Target € (optional)" aria-label="Target total in EUR">
+            <button type="submit"><span data-en>Alert me on a drop</span><span data-sr>Javi mi kad cena padne</span></button>
+            <p class="ranked-mixes__alert-status" id="price-alert-status"><span data-en>We send a confirmation email first. Alerts are checked every 4 hours; no spam.</span><span data-sr>Prvo šaljemo email za potvrdu. Alert se proverava na 4 sata; bez spama.</span></p>
+          </form>
         </div>
       </header>
       <div class="ranked-mixes__list" id="ranked-mixes-list"></div>
@@ -5339,6 +5351,47 @@ if (document.readyState === 'loading') {
     document.querySelectorAll('[data-ranked-preference]').forEach(function (button) {
       var active = button.getAttribute('data-ranked-preference') === selected;
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+  var SAVED_SEARCHES_KEY = 'letto_saved_searches_v1';
+  function alertSearchFromUrl() {
+    var p = readUrlParams();
+    return { origin:p.origin, dest:p.dest, from:p.depart, to:p.ret, pax:Number(p.adults || 1) + Number(p.children || 0), preference:rankedPreference() };
+  }
+  function setPriceAlertStatus(message) {
+    var status = $('price-alert-status');
+    if (status) status.textContent = message;
+  }
+  function wirePriceAlerts() {
+    var form = $('price-alert-form');
+    var save = $('save-current-search');
+    if (save) save.addEventListener('click', function () {
+      var search = alertSearchFromUrl();
+      if (!search.origin || !search.dest || !search.from || !search.to) return;
+      try {
+        var stored = JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) || '[]');
+        var key = [search.origin, search.dest, search.from, search.to, search.pax].join('|');
+        stored = Array.isArray(stored) ? stored.filter(function (item) { return item.key !== key; }) : [];
+        stored.unshift({ key:key, search:search, savedAt:Date.now() });
+        localStorage.setItem(SAVED_SEARCHES_KEY, JSON.stringify(stored.slice(0, 12)));
+        setPriceAlertStatus(lang() === 'en' ? 'Search saved in this browser.' : 'Pretraga je sačuvana u ovom pregledaču.');
+      } catch (_) { setPriceAlertStatus(lang() === 'en' ? 'This browser could not save the search.' : 'Ovaj pregledač ne može da sačuva pretragu.'); }
+    });
+    if (form) form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var email = String($('price-alert-email')?.value || '').trim();
+      var target = String($('price-alert-target')?.value || '').trim();
+      var search = alertSearchFromUrl();
+      if (!email || !search.origin || !search.dest) return;
+      setPriceAlertStatus(lang() === 'en' ? 'Sending confirmation…' : 'Šaljemo potvrdu…');
+      fetch('/api/price-alerts', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ email:email, targetTotal:target, search:search }) })
+        .then(function (response) { return response.json().then(function (body) { return { ok:response.ok, body:body }; }); })
+        .then(function (result) {
+          if (!result.ok) throw new Error(result.body?.error || 'request_failed');
+          setPriceAlertStatus(result.body.status === 'active'
+            ? (lang() === 'en' ? 'Your alert is active and its target was updated.' : 'Alert je aktivan i ciljni iznos je ažuriran.')
+            : (lang() === 'en' ? 'Check your email to confirm this price alert.' : 'Proveri email i potvrdi ovaj price alert.'));
+        }).catch(function () { setPriceAlertStatus(lang() === 'en' ? 'We could not create the alert. Please try again.' : 'Nismo uspeli da kreiramo alert. Pokušaj ponovo.'); });
     });
   }
   var rankedState = { raw: [], loadedFor: '' };
@@ -7517,6 +7570,7 @@ if (document.readyState === 'loading') {
       console.log('[mix-v2] init · loadAgencyPackages invoked');
 
       wireFlightCapture();
+      wirePriceAlerts();
 
       // Hotfix-5 · Part 3: detect tab returning from partner site (Buy click
       // opened partner in new tab). Re-read state and auto-open Stage 3 if

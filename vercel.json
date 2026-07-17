@@ -8,6 +8,7 @@
     "api/live-mix-search.js": { "maxDuration": 60 },
     "api/revalidate-mix.js": { "maxDuration": 60 },
     "api/hotel-stay-details.js": { "maxDuration": 60 },
+    "api/price-alerts.js": { "maxDuration": 60 },
     "api/cj-refresh.js":    { "maxDuration": 60 },
     "api/admin.js":         { "maxDuration": 60 },
     "api/pseo-route.js":    { "maxDuration": 15 }
@@ -75,6 +76,10 @@
     {
       "path": "/api/admin?action=daily-review-report",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/price-alerts?action=run-price-alerts",
+      "schedule": "15 */4 * * *"
     }
   ]
 }
