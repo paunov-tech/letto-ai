@@ -21,7 +21,7 @@ core product.
 - [x] 5. Price revalidation before display/click
 - [x] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities
 - [x] 7. AI-safe ranking personalization
-- [ ] 8. Saved searches, price history, alerts and automatic recommendations
+- [x] 8. Saved searches, price history, alerts and automatic recommendations
 - [ ] 9. Provider fallback, retries, circuit breakers and observability
 
 Each item is complete only after implementation, tests, commit, push,
@@ -123,8 +123,23 @@ complete combinations with the first result a zero-stop,
 controls, persisted `direct` locally after click, kept three cards visible,
 and rendered “Ranked for: fewer stops.”
 
-Phase 8 is now active: saved searches, price history, alerts and automatic
-recommendations.
+Phase 8 completed in production on 2026-07-17 (`7ee0fcd`). A user can save a
+fully specified search locally (route, dates, party size and ranking
+preference) and create a price alert with an optional total-trip target. An
+alert is inactive until its own confirmation link is clicked; each email has a
+capability-based unsubscribe link. The four-hour cron is authorized only by
+`CRON_SECRET`, checks at most two due alerts in parallel, writes every sampled
+lowest complete-trip total as an observation, and emails the current
+independent combinations only on a material 3%/€10 drop or the first target
+hit. It does not send an email for provider noise or incomplete inventory.
+Production proof: `letto.live` serves `7ee0fcd`; invalid alert creation returns
+`400`, an unauthenticated cron returns `401`, and a browser test rendered the
+required email/target form and saved the full BEG-BUD search locally without
+creating an alert or sending any email. The production Resend integration is
+therefore exercised only by a real user's confirmed opt-in.
+
+Phase 9 is now active: provider fallback, retries, circuit breakers and
+observability.
 
 Relevant files:
 
@@ -140,6 +155,8 @@ Relevant files:
 - `api/hotel-stay-details.js`
 - `api/live-mix-search.js`
 - `api/mix-search.js`
+- `api/price-alerts.js`
+- `lib/price-alerts.js`
 - `scrapers/lib/brightdata.mjs`
 - `api/revalidate-mix.js`
 - `public/results.html`
