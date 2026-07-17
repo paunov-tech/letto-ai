@@ -22,7 +22,7 @@ core product.
 - [x] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities
 - [x] 7. AI-safe ranking personalization
 - [x] 8. Saved searches, price history, alerts and automatic recommendations
-- [ ] 9. Provider fallback, retries, circuit breakers and observability
+- [x] 9. Provider fallback, retries, circuit breakers and observability
 
 Each item is complete only after implementation, tests, commit, push,
 production deploy, and a read-only production smoke test.
@@ -138,8 +138,26 @@ required email/target form and saved the full BEG-BUD search locally without
 creating an alert or sending any email. The production Resend integration is
 therefore exercised only by a real user's confirmed opt-in.
 
-Phase 9 is now active: provider fallback, retries, circuit breakers and
-observability.
+Phase 9 completed in production on 2026-07-17 (`1937521`). The live mixer now
+has bounded retries for short transient provider failures, a per-warm-instance
+circuit breaker after three failures, and a hard rule that an already-expensive
+timeout is not retried into a request-wide timeout. Booking flights,
+Travelpayouts, self-transfer and hotel search each expose a public health
+snapshot (calls, retries, failures, circuit state and last sanitized error).
+The independent mixer keeps healthy providers and the explicit hotel Booking
+fallback active if another source fails; a partial result is shown with a
+clear notice rather than a generic redirect or invented availability. The
+Hotels.com region/property fetches now convert timeout exceptions into their
+existing Booking fallback path instead of leaking an uncaught 500. Structured,
+secret-free circuit transitions are emitted to production logs.
+Production proof for BEG-BUD on 17–27 Sep: 8/8 returned combinations were
+complete and segment-confirmed; Booking, Travelpayouts, self-transfer and
+hotel circuits were all closed with zero failures/retries, 72 hotel rows were
+available and no hotel batch failed. The browser rendered three complete cards
+and, during a separate transient partial response, transparently displayed the
+provider-availability notice. The final log audit showed normal successful
+live/hotel requests and a recorded Booking timeout handled by the new
+resilience layer rather than an unhandled failure.
 
 Relevant files:
 
@@ -157,6 +175,7 @@ Relevant files:
 - `api/mix-search.js`
 - `api/price-alerts.js`
 - `lib/price-alerts.js`
+- `lib/provider-resilience.js`
 - `scrapers/lib/brightdata.mjs`
 - `api/revalidate-mix.js`
 - `public/results.html`
