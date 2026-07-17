@@ -2402,6 +2402,11 @@
         .replace(/[čć]/g, 'c').replace(/[š]/g, 's').replace(/[ž]/g, 'z')
         .replace(/[đ]/g, 'dj').replace(/\s+/g, ' ').trim();
     }
+    function escapeComboText(value) {
+      return String(value || '').replace(/[&<>"']/g, function (ch) {
+        return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch];
+      });
+    }
     function filterDests(query) {
       var q = normalize(query);
       if (!q) return DESTS.slice(0);
@@ -2419,6 +2424,8 @@
       var role = field.getAttribute('data-combo');
       var activeIdx = -1;
       var lastResults = [];
+      var remoteTimer = null;
+      var remoteSeq = 0;
 
       function renderOptions(results) {
         lastResults = results;
@@ -2429,10 +2436,10 @@
         var html = '';
         for (var i = 0; i < results.length; i++) {
           var d = results[i];
-          html += '<div class="letto-combo__option" role="option" data-iata="' + d.iata + '" data-idx="' + i + '">'
-                + '<span class="letto-combo__iata">' + d.iata + '</span>'
-                + '<span class="letto-combo__city">' + d.city + '</span>'
-                + '<span class="letto-combo__country">' + d.country + '</span>'
+          html += '<div class="letto-combo__option" role="option" data-iata="' + escapeComboText(d.iata) + '" data-idx="' + i + '">'
+                + '<span class="letto-combo__iata">' + escapeComboText(d.iata) + '</span>'
+                + '<span class="letto-combo__city">' + escapeComboText(d.city) + '</span>'
+                + '<span class="letto-combo__country">' + escapeComboText(d.country) + '</span>'
                 + '</div>';
         }
         dropdown.innerHTML = html;
@@ -2442,6 +2449,38 @@
         dropdown.hidden = false;
         input.setAttribute('aria-expanded', 'true');
         activeIdx = -1;
+      }
+      function discoverRemote(query) {
+        clearTimeout(remoteTimer);
+        var value = String(query || '').trim();
+        if (value.length < 2) return;
+        var seq = ++remoteSeq;
+        remoteTimer = setTimeout(function () {
+          fetch('/api/destination-search?q=' + encodeURIComponent(value), {
+            headers: { Accept: 'application/json' }
+          }).then(function (response) {
+            return response.ok ? response.json() : { airports: [] };
+          }).then(function (payload) {
+            if (seq !== remoteSeq || input.value.trim() !== value) return;
+            var remote = (payload.airports || []).map(function (airport) {
+              return {
+                iata: airport.iata,
+                city: airport.city || airport.cityEn || airport.iata,
+                cityEn: airport.cityEn || airport.city || airport.iata,
+                country: airport.country || airport.countryCode || '',
+                airport: airport.airport || '',
+                dynamic: true
+              };
+            });
+            remote.forEach(function (item) {
+              if (!matchByIata(item.iata)) DESTS.push(item);
+            });
+            var merged = filterDests(value);
+            renderOptions(merged);
+          }).catch(function () {
+            // The static catalog remains usable during a provider outage.
+          });
+        }, 250);
       }
       function close() {
         dropdown.hidden = true;
@@ -2480,6 +2519,7 @@
         // user typed — clear iata until they pick again
         hidden.value = '';
         open(input.value);
+        discoverRemote(input.value);
       });
       input.addEventListener('keydown', function (e) {
         if (dropdown.hidden && (e.key === 'ArrowDown' || e.key === 'Enter')) { open(input.value); return; }

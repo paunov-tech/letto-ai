@@ -23,6 +23,10 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { buildCacheKey, getCached, setCached } from '../lib/hotels-cache.js';
 import { applyRateLimit } from '../lib/rate-limit.js';
+import {
+  resolveAirportCity,
+  resolveBookingHotelDestination
+} from '../lib/booking-destination-provider.js';
 
 if (!getApps().length) {
   initializeApp({
@@ -88,12 +92,18 @@ function rapidHeaders() {
   };
 }
 
-async function searchBookingFallback({ destination, checkIn, checkOut, adults, limit }) {
-  const destId = BOOKING_DEST_IDS[destination];
+async function searchBookingFallback({ destination, cityEn, checkIn, checkOut, adults, limit }) {
+  let destId = BOOKING_DEST_IDS[destination];
+  let searchType = 'CITY';
+  if (!destId && cityEn) {
+    const resolved = await resolveBookingHotelDestination(cityEn);
+    destId = resolved?.destId;
+    searchType = resolved?.searchType || 'CITY';
+  }
   if (!destId) return { hotels: [], error: 'unsupported_destination' };
   const url = new URL('https://' + BOOKING_HOST + '/api/v1/hotels/searchHotels');
   url.searchParams.set('dest_id', destId);
-  url.searchParams.set('search_type', 'CITY');
+  url.searchParams.set('search_type', searchType);
   url.searchParams.set('arrival_date', checkIn);
   url.searchParams.set('departure_date', checkOut);
   url.searchParams.set('adults', String(adults));
@@ -140,7 +150,7 @@ async function searchBookingFallback({ destination, checkIn, checkOut, adults, l
 async function returnBookingFallback(res, ctx, primaryFailure, debug) {
   const fallback = await searchBookingFallback(ctx);
   if (!fallback.hotels.length) return false;
-  const destinationPayload = { iata: ctx.destination, cityEn: IATA_TO_CITY_EN[ctx.destination] };
+  const destinationPayload = { iata: ctx.destination, cityEn: ctx.cityEn };
   setCached(db, buildCacheKey(ctx), { hotels: fallback.hotels, destination: destinationPayload })
     .catch(e => console.warn('[hotels-search] fallback cache write failed:', e.message));
   res.setHeader('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=21600');
@@ -426,9 +436,16 @@ async function handler(req, res) {
   if (new Date(checkIn) >= new Date(checkOut)) {
     return res.status(400).json({ error: 'checkOut must be after checkIn' });
   }
-  const cityEn = IATA_TO_CITY_EN[destinationRaw];
+  let cityEn = IATA_TO_CITY_EN[destinationRaw];
   if (!cityEn) {
-    return res.status(400).json({ error: 'Unknown destination IATA: ' + destinationRaw });
+    const dynamicDestination = await resolveAirportCity(destinationRaw);
+    cityEn = dynamicDestination?.cityEn;
+    if (!cityEn) {
+      return res.status(404).json({
+        error: 'destination_not_found',
+        destination: destinationRaw
+      });
+    }
   }
 
   // Cache check — skip the entire RapidAPI pipeline if we have a fresh hit
@@ -455,7 +472,9 @@ async function handler(req, res) {
   // Region lookup
   const region = await searchRegion(cityEn);
   if (region.error) {
-    if (await returnBookingFallback(res, { destination: destinationRaw, checkIn, checkOut, adults, limit }, region, debug)) return;
+    if (await returnBookingFallback(res, {
+      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit
+    }, region, debug)) return;
     // Graceful partial result: the package and flight sources still work. A
     // provider outage must not turn the entire Mix page into an error state or
     // disguise a generic redirect as hotel availability.
@@ -476,7 +495,9 @@ async function handler(req, res) {
   });
 
   if (propsResult.error) {
-    if (await returnBookingFallback(res, { destination: destinationRaw, checkIn, checkOut, adults, limit }, propsResult, debug)) return;
+    if (await returnBookingFallback(res, {
+      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit
+    }, propsResult, debug)) return;
     return res.status(200).json({
       hotels: [],
       destination: { iata: destinationRaw, cityEn, regionId: region.regionId },
