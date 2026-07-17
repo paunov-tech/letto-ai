@@ -39,3 +39,10 @@ test('date alignment outweighs a modest price difference', () => {
   assert.equal(ranked[0].dateMatch, 'exact');
   assert.equal(ranked[0].rank, 1);
 });
+
+test('does not present very distant inventory as a recommendation', () => {
+  const ranked = rankItineraries([
+    pkg('too-far', '2026-05-01', 400)
+  ], { from: '2026-08-03', to: '2026-08-10' });
+  assert.equal(ranked.length, 0);
+});
