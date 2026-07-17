@@ -23,6 +23,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { buildCacheKey, getCached, setCached } from '../lib/hotels-cache.js';
 import { applyRateLimit } from '../lib/rate-limit.js';
+import { mergeStayDetails, normalizeStayDetails } from '../lib/hotel-stay-details.js';
 import {
   getBookingHotelProperty,
   resolveAirportCity,
@@ -140,7 +141,8 @@ async function searchBookingFallback({ destination, cityEn, checkIn, checkOut, a
         pricePerNight: Math.round(total / nights), priceTotal: Math.round(total), currency: 'EUR',
         distanceToCenter: Number(p.distanceFromCenter || 0) || null,
         bookingUrl: direct, bookingPartner: direct ? 'booking.com' : null,
-        source: 'booking-com15'
+        source: 'booking-com15',
+        stayDetails: normalizeStayDetails(p)
       }];
     });
     const enriched = await Promise.all(hotels.slice(0, 5).map(async hotel => {
@@ -151,6 +153,9 @@ async function searchBookingFallback({ destination, cityEn, checkIn, checkOut, a
       return details ? {
         ...hotel,
         ...details,
+        stayDetails: mergeStayDetails(hotel.stayDetails, normalizeStayDetails({
+          breakfastIncluded: details.breakfastIncluded
+        })),
         bookingPartner: 'booking.com'
       } : hotel;
     }));
@@ -210,7 +215,7 @@ async function searchRegion(cityEn) {
   };
 }
 
-// Per-hotel detail (Faza 5: distance for top 5)
+// Per-hotel detail: distance and source-confirmed amenities for top results.
 // Module-level cache keyed by hotelId — survives the warm function lifetime.
 var hotelDetailCache = new Map();
 var DETAIL_CACHE_TTL_MS = 60 * 60 * 1000;
@@ -232,11 +237,11 @@ async function fetchHotelDetail(hotelId) {
     if (!r.ok) return null;
     var json = await r.json();
     var coords = json && json.summary && json.summary.location && json.summary.location.coordinates;
-    if (!coords || coords.latitude == null || coords.longitude == null) return null;
     var data = {
-      lat: Number(coords.latitude),
-      lng: Number(coords.longitude),
-      addressLine: (json.summary.location.address && json.summary.location.address.addressLine) || null
+      lat: coords?.latitude != null ? Number(coords.latitude) : null,
+      lng: coords?.longitude != null ? Number(coords.longitude) : null,
+      addressLine: (json?.summary?.location?.address?.addressLine) || null,
+      stayDetails: normalizeStayDetails({}, json)
     };
     hotelDetailCache.set(hotelId, { data, fetchedAt: Date.now() });
     return data;
@@ -385,6 +390,7 @@ function normalizeProperty(prop, ctx) {
     priceTotal:    Math.round(total),
     currency: 'EUR',
     source: 'hotels-com-provider',
+    stayDetails: normalizeStayDetails(prop),
     distanceToCenter: null, // populated by Faza 5
     bookingUrl,
     bookingPartner: bookingUrl ? 'hotels.com' : null
@@ -570,6 +576,7 @@ async function handler(req, res) {
         top5[i].distanceToCenter = Math.round(km * 10) / 10; // 1 decimal place
         distancesEnriched++;
       }
+      if (d?.stayDetails) top5[i].stayDetails = mergeStayDetails(top5[i].stayDetails, d.stayDetails);
     }
   }
 

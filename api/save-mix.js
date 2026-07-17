@@ -67,6 +67,7 @@ function toTripShape(state) {
       pricePerNight: hs.pricePerNight || 0,
       bookingPartner: hs.bookingPartner || null,
       bookingUrl: hs.bookingUrl || null,
+      stayDetails: hs.stayDetails || null,
     },
     pax: {
       adults: Number(sp.adults) || 1,

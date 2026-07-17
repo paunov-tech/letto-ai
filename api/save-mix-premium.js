@@ -87,6 +87,7 @@ function toTripShape(state) {
       pricePerNight: hs.pricePerNight || 0,
       bookingPartner: hs.bookingPartner || null,
       bookingUrl: hs.bookingUrl || null,
+      stayDetails: hs.stayDetails || null,
       // mix-builder stores the hotel image as `photo` (results.html
       // selectHotel); surfaced as `image` for the Telegram sendPhoto branch.
       image: hs.photo || hs.image || hs.thumbnail || null,

@@ -134,7 +134,8 @@ async function handler(req, res) {
           name: hotel.name, rating: hotel.stars, reviewScore: hotel.guestRating,
           reviewCount: hotel.reviewCount, photo: hotel.photo, nights: flightNights,
           totalWithTaxes: Number(hotel.priceTotal), totalPrice: Number(hotel.priceTotal),
-          bookingUrl: hotel.bookingUrl, bookingPartner: hotel.bookingPartner
+          bookingUrl: hotel.bookingUrl, bookingPartner: hotel.bookingPartner,
+          stayDetails: hotel.stayDetails || null
         },
         pricing: {
           total: Number(flight.totalPrice) + Number(hotel.priceTotal),

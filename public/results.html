@@ -3737,6 +3737,18 @@
     font-size: 11px;
     color: var(--muted);
   }
+  .hotel-card__rate {
+    margin: -3px 0 10px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .mix-final__stay-details {
+    margin: -2px 0 11px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+  }
   .hotel-card__select {
     width: 100%;
     padding: 10px 14px;
@@ -4941,6 +4953,7 @@ if (document.readyState === 'loading') {
             </h3>
             <p class="mix-final__item-desc" id="final-hotel-desc">—</p>
             <p class="mix-final__item-price" id="final-hotel-price">—</p>
+            <p class="mix-final__stay-details" id="final-hotel-stay-details">—</p>
             <button type="button" class="btn-gold mix-final__book" data-mix-book="hotel" id="final-book-hotel">
               <span data-en>View &amp; book →</span>
               <span data-sr>Vidi i rezerviši →</span>
@@ -5408,6 +5421,7 @@ if (document.readyState === 'loading') {
       bookingPartner:h.bookingPartner || 'Booking.com',
       sourceHotelId:h.id || h.sourceHotelId || null,
       providerHotelId:h.providerHotelId || null, source:h.source || null,
+      stayDetails:h.stayDetails || null,
       capturedAt:Date.now()
     };
     setState(state);
@@ -5477,6 +5491,29 @@ if (document.readyState === 'loading') {
     return f;
   }
 
+  function hotelStayTerms(details, l, includeAmenities) {
+    details = details || {};
+    var parts = [];
+    if (details.roomType) parts.push(details.roomType);
+    parts.push(details.mealPlan === 'breakfast_included'
+      ? (l === 'en' ? 'Breakfast included' : 'Doručak uključen')
+      : (l === 'en' ? 'Breakfast: confirm at partner' : 'Doručak: potvrdi kod partnera'));
+    parts.push(details.cancellation === 'free_cancellation'
+      ? (l === 'en' ? 'Free cancellation' : 'Besplatno otkazivanje')
+      : (details.cancellation === 'non_refundable'
+        ? (l === 'en' ? 'Non-refundable' : 'Nepovratno')
+        : (l === 'en' ? 'Cancellation: confirm at partner' : 'Otkazivanje: potvrdi kod partnera')));
+    parts.push(details.taxes === 'included'
+      ? (l === 'en' ? 'Taxes included' : 'Porezi uključeni')
+      : (details.taxes === 'excluded'
+        ? (l === 'en' ? 'Taxes extra' : 'Porezi dodatno')
+        : (l === 'en' ? 'Taxes: confirm at partner' : 'Porezi: potvrdi kod partnera')));
+    if (includeAmenities && Array.isArray(details.amenities) && details.amenities.length) {
+      parts.push((l === 'en' ? 'Amenities: ' : 'Sadržaji: ') + details.amenities.slice(0, 4).join(', '));
+    }
+    return parts.join(' · ');
+  }
+
   function renderCard(h, nights, selectedId) {
     var stars = (h.stars > 0 && h.stars <= 5) ? '★'.repeat(h.stars) : '';
     var l = lang();
@@ -5499,6 +5536,7 @@ if (document.readyState === 'loading') {
     var btnLabel = isSelected
       ? (l === 'en' ? '✓ Selected' : '✓ Izabran')
       : (l === 'en' ? 'Select for my trip →' : 'Izaberi za moj put →');
+    var stayTerms = hotelStayTerms(h.stayDetails, l, false);
     // Hotfix-8 P1: clear rating scale — show "★ 4,4 / 10" so 10-scale is unambiguous
     var ratingHtml = (h.guestRating != null && h.guestRating > 0)
       ? ('<div class="hotel-card__rating" title="' + (l === 'en' ? 'Guest score (1-10 scale)' : 'Ocena gostiju (skala 1-10)') + '">'
@@ -5523,6 +5561,7 @@ if (document.readyState === 'loading') {
       +       '<span class="hotel-card__price-night">€' + h.pricePerNight + (l === 'en' ? '/night' : '/noć') + '</span>'
       +       '<span class="hotel-card__price-total">' + totalLabel + '</span>'
       +     '</div>'
+      +     '<div class="hotel-card__rate">' + escapeHtml(stayTerms) + '</div>'
       +     '<button type="button" class="hotel-card__select" data-mix-select-hotel="' + escapeHtml(h.id) + '">'
       +       btnLabel
       +     '</button>'
@@ -6142,6 +6181,7 @@ if (document.readyState === 'loading') {
         sourceHotelId: hotel.id || null,
         providerHotelId: hotel.providerHotelId || null,
         source: hotel.source || null,
+        stayDetails: hotel.stayDetails || null,
         capturedAt: Date.now()
       };
     }
@@ -6626,6 +6666,7 @@ if (document.readyState === 'loading') {
     // Hotel section
     var hDesc = $('final-hotel-desc');
     var hPrice = $('final-hotel-price');
+    var hStay = $('final-hotel-stay-details');
     var hNameEn = $('final-hotel-name-en');
     var hNameSr = $('final-hotel-name-sr');
     if (hDesc && h) {
@@ -6641,6 +6682,9 @@ if (document.readyState === 'loading') {
         ? ('€' + h.pricePerNight + ' × ' + nights + (nights === 1 ? ' night' : ' nights') + ' = €' + h.priceTotal)
         : ('€' + h.pricePerNight + ' × ' + nights + ' noći = €' + h.priceTotal);
     }
+    if (hStay) hStay.textContent = h
+      ? hotelStayTerms(h.stayDetails, l, true)
+      : (l === 'en' ? 'Rate details appear after selecting a hotel.' : 'Detalji uslova se pojavljuju nakon izbora hotela.');
     if (hNameEn && h) hNameEn.textContent = h.name;
     if (hNameSr && h) hNameSr.textContent = h.name;
 
@@ -6753,6 +6797,24 @@ if (document.readyState === 'loading') {
     };
   }
 
+  function preserveStayDetails(previous, fresh) {
+    previous = previous || {};
+    fresh = fresh || {};
+    var choose = function (field, fallback) {
+      return fresh[field] && fresh[field] !== 'unknown' ? fresh[field] : (previous[field] || fallback);
+    };
+    var amenities = Array.isArray(fresh.amenities) && fresh.amenities.length
+      ? fresh.amenities : (previous.amenities || []);
+    return {
+      roomType: choose('roomType', null),
+      mealPlan: choose('mealPlan', 'unknown'),
+      cancellation: choose('cancellation', 'unknown'),
+      taxes: choose('taxes', 'unknown'),
+      amenities: amenities,
+      verified: Object.assign({}, previous.verified || {}, fresh.verified || {}, { amenities: amenities.length > 0 })
+    };
+  }
+
   function applyFreshRevalidation(state, result) {
     var f = state.flight.selected;
     var h = state.hotel.selected;
@@ -6767,6 +6829,7 @@ if (document.readyState === 'loading') {
     }
     if (result.hotel && result.hotel.fresh) {
       var freshHotel = result.hotel.fresh;
+      freshHotel.stayDetails = preserveStayDetails(h.stayDetails, freshHotel.stayDetails);
       Object.assign(h, freshHotel, {
         priceTotal: result.hotel.freshPrice,
         capturedAt: Date.now()
