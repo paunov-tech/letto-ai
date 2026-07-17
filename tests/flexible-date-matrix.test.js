@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFlexibleDateMatrix,
+  diversifyItineraries,
   selectDateDiverseFlights
 } from '../lib/flexible-date-matrix.js';
 
@@ -17,6 +18,20 @@ test('builds exact, shifted and different-duration windows in a fixed budget', (
     ['2026-09-17', '2026-09-25', 'shorter_stay'],
     ['2026-09-17', '2026-09-29', 'longer_stay']
   ]);
+});
+
+test('keeps multiple date pairs visible in the final recommendation set', () => {
+  const rows = [
+    ...Array.from({ length: 6 }, (_, index) => ({
+      id: `short-${index}`, dates: { departure: '2026-09-17', return: '2026-09-25' }
+    })),
+    { id: 'exact', dates: { departure: '2026-09-17', return: '2026-09-27' } },
+    { id: 'later', dates: { departure: '2026-09-20', return: '2026-09-30' } }
+  ];
+  const result = diversifyItineraries(rows, 5, 3);
+  assert.deepEqual(result.slice(0, 3).map(item => item.id), ['short-0', 'exact', 'later']);
+  assert.equal(result.filter(item => item.id.startsWith('short')).length, 3);
+  assert.deepEqual(result.map(item => item.rank), [1, 2, 3, 4, 5]);
 });
 
 test('can disable flexibility and never creates an invalid short stay', () => {

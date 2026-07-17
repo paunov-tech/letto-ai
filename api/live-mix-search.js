@@ -4,6 +4,7 @@ import { searchBookingFlights } from '../lib/booking-flight-provider.js';
 import { rankItineraries } from '../lib/mix-ranker.js';
 import {
   buildFlexibleDateMatrix,
+  diversifyItineraries,
   selectDateDiverseFlights
 } from '../lib/flexible-date-matrix.js';
 import { mapWithConcurrency } from '../lib/concurrency.js';
@@ -123,7 +124,8 @@ async function handler(req, res) {
       });
     }
   }
-  const itineraries = rankItineraries(packages, { from, to, pax }, 8);
+  const rankedPool = rankItineraries(packages, { from, to, pax }, 40);
+  const itineraries = diversifyItineraries(rankedPool, 8, flexible ? 3 : 8);
   if (!itineraries.length) {
     res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
   }
