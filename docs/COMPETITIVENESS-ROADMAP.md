@@ -18,8 +18,8 @@ core product.
 - [x] 2. Broader destination network and discovery
 - [x] 3. Flexible dates and stay durations
 - [x] 4. Multi-city and self-transfer combinations
-- [ ] 5. Price revalidation before display/click — in progress
-- [ ] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities
+- [x] 5. Price revalidation before display/click
+- [ ] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities — in progress
 - [ ] 7. AI ranking personalization
 - [ ] 8. Saved searches, price history, alerts and automatic recommendations
 - [ ] 9. Provider fallback, retries, circuit breakers and observability
@@ -73,9 +73,24 @@ IST produced four handoffs (BEG–IST, IST–BUD, BUD–IST, IST–BEG), 345/420
 safe connections, `segment_confirmed` verification and four visible booking
 links; the production UI visibly renders the `Self-transfer alternative` card.
 
-Phase 5 is now active: revalidate each flight and hotel price at selection and
-immediately before a partner handoff; return an explicit refreshed/changed/
-unavailable state instead of allowing a stale price to look bookable.
+Phase 5 completed in production on 2026-07-17 (`d11f587`, `0eb3ddc`). A
+rate-limited, no-store `/api/revalidate-mix` re-runs the selected Booking,
+Travelpayouts, or self-transfer flight search and a fresh, uncached hotel
+search before Stage 3 and again after five minutes before a partner handoff.
+It preserves provider offer/property identifiers, updates price and partner
+URLs only from fresh data, and returns `confirmed`, `changed`, `unavailable`,
+or `unverified`; an unavailable/unverified mix is not opened as if it had a
+current price. The hotel check inspects all 200 returned provider properties,
+so a property that moved below the discovery page after repricing remains
+verifiable. Production proof for BEG-BUD on 17–27 Sep: a selected Booking
+flight changed by +€6.70, the selected hotel was confirmed with a fresh
+property URL, the endpoint returned `bookable: true` and €726.59 total, and a
+headless browser click displayed “Price refreshed — the total above has
+changed.” before booking.
+
+Phase 6 is now active: retain and present room/rate details, meal plan,
+tax/fee breakdown, cancellation terms, and amenities for a selected hotel;
+only compare combinations with the same transparent stay scope.
 
 Relevant files:
 
@@ -84,6 +99,8 @@ Relevant files:
 - `api/live-mix-search.js`
 - `lib/itinerary-contract.js`
 - `lib/flexible-date-matrix.js`
+- `lib/price-revalidation.js`
+- `api/revalidate-mix.js`
 - `public/results.html`
 - `tests/booking-flight-provider.test.js`
 
