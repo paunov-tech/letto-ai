@@ -444,12 +444,15 @@ async function handler(req, res) {
   const checkOut = String(q.checkOut || '').trim();
   const adults   = Math.min(Math.max(parseInt(q.adults, 10) || 2, 1), 7);
   const children = Math.min(Math.max(parseInt(q.children, 10) || 0, 0), 6);
-  const limit    = Math.min(Math.max(parseInt(q.limit, 10) || 20, 1), 50);
   const debug    = q.debug === '1';
   // Revalidation must not be satisfied by the six-hour discovery cache.
   // The caller is rate-limited separately and receives a no-store response.
   const fresh    = q.fresh === '1';
   const skipDetails = q.revalidate === '1';
+  // Only a revalidation may inspect the provider's complete returned set.
+  // The selected property can shift outside the first 50 after a price move;
+  // ordinary UI discovery remains capped at 50 cards.
+  const limit    = Math.min(Math.max(parseInt(q.limit, 10) || 20, 1), skipDetails ? 200 : 50);
 
   if (!/^[A-Z]{3}$/.test(destinationRaw)) {
     return res.status(400).json({ error: 'destination must be a 3-letter IATA code' });

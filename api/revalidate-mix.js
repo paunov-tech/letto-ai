@@ -67,7 +67,7 @@ async function refreshHotel(req, selected, search) {
     checkIn: search.from,
     checkOut: search.to,
     adults: String(search.pax),
-    limit: '50',
+    limit: '200',
     fresh: '1',
     revalidate: '1'
   }).toString();
