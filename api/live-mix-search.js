@@ -1,7 +1,7 @@
 import { withSentry } from '../lib/sentry-backend.js';
 import { searchTravelpayoutsFlights } from '../lib/live-flight-provider.js';
 import { searchBookingFlights } from '../lib/booking-flight-provider.js';
-import { rankItineraries } from '../lib/mix-ranker.js';
+import { normalizeRankingPreference, rankItineraries } from '../lib/mix-ranker.js';
 import {
   buildFlexibleDateMatrix,
   diversifyItineraries,
@@ -44,6 +44,7 @@ async function handler(req, res) {
   const flexible = String(req.query.flex || '1') !== '0';
   const includeSelfTransfer = String(req.query.selfTransfer || '1') !== '0';
   const via = String(req.query.via || '').toUpperCase();
+  const preference = normalizeRankingPreference(req.query.preference);
   if (!IATA.test(origin) || !IATA.test(dest) || !ISO.test(from) || !ISO.test(to) || from >= to ||
       (via && (!IATA.test(via) || via === origin || via === dest))) {
     return res.status(400).json({ error: 'invalid_search' });
@@ -149,7 +150,7 @@ async function handler(req, res) {
   // A self-transfer commonly ranks below many regular hotel pairings because of
   // its explicit risk penalty; slicing at 40 here would silently remove it
   // before it can receive its reserved, clearly-labelled alternative slot.
-  const rankedPool = rankItineraries(packages, { from, to, pax }, Math.max(40, packages.length));
+  const rankedPool = rankItineraries(packages, { from, to, pax, preference }, Math.max(40, packages.length));
   const itineraries = diversifyItineraries(rankedPool, 8, flexible ? 3 : 8, item =>
     `${item?.dates?.departure}|${item?.dates?.return}|${item?.flight?.selfTransfer?.required ? 'self' : 'standard'}`
   );
@@ -159,7 +160,11 @@ async function handler(req, res) {
   return res.status(200).json({
     itineraries,
     count: itineraries.length,
-    requested: { origin, dest, from, to, pax, flexible, includeSelfTransfer, via: via || null },
+    requested: { origin, dest, from, to, pax, flexible, includeSelfTransfer, via: via || null, preference },
+    personalization: {
+      preference,
+      disclosure: 'Preference changes only the order of complete, verified combinations; prices and source facts are unchanged.'
+    },
     flexibility: {
       enabled: flexible,
       windows: dateWindows.map(window => ({
@@ -197,7 +202,7 @@ async function handler(req, res) {
       attemptedHubs: selfTransferResult.attemptedHubs || [],
       candidates: selfTransferResult.flights?.length || 0,
       completePackages: packages.filter(pkg => pkg.flight?.selfTransfer?.required &&
-        rankItineraries([pkg], { from, to, pax }, 1).length > 0).length
+        rankItineraries([pkg], { from, to, pax, preference }, 1).length > 0).length
     },
     mode: 'live_independent_mix'
   });

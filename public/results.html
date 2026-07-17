@@ -3491,6 +3491,12 @@
   .ranked-mixes__eyebrow { font:700 10px/1 'JetBrains Mono',monospace; letter-spacing:.18em; color:var(--gold-deep); text-transform:uppercase; }
   .ranked-mixes__title { margin:6px 0 2px; font:500 25px/1.15 'Fraunces',serif; }
   .ranked-mixes__note { margin:0; color:var(--muted); font-size:13px; }
+  .ranked-mixes__preferences { display:flex; flex-wrap:wrap; gap:7px; margin-top:13px; }
+  .ranked-preference { appearance:none; border:1px solid var(--line-soft); border-radius:999px; background:rgba(255,255,255,.72); padding:7px 10px; color:var(--ink); font:600 11px/1.1 'IBM Plex Sans',sans-serif; cursor:pointer; }
+  .ranked-preference:hover { border-color:var(--gold-deep); }
+  .ranked-preference[aria-pressed="true"] { border-color:var(--ink); background:var(--ink); color:#fff; }
+  .ranked-mixes__privacy { margin:8px 0 0; color:var(--muted); font-size:11px; }
+  .ranked-card__preference { margin:8px 0 -2px; color:var(--gold-deep); font-size:11px; font-weight:700; }
   .ranked-mixes__list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
   .ranked-card { display:flex; flex-direction:column; min-width:0; padding:15px; background:var(--paper); border:1px solid var(--line-soft); border-radius:12px; }
   .ranked-card:first-child { border-color:var(--gold); box-shadow:0 8px 24px -18px rgba(80,55,0,.7); }
@@ -4757,6 +4763,15 @@ if (document.readyState === 'loading') {
           <span class="ranked-mixes__eyebrow">LETTO MATCH</span>
           <h2 class="ranked-mixes__title"><span data-en>Complete trips, ranked for you</span><span data-sr>Kompletna putovanja, rangirana za tebe</span></h2>
           <p class="ranked-mixes__note"><span data-en>Flight and hotel are date-aligned. Pick a complete mix first, then change either part below.</span><span data-sr>Let i hotel su datumski upareni. Prvo izaberi kompletan miks, pa po želji promeni bilo koji deo ispod.</span></p>
+          <div class="ranked-mixes__preferences" id="ranked-preferences" role="group" aria-label="Ranking priority">
+            <button class="ranked-preference" type="button" data-ranked-preference="balanced"><span data-en>Balanced</span><span data-sr>Uravnoteženo</span></button>
+            <button class="ranked-preference" type="button" data-ranked-preference="budget"><span data-en>Lowest total</span><span data-sr>Najniža cena</span></button>
+            <button class="ranked-preference" type="button" data-ranked-preference="fastest"><span data-en>Fastest journey</span><span data-sr>Najbrže putovanje</span></button>
+            <button class="ranked-preference" type="button" data-ranked-preference="direct"><span data-en>Fewer stops</span><span data-sr>Manje presedanja</span></button>
+            <button class="ranked-preference" type="button" data-ranked-preference="hotel"><span data-en>Better hotel</span><span data-sr>Bolji hotel</span></button>
+            <button class="ranked-preference" type="button" data-ranked-preference="dates"><span data-en>Exact dates</span><span data-sr>Tačni datumi</span></button>
+          </div>
+          <p class="ranked-mixes__privacy"><span data-en>Your choice is saved only in this browser and only reorders verified options.</span><span data-sr>Izbor se čuva samo u ovom pregledaču i menja samo redosled potvrđenih opcija.</span></p>
         </div>
       </header>
       <div class="ranked-mixes__list" id="ranked-mixes-list"></div>
@@ -5295,6 +5310,37 @@ if (document.readyState === 'loading') {
     // via the chips above the package list.
     priceTier: 'value'
   };
+  var RANKED_PREFERENCE_KEY = 'letto_ranking_preference_v1';
+  var RANKED_PREFERENCES = ['balanced', 'budget', 'fastest', 'direct', 'hotel', 'dates'];
+  function rankedPreference() {
+    try {
+      var saved = localStorage.getItem(RANKED_PREFERENCE_KEY) || 'balanced';
+      return RANKED_PREFERENCES.indexOf(saved) !== -1 ? saved : 'balanced';
+    } catch (_) { return 'balanced'; }
+  }
+  function setRankedPreference(value) {
+    value = RANKED_PREFERENCES.indexOf(value) !== -1 ? value : 'balanced';
+    try { localStorage.setItem(RANKED_PREFERENCE_KEY, value); } catch (_) {}
+    return value;
+  }
+  function rankedPreferenceLabel(value, l) {
+    var labels = {
+      balanced: l === 'en' ? 'Balanced' : 'Uravnoteženo',
+      budget: l === 'en' ? 'lowest total' : 'najniža cena',
+      fastest: l === 'en' ? 'fastest journey' : 'najbrže putovanje',
+      direct: l === 'en' ? 'fewer stops' : 'manje presedanja',
+      hotel: l === 'en' ? 'better hotel' : 'bolji hotel',
+      dates: l === 'en' ? 'exact dates' : 'tačni datumi'
+    };
+    return labels[value] || labels.balanced;
+  }
+  function paintRankedPreferenceControls() {
+    var selected = rankedPreference();
+    document.querySelectorAll('[data-ranked-preference]').forEach(function (button) {
+      var active = button.getAttribute('data-ranked-preference') === selected;
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
   var rankedState = { raw: [], loadedFor: '' };
   var agencyState = { raw: [], loadedFor: '' };
   function packagesKey(p) {
@@ -5310,13 +5356,15 @@ if (document.readyState === 'loading') {
     var section = $('ranked-mixes');
     var mount = $('ranked-mixes-list');
     if (!section || !mount || !p.origin || !p.dest || !p.depart || !p.ret || window.LETTO_NO_FLIGHT) return;
-    var key = [p.origin, p.dest, p.depart, p.ret, p.adults, p.children].join('|');
+    var preference = rankedPreference();
+    paintRankedPreferenceControls();
+    var key = [p.origin, p.dest, p.depart, p.ret, p.adults, p.children, preference].join('|');
     if (rankedState.loadedFor === key) return paintRankedMixes();
     mount.innerHTML = '<p class="ranked-mixes__note">' + (lang() === 'en' ? 'Building complete trip options…' : 'Sastavljamo kompletne opcije putovanja…') + '</p>';
     section.hidden = false;
     var qs = new URLSearchParams({
       origin: p.origin, dest: p.dest, from: p.depart, to: p.ret,
-      pax: String((p.adults || 2) + (p.children || 0)), limit: '6'
+      pax: String((p.adults || 2) + (p.children || 0)), limit: '6', preference: preference
     });
     function fetchCatalogFallback() {
       return fetch('/api/mix-search?' + qs.toString(), { headers: { Accept: 'application/json' } })
@@ -5349,6 +5397,7 @@ if (document.readyState === 'loading') {
     section.hidden = rankedState.raw.length === 0;
     if (section.hidden) { mount.innerHTML = ''; return; }
     var l = lang();
+    paintRankedPreferenceControls();
     // Preserve two best regular combinations and one explicitly-labelled
     // self-transfer alternative when such a verified alternative exists.
     // It should be visible, but never be misrepresented as the default best match.
@@ -5365,6 +5414,10 @@ if (document.readyState === 'loading') {
       var hotelPrice = Number(h.totalWithTaxes || h.totalPrice || 0);
       var total = Number(price.total || (flightPrice + hotelPrice));
       var why = (pkg.why || []).map(function (text) { return '<li>' + escapeHtml(text) + '</li>'; }).join('');
+      var preference = pkg.personalization && pkg.personalization.preference || rankedPreference();
+      var personalized = preference !== 'balanced'
+        ? (l === 'en' ? 'Ranked for: ' : 'Rangirano za: ') + rankedPreferenceLabel(preference, l)
+        : '';
       var rankLabel = f.selfTransfer && f.selfTransfer.required
         ? (l === 'en' ? 'Self-transfer alternative' : 'Self-transfer alternativa')
         : (pkg.rank === 1 ? (l === 'en' ? 'Best match' : 'Najbolji izbor') : '#' + pkg.rank);
@@ -5380,6 +5433,7 @@ if (document.readyState === 'loading') {
         '<div class="ranked-card__top"><span class="ranked-card__rank">' + rankLabel + '</span><span class="ranked-card__score">LETTO ' + Number(pkg.lettoScore || 0) + '/100</span></div>' +
         '<h3>' + escapeHtml((pkg.origin && pkg.origin.code) || '') + ' ↔ ' + escapeHtml((pkg.destination && pkg.destination.code) || '') + ' · ' + escapeHtml(h.name || (l === 'en' ? 'Hotel' : 'Hotel')) + '</h3>' +
         '<div class="ranked-card__dates">' + escapeHtml(fmtDateRange(d.departure, d.return, l)) + ' · ' + Number(d.nights || h.nights || 0) + (l === 'en' ? ' nights' : ' noći') + '</div>' +
+        (personalized ? '<div class="ranked-card__preference">' + escapeHtml(personalized) + '</div>' : '') +
         '<div class="ranked-card__parts">✈ ' + escapeHtml(f.airline || (l === 'en' ? 'Flight option' : 'Opcija leta')) +
           (f.flightNumber ? ' ' + escapeHtml(f.flightNumber) : '') +
           (f.inbound && f.inbound.flightNumber ? ' / ' + escapeHtml(f.inbound.flightNumber) : '') +
@@ -7206,6 +7260,16 @@ if (document.readyState === 'loading') {
     // from the chosen package.
     document.addEventListener('click', function (e) {
       if (!e.target || !e.target.closest) return;
+      var preference = e.target.closest('[data-ranked-preference]');
+      if (preference) {
+        e.preventDefault();
+        var previousPreference = rankedPreference();
+        var selectedPreference = setRankedPreference(preference.getAttribute('data-ranked-preference'));
+        if (selectedPreference === previousPreference) return;
+        rankedState.loadedFor = '';
+        loadRankedMixes();
+        return;
+      }
       var ranked = e.target.closest('[data-select-ranked-mix]');
       if (ranked) {
         e.preventDefault();

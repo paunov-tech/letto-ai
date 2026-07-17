@@ -2,7 +2,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { withSentry } from '../lib/sentry-backend.js';
 import { cleanAviasalesUrl, buildAviasalesUrl } from '../lib/aviasales-url.js';
-import { rankItineraries } from '../lib/mix-ranker.js';
+import { normalizeRankingPreference, rankItineraries } from '../lib/mix-ranker.js';
 import { itineraryContract } from '../lib/itinerary-contract.js';
 
 if (!getApps().length) {
@@ -39,6 +39,7 @@ async function handler(req, res) {
   const to = String(req.query.to || '');
   const pax = Math.max(1, Math.min(9, Number(req.query.pax) || 2));
   const limit = Math.max(1, Math.min(12, Number(req.query.limit) || 6));
+  const preference = normalizeRankingPreference(req.query.preference);
   if (!IATA.test(origin) || !IATA.test(dest) || !ISO.test(from) || !ISO.test(to)) {
     return res.status(400).json({ error: 'invalid_search', required: ['origin', 'dest', 'from', 'to'] });
   }
@@ -64,11 +65,15 @@ async function handler(req, res) {
       const stamp = timestampMs(pkg?.metadata?.createdAt || pkg?.metadata?.updatedAt);
       return stamp !== null && stamp >= freshCutoff;
     });
-    const itineraries = rankItineraries(packages, { from, to, pax }, limit);
+    const itineraries = rankItineraries(packages, { from, to, pax, preference }, limit);
     return res.status(200).json({
       itineraries,
       count: itineraries.length,
-      requested: { origin, dest, from, to, pax },
+      requested: { origin, dest, from, to, pax, preference },
+      personalization: {
+        preference,
+        disclosure: 'Preference changes only the order of complete, verified combinations; prices and source facts are unchanged.'
+      },
       coverage: {
         scanned: packages.length,
         contractValid: validated.length,
