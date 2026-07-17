@@ -43,7 +43,9 @@ async function handler(req, res) {
   const pax = Math.max(1, Math.min(7, Number(req.query.pax) || 2));
   const flexible = String(req.query.flex || '1') !== '0';
   const includeSelfTransfer = String(req.query.selfTransfer || '1') !== '0';
-  if (!IATA.test(origin) || !IATA.test(dest) || !ISO.test(from) || !ISO.test(to) || from >= to) {
+  const via = String(req.query.via || '').toUpperCase();
+  if (!IATA.test(origin) || !IATA.test(dest) || !ISO.test(from) || !ISO.test(to) || from >= to ||
+      (via && (!IATA.test(via) || via === origin || via === dest))) {
     return res.status(400).json({ error: 'invalid_search' });
   }
 
@@ -60,7 +62,7 @@ async function handler(req, res) {
     }))
   ];
   const selfTransferPromise = includeSelfTransfer
-    ? searchSelfTransferRoundTrip({ origin, destination: dest, from, to, pax })
+    ? searchSelfTransferRoundTrip({ origin, destination: dest, from, to, pax, hub: via })
     : Promise.resolve({ flights: [], provider: 'booking-self-transfer', error: 'disabled' });
   const [standardResults, selfTransferResult] = await Promise.all([
     Promise.all(searches),
@@ -151,7 +153,7 @@ async function handler(req, res) {
   return res.status(200).json({
     itineraries,
     count: itineraries.length,
-    requested: { origin, dest, from, to, pax, flexible, includeSelfTransfer },
+    requested: { origin, dest, from, to, pax, flexible, includeSelfTransfer, via: via || null },
     flexibility: {
       enabled: flexible,
       windows: dateWindows.map(window => ({
@@ -186,6 +188,7 @@ async function handler(req, res) {
     selfTransfer: {
       enabled: includeSelfTransfer,
       hub: selfTransferResult.hub || null,
+      attemptedHubs: selfTransferResult.attemptedHubs || [],
       candidates: selfTransferResult.flights?.length || 0,
       completePackages: packages.filter(pkg => pkg.flight?.selfTransfer?.required &&
         rankItineraries([pkg], { from, to, pax }, 1).length > 0).length

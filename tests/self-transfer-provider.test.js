@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   chooseSelfTransferHub,
   pairOneWayFlights,
+  selfTransferHubCandidates,
   searchSelfTransferRoundTrip
 } from '../lib/self-transfer-provider.js';
 
@@ -22,8 +23,9 @@ function oneWay(id, origin, destination, departureAt, arrivalAt, price) {
 }
 
 test('chooses a hub that differs from both endpoints', () => {
-  assert.equal(chooseSelfTransferHub('BEG', 'BUD'), 'VIE');
-  assert.notEqual(chooseSelfTransferHub('VIE', 'BUD'), 'VIE');
+  assert.equal(chooseSelfTransferHub('BEG', 'BUD'), 'IST');
+  assert.notEqual(chooseSelfTransferHub('IST', 'BUD'), 'IST');
+  assert.deepEqual(selfTransferHubCandidates('BEG', 'BUD', 'FRA'), ['FRA']);
 });
 
 test('rejects unsafe connections and chooses the cheapest safe pair', () => {
@@ -54,4 +56,27 @@ test('builds a four-ticket unprotected round trip only from safe pairs', async (
   assert.equal(flight.ticketing.providerProtection, 'unprotected');
   assert.equal(flight.selfTransfer.outboundConnection.minutes, 180);
   assert.equal(flight.totalPrice, 190);
+  assert.equal(flight.bookingUrls[0].departureTime, '06:00');
+});
+
+test('tries a second hub when the first has no safe flight pair', async () => {
+  const calls = [];
+  const safeSets = [
+    [oneWay('a', 'BEG', 'VIE', '2026-09-17T06:00:00+02:00', '2026-09-17T07:00:00+02:00', 50)],
+    [oneWay('b', 'VIE', 'BUD', '2026-09-17T10:00:00+02:00', '2026-09-17T11:00:00+02:00', 40)],
+    [oneWay('c', 'BUD', 'VIE', '2026-09-27T06:00:00+02:00', '2026-09-27T07:00:00+02:00', 45)],
+    [oneWay('d', 'VIE', 'BEG', '2026-09-27T10:00:00+02:00', '2026-09-27T11:00:00+02:00', 55)]
+  ];
+  let safeCall = 0;
+  const result = await searchSelfTransferRoundTrip({
+    origin: 'BEG', destination: 'BUD', from: '2026-09-17', to: '2026-09-27',
+    searchImpl: async request => {
+      calls.push(request.destination);
+      if (calls.length <= 4) return { flights: [] };
+      return { flights: safeSets[safeCall++] };
+    }
+  });
+  assert.equal(result.hub, 'VIE');
+  assert.deepEqual(result.attemptedHubs, [{ hub: 'IST', error: 'no_safe_pair' }, { hub: 'VIE', error: null }]);
+  assert.equal(result.flights.length, 1);
 });

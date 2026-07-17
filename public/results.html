@@ -5348,6 +5348,7 @@ if (document.readyState === 'loading') {
           (f.flightNumber ? ' ' + escapeHtml(f.flightNumber) : '') +
           (f.inbound && f.inbound.flightNumber ? ' / ' + escapeHtml(f.inbound.flightNumber) : '') +
           (f.selfTransfer && f.selfTransfer.hub ? ' · via ' + escapeHtml(f.selfTransfer.hub) : '') +
+          (f.selfTransfer && Array.isArray(f.segments) ? '<br><span>↳ ' + escapeHtml(f.segments.map(function (segment) { return segment.origin + '→' + segment.destination; }).join(' · ')) + '</span>' : '') +
           ' · €' + Math.round(flightPrice) + '<br>⌂ ' + escapeHtml(h.name || 'Hotel') + ' · €' + Math.round(hotelPrice) + '</div>' +
         '<ul class="ranked-card__why">' + why + '</ul>' +
         '<div class="ranked-card__price"><span>' + (l === 'en' ? 'Complete trip' : 'Kompletno putovanje') + '</span><strong>€' + Math.round(total) + '</strong></div>' +
@@ -6565,7 +6566,8 @@ if (document.readyState === 'loading') {
           ? '⚠ Self-transfer: separate tickets, baggage re-check, missed connections are not protected.'
           : '⚠ Self-transfer: odvojene karte, ponovna predaja prtljaga i nema zaštite ako se konekcija propusti.';
         transferLinks.innerHTML = '<strong>' + warning + '</strong><ol>' + split.map(function (item) {
-          var label = (item.order || '') + '. ' + (item.route || '') + ' · ' + (item.flightNumber || '');
+          var times = [item.departureTime, item.arrivalTime].filter(Boolean).join('–');
+          var label = (item.order || '') + '. ' + (item.route || '') + ' · ' + (item.flightNumber || '') + (times ? ' · ' + times : '');
           return unlocked
             ? '<li><a href="' + escapeHtml(item.url || '#') + '" target="_blank" rel="noopener sponsored">' + escapeHtml(label) + '</a></li>'
             : '<li>' + escapeHtml(label) + '</li>';
