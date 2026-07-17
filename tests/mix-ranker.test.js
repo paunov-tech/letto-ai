@@ -54,5 +54,15 @@ test('labels a partial date mismatch as near rather than exact', () => {
   shiftedReturn.hotel.nights = 9;
   const ranked = rankItineraries([shiftedReturn], { from: '2026-08-03', to: '2026-08-10' });
   assert.equal(ranked[0].dateMatch, 'near');
-  assert.match(ranked[0].why[0], /Najbliži/);
+  assert.match(ranked[0].why[0], /Duži boravak/);
+});
+
+test('explains a longer stay without disguising it as generic date drift', () => {
+  const longer = pkg('longer', '2026-08-03', 600);
+  longer.dates.return = '2026-08-12';
+  longer.dates.nights = 9;
+  longer.hotel.nights = 9;
+  const ranked = rankItineraries([longer], { from: '2026-08-03', to: '2026-08-10' });
+  assert.equal(ranked[0].dateFlex.nightsDifference, 2);
+  assert.match(ranked[0].why[0], /Duži boravak: 9 noći/);
 });

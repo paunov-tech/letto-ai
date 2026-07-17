@@ -2,6 +2,10 @@ import { withSentry } from '../lib/sentry-backend.js';
 import { searchTravelpayoutsFlights } from '../lib/live-flight-provider.js';
 import { searchBookingFlights } from '../lib/booking-flight-provider.js';
 import { rankItineraries } from '../lib/mix-ranker.js';
+import {
+  buildFlexibleDateMatrix,
+  selectDateDiverseFlights
+} from '../lib/flexible-date-matrix.js';
 
 const IATA = /^[A-Z]{3}$/;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,6 +38,7 @@ async function handler(req, res) {
   const from = String(req.query.from || '');
   const to = String(req.query.to || '');
   const pax = Math.max(1, Math.min(7, Number(req.query.pax) || 2));
+  const flexible = String(req.query.flex || '1') !== '0';
   if (!IATA.test(origin) || !IATA.test(dest) || !ISO.test(from) || !ISO.test(to) || from >= to) {
     return res.status(400).json({ error: 'invalid_search' });
   }
@@ -41,8 +46,11 @@ async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=1800');
   const alternatives = (NEARBY_ORIGINS[origin] || []).filter(item => item.code !== dest);
   const origins = [{ code: origin, distanceKm: 0 }, ...alternatives];
+  const dateWindows = buildFlexibleDateMatrix({ from, to, enabled: flexible });
   const searches = [
-    searchBookingFlights({ origin, destination: dest, from, to, pax }),
+    ...dateWindows.map(window => searchBookingFlights({
+      origin, destination: dest, from: window.from, to: window.to, pax, limit: 8
+    }).then(result => ({ ...result, window }))),
     ...origins.map(item => searchTravelpayoutsFlights({
       origin: item.code, destination: dest, from, to, pax
     }))
@@ -73,10 +81,7 @@ async function handler(req, res) {
     const payload = response?.ok ? await response.json().catch(() => ({})) : {};
     return { flight, payload, hotels: Array.isArray(payload.hotels) ? payload.hotels : [] };
   }
-  const hotelCandidates = [
-    ...flights.filter(flight => !flight.originAlternative).slice(0, 3),
-    ...flights.filter(flight => flight.originAlternative).slice(0, 1)
-  ].slice(0, 4);
+  const hotelCandidates = selectDateDiverseFlights(flights, { from, to }, flexible ? 5 : 3);
   const batches = await Promise.all(hotelCandidates.map(hotelsFor));
   const packages = [];
   for (const batch of batches) {
@@ -112,7 +117,16 @@ async function handler(req, res) {
   return res.status(200).json({
     itineraries,
     count: itineraries.length,
-    requested: { origin, dest, from, to, pax },
+    requested: { origin, dest, from, to, pax, flexible },
+    flexibility: {
+      enabled: flexible,
+      windows: dateWindows.map(window => ({
+        from: window.from, to: window.to, nights: window.nights, kind: window.kind
+      })),
+      hotelDateSearches: hotelCandidates.map(flight => ({
+        origin: flight.origin, from: flight.depart, to: flight.ret
+      }))
+    },
     providers: {
       flights: {
         name: 'multi-provider',
