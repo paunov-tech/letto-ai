@@ -17,8 +17,8 @@ core product.
 - [x] 1. Exact flight booking handoff for the selected offer
 - [x] 2. Broader destination network and discovery
 - [x] 3. Flexible dates and stay durations
-- [ ] 4. Multi-city and self-transfer combinations — in progress
-- [ ] 5. Price revalidation before display/click
+- [x] 4. Multi-city and self-transfer combinations
+- [ ] 5. Price revalidation before display/click — in progress
 - [ ] 6. Deeper hotel mix: rooms, cancellation, meals, taxes, amenities
 - [ ] 7. AI ranking personalization
 - [ ] 8. Saved searches, price history, alerts and automatic recommendations
@@ -59,15 +59,31 @@ Production proof for BEG-BUD: 42 flights, 60 hotels, zero failed hotel
 searches, 8 complete itineraries spanning all five date pairs with explicit
 labels for exact, shifted, shorter and longer stays.
 
-Phase 4 is now active: construct and verify multi-city/self-transfer
-itineraries with explicit legs, minimum connection times, airport-change
-warnings and honest protection/risk labels.
+Phase 4 completed in production on 2026-07-17 (`ed8c08c`, `13dc313`,
+`0ca1e2c`, `4b06015`). LETTO now builds an independent four-ticket round trip
+through an eligible hub; it requires direct legs, same-airport connections of
+150–480 minutes, and never calls the result protected. The source returns four
+individual Booking one-way handoffs, all segments and times, baggage re-check
+notice, and `unprotected_self_transfer` status. It tries a bounded two-hub
+fallback and accepts an explicit `via=IATA` hub when requested. A self-transfer
+is retained through ranking/diversification and appears as a clearly-labelled
+alternative next to the two best regular combinations rather than being
+misrepresented as the default. Production proof for BEG-BUD on 17–27 Sep:
+IST produced four handoffs (BEG–IST, IST–BUD, BUD–IST, IST–BEG), 345/420-minute
+safe connections, `segment_confirmed` verification and four visible booking
+links; the production UI visibly renders the `Self-transfer alternative` card.
+
+Phase 5 is now active: revalidate each flight and hotel price at selection and
+immediately before a partner handoff; return an explicit refreshed/changed/
+unavailable state instead of allowing a stale price to look bookable.
 
 Relevant files:
 
 - `lib/booking-flight-provider.js`
+- `lib/self-transfer-provider.js`
 - `api/live-mix-search.js`
 - `lib/itinerary-contract.js`
+- `lib/flexible-date-matrix.js`
 - `public/results.html`
 - `tests/booking-flight-provider.test.js`
 
