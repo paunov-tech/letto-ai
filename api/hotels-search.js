@@ -37,7 +37,19 @@ const db = getFirestore();
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY || '';
 const RAPIDAPI_HOST = 'hotels-com-provider.p.rapidapi.com';
+const BOOKING_HOST  = 'booking-com15.p.rapidapi.com';
 const TP_MARKER     = process.env.TRAVELPAYOUTS_MARKER || '722287';
+
+// Booking.com city ids are stable provider identifiers. This source is the
+// failover for the Hotels.com provider (which can be disabled independently
+// by RapidAPI), not a redirect-only empty state.
+const BOOKING_DEST_IDS = {
+  IST:'-755070', FCO:'-126693', CDG:'-1456928', ORY:'-1456928', BCN:'-372490',
+  DXB:'-782831', ATH:'-814876', AMS:'-2140479', VIE:'-1995499', BUD:'-850553',
+  PRG:'-553173', SKG:'-829252', PMI:'-395224', MLA:'-19310', AYT:'-735347',
+  SPU:'-96492', TIV:'-98296', TLV:'-781545', LHR:'-2601889', LGW:'-2601889',
+  STN:'-2601889', LIS:'-2167973'
+};
 
 // IATA → English city name (mirrors public/js/destinations.js cityEn)
 const IATA_TO_CITY_EN = {
@@ -74,6 +86,70 @@ function rapidHeaders() {
     'Accept': 'application/json',
     'User-Agent': 'letto.live-mix/2.0'
   };
+}
+
+async function searchBookingFallback({ destination, checkIn, checkOut, adults, limit }) {
+  const destId = BOOKING_DEST_IDS[destination];
+  if (!destId) return { hotels: [], error: 'unsupported_destination' };
+  const url = new URL('https://' + BOOKING_HOST + '/api/v1/hotels/searchHotels');
+  url.searchParams.set('dest_id', destId);
+  url.searchParams.set('search_type', 'CITY');
+  url.searchParams.set('arrival_date', checkIn);
+  url.searchParams.set('departure_date', checkOut);
+  url.searchParams.set('adults', String(adults));
+  url.searchParams.set('room_qty', '1');
+  url.searchParams.set('page_number', '1');
+  url.searchParams.set('currency_code', 'EUR');
+  url.searchParams.set('languagecode', 'en-us');
+  url.searchParams.set('units', 'metric');
+  url.searchParams.set('sort_by', 'price');
+  try {
+    const r = await fetch(url, { headers: {
+      'X-RapidAPI-Key': RAPIDAPI_KEY, 'X-RapidAPI-Host': BOOKING_HOST,
+      Accept: 'application/json', 'User-Agent': 'letto.live-mix/2.1'
+    }, signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
+    const text = await r.text();
+    if (!r.ok) return { hotels: [], error: 'booking_failed', status: r.status, detail: text.slice(0, 160) };
+    const json = JSON.parse(text);
+    const rows = json?.data?.hotels || [];
+    const nights = Math.max(1, Math.round((Date.parse(checkOut) - Date.parse(checkIn)) / 86400000));
+    const hotels = rows.slice(0, limit).flatMap(row => {
+      const p = row.property || row;
+      const total = Number(p?.priceBreakdown?.grossPrice?.value ?? p?.priceBreakdown?.grossPrice?.amount ?? p?.priceBreakdown?.all_inclusive_price ?? 0);
+      if (!p?.name || !total) return [];
+      const direct = [p.url, p.bookingUrl, row.url].find(value => /^https:\/\/(www\.)?booking\.com\//i.test(value || '')) || null;
+      return [{
+        id: 'booking-' + String(row.hotel_id || p.id || p.name), name: String(p.name),
+        stars: Number(p.accuratePropertyClass || p.propertyClass || 0) || null,
+        guestRating: Number(p.reviewScore || 0) || null,
+        reviewCount: Number(p.reviewCount || 0) || null,
+        neighborhood: p.wishlistName || p.countryCode || null,
+        photo: Array.isArray(p.photoUrls) ? p.photoUrls[0] : (p.photoUrl || null),
+        pricePerNight: Math.round(total / nights), priceTotal: Math.round(total), currency: 'EUR',
+        distanceToCenter: Number(p.distanceFromCenter || 0) || null,
+        bookingUrl: direct, bookingPartner: direct ? 'booking.com' : null,
+        source: 'booking-com15'
+      }];
+    });
+    return { hotels, provider: 'booking-com15' };
+  } catch (error) {
+    return { hotels: [], error: 'booking_exception', detail: error.message };
+  }
+}
+
+async function returnBookingFallback(res, ctx, primaryFailure, debug) {
+  const fallback = await searchBookingFallback(ctx);
+  if (!fallback.hotels.length) return false;
+  const destinationPayload = { iata: ctx.destination, cityEn: IATA_TO_CITY_EN[ctx.destination] };
+  setCached(db, buildCacheKey(ctx), { hotels: fallback.hotels, destination: destinationPayload })
+    .catch(e => console.warn('[hotels-search] fallback cache write failed:', e.message));
+  res.setHeader('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=21600');
+  res.status(200).json({ hotels: fallback.hotels, destination: destinationPayload, meta: {
+    totalReturned: fallback.hotels.length, limit: ctx.limit, cacheHit: false,
+    provider: fallback.provider, failover: true,
+    ...(debug ? { primaryFailure, fallbackError: fallback.error || null } : {})
+  }});
+  return true;
 }
 
 async function searchRegion(cityEn) {
@@ -379,11 +455,14 @@ async function handler(req, res) {
   // Region lookup
   const region = await searchRegion(cityEn);
   if (region.error) {
-    return res.status(502).json({
-      error: 'Region lookup failed',
-      detail: region.error,
+    if (await returnBookingFallback(res, { destination: destinationRaw, checkIn, checkOut, adults, limit }, region, debug)) return;
+    // Graceful partial result: the package and flight sources still work. A
+    // provider outage must not turn the entire Mix page into an error state or
+    // disguise a generic redirect as hotel availability.
+    return res.status(200).json({
       hotels: [],
       destination: { iata: destinationRaw, cityEn },
+      meta: { totalReturned: 0, providerUnavailable: true, failoverAttempted: true },
       ...(debug ? { debug: region } : {})
     });
   }
@@ -397,11 +476,11 @@ async function handler(req, res) {
   });
 
   if (propsResult.error) {
-    return res.status(502).json({
-      error: 'Property search failed',
-      detail: propsResult.error,
+    if (await returnBookingFallback(res, { destination: destinationRaw, checkIn, checkOut, adults, limit }, propsResult, debug)) return;
+    return res.status(200).json({
       hotels: [],
       destination: { iata: destinationRaw, cityEn, regionId: region.regionId },
+      meta: { totalReturned: 0, providerUnavailable: true, failoverAttempted: true },
       ...(debug ? { debug: { region, props: propsResult } } : {})
     });
   }
