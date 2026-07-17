@@ -17,35 +17,35 @@ async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=1800');
-  const hotelUrl = new URL('/api/hotels-search', `https://${req.headers.host || 'letto.live'}`);
-  hotelUrl.search = new URLSearchParams({
-    destination: dest, checkIn: from, checkOut: to, adults: String(pax), limit: '12'
-  }).toString();
-
-  const [flightResult, hotelResponse] = await Promise.all([
-    searchTravelpayoutsFlights({ origin, destination: dest, from, to, pax }),
-    fetch(hotelUrl, {
+  const flightResult = await searchTravelpayoutsFlights({ origin, destination: dest, from, to, pax });
+  async function hotelsFor(flight) {
+    const hotelUrl = new URL('/api/hotels-search', `https://${req.headers.host || 'letto.live'}`);
+    hotelUrl.search = new URLSearchParams({
+      destination: dest, checkIn: flight.depart, checkOut: flight.ret,
+      adults: String(pax), limit: '12'
+    }).toString();
+    const response = await fetch(hotelUrl, {
       headers: { Accept: 'application/json', Referer: `https://${req.headers.host || 'letto.live'}/results.html` },
       signal: AbortSignal.timeout ? AbortSignal.timeout(22000) : undefined
-    }).catch(() => null)
-  ]);
-  const hotelPayload = hotelResponse?.ok ? await hotelResponse.json().catch(() => ({})) : {};
-  const hotels = Array.isArray(hotelPayload.hotels) ? hotelPayload.hotels : [];
-  const nights = Math.round((Date.parse(to) - Date.parse(from)) / 86400000);
+    }).catch(() => null);
+    const payload = response?.ok ? await response.json().catch(() => ({})) : {};
+    return { flight, payload, hotels: Array.isArray(payload.hotels) ? payload.hotels : [] };
+  }
+  const batches = await Promise.all(flightResult.flights.slice(0, 3).map(hotelsFor));
   const packages = [];
-  for (const flight of flightResult.flights) {
+  for (const batch of batches) {
+    const { flight, hotels } = batch;
     const flightNights = Math.round((Date.parse(flight.ret) - Date.parse(flight.depart)) / 86400000);
     for (const hotel of hotels.slice(0, 8)) {
-      if (flight.depart !== from || flight.ret !== to || flightNights !== nights) continue;
       packages.push({
         id: `live-${flight.id}-${hotel.id}`,
         origin: { code: origin },
         destination: { code: dest },
-        dates: { departure: from, return: to, nights },
+        dates: { departure: flight.depart, return: flight.ret, nights: flightNights },
         flight: { ...flight },
         hotel: {
           name: hotel.name, rating: hotel.stars, reviewScore: hotel.guestRating,
-          reviewCount: hotel.reviewCount, photo: hotel.photo, nights,
+          reviewCount: hotel.reviewCount, photo: hotel.photo, nights: flightNights,
           totalWithTaxes: Number(hotel.priceTotal), totalPrice: Number(hotel.priceTotal),
           bookingUrl: hotel.bookingUrl, bookingPartner: hotel.bookingPartner
         },
@@ -64,7 +64,11 @@ async function handler(req, res) {
     requested: { origin, dest, from, to, pax },
     providers: {
       flights: { name: flightResult.provider, count: flightResult.flights.length, error: flightResult.error || null },
-      hotels: { name: hotelPayload?.meta?.provider || 'hotels-com-provider', count: hotels.length }
+      hotels: {
+        name: batches[0]?.payload?.meta?.provider || 'hotels-com-provider',
+        count: batches.reduce((sum, batch) => sum + batch.hotels.length, 0),
+        searches: batches.length
+      }
     },
     mode: 'live_independent_mix'
   });
