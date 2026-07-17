@@ -28,3 +28,14 @@ test('rejects a generic hotel redirect', () => {
   assert.equal(c.hotel.verification, 'unavailable');
   assert.equal(c.aiMayRank, false);
 });
+
+test('rejects a declared stay that disagrees with calendar dates', () => {
+  const c = itineraryContract({
+    ...base,
+    dates: { departure: '2026-09-17', return: '2026-09-29', nights: 10 },
+    hotel: { ...base.hotel, nights: 10 }
+  });
+  assert.equal(c.calendarNights, 12);
+  assert.equal(c.dateAligned, false);
+  assert.equal(c.complete, false);
+});
