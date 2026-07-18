@@ -3517,6 +3517,30 @@
   .ranked-card__price strong { color:var(--ink); font:600 21px/1 'Fraunces',serif; }
   .ranked-card__cta { width:100%; border:0; border-radius:8px; padding:11px 12px; background:var(--ink); color:white; font-weight:700; cursor:pointer; }
   .ranked-card__verify { margin-top:8px; text-align:center; color:var(--muted); font-size:10px; }
+  /* ── Trip type (round-trip / multi-city) ── */
+  .trip-type { margin:0 0 14px; }
+  .trip-type__bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .trip-type__toggle { display:inline-flex; gap:6px; }
+  .trip-type__btn { appearance:none; border:1px solid var(--line-soft); border-radius:999px; background:rgba(255,255,255,.72); padding:7px 12px; color:var(--ink); font:600 11px/1.1 'IBM Plex Sans',sans-serif; cursor:pointer; }
+  .trip-type__btn:hover { border-color:var(--gold-deep); }
+  .trip-type__btn[aria-pressed="true"] { border-color:var(--ink); background:var(--ink); color:#fff; }
+  .trip-type__multi { display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin:0; }
+  .trip-type__field { display:flex; flex-direction:column; gap:3px; color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+  .trip-type__field input { border:1px solid var(--line-soft); border-radius:8px; background:var(--paper); padding:8px 9px; color:var(--ink); font:600 12px/1.2 'IBM Plex Sans',sans-serif; min-width:130px; }
+  .trip-type__field--stay input { min-width:0; width:92px; }
+  .trip-type__go { border:0; border-radius:8px; padding:9px 14px; background:var(--ink); color:#fff; font:700 12px/1 'IBM Plex Sans',sans-serif; cursor:pointer; }
+  .trip-type__note { width:100%; margin:0; color:#9a3b1d; font-size:12px; }
+  /* ── Multi-city cards (reuse ranked-card grid; keep view distinct) ── */
+  .ranked-card--multicity { border-style:dashed; }
+  .ranked-card--multicity:first-child { border-style:solid; }
+  .mc-badge { padding:4px 7px; border-radius:4px; background:var(--gold); color:var(--ink); }
+  .mc-leg, .mc-stop { display:block; margin:0 0 7px; }
+  .mc-leg:last-child, .mc-stop:last-child { margin-bottom:0; }
+  .mc-leg__route, .mc-stop__city { display:block; color:var(--ink); font-weight:700; }
+  .mc-leg__info, .mc-stop__hotel { display:block; }
+  .mc-link { display:inline-block; margin-top:3px; color:var(--gold-deep); font-weight:700; text-decoration:underline; }
+  .mc-warn { margin:0 0 10px; padding:8px 10px; border:1px solid #e3b63f; border-radius:8px; background:#fdf6e0; color:#7a5410; font-size:11px; line-height:1.45; }
+  body.is-multicity .mix-stages, body.is-multicity .mix-tabs, body.is-multicity .mix-grid { display:none; }
   @media (max-width:1023px) {
     .ranked-mixes__list { grid-template-columns:1fr; }
     .ranked-mixes__head { align-items:start; flex-direction:column; }
@@ -4763,6 +4787,269 @@ if (document.readyState === 'loading') {
       </li>
     </ol>
 
+    <!-- ───── TRIP TYPE · round-trip vs multi-city (2 cities) ───── -->
+    <!-- Multi-city mode is URL-driven (?type=multicity&origin=&city1=&city2=&from=&to=);
+         the toggle just navigates, so a shared link restores the mode. -->
+    <section class="trip-type" id="trip-type" aria-label="Trip type">
+      <div class="trip-type__bar">
+        <div class="trip-type__toggle" role="group" aria-label="Trip type">
+          <button type="button" class="trip-type__btn" id="trip-type-round" aria-pressed="true"><span data-en>Round-trip</span><span data-sr>Povratno</span></button>
+          <button type="button" class="trip-type__btn" id="trip-type-multi" aria-pressed="false"><span data-en>Multi-city (2 cities)</span><span data-sr>Multi-city (2 grada)</span></button>
+        </div>
+        <form class="trip-type__multi" id="multi-city-form" hidden novalidate>
+          <label class="trip-type__field">
+            <span><span data-en>From</span><span data-sr>Odakle</span></span>
+            <input id="mc-origin" type="text" list="mc-destinations" maxlength="40" autocomplete="off" placeholder="BEG">
+          </label>
+          <label class="trip-type__field">
+            <span><span data-en>City A</span><span data-sr>Grad A</span></span>
+            <input id="mc-city1" type="text" list="mc-destinations" maxlength="40" autocomplete="off" placeholder="FCO">
+          </label>
+          <label class="trip-type__field">
+            <span><span data-en>City B</span><span data-sr>Grad B</span></span>
+            <input id="mc-city2" type="text" list="mc-destinations" maxlength="40" autocomplete="off" placeholder="BCN">
+          </label>
+          <datalist id="mc-destinations"></datalist>
+          <label class="trip-type__field">
+            <span><span data-en>Depart</span><span data-sr>Polazak</span></span>
+            <input id="mc-from" type="date">
+          </label>
+          <label class="trip-type__field">
+            <span><span data-en>Return</span><span data-sr>Povratak</span></span>
+            <input id="mc-to" type="date">
+          </label>
+          <label class="trip-type__field trip-type__field--stay">
+            <span><span data-en>Nights in city A · optional</span><span data-sr>Noći u gradu A · opciono</span></span>
+            <input id="mc-stay" type="number" min="2" max="19" step="1" inputmode="numeric" placeholder="auto">
+          </label>
+          <button type="submit" class="trip-type__go"><span data-en>Search multi-city</span><span data-sr>Pretraži multi-city</span></button>
+        </form>
+        <p class="trip-type__note" id="mc-note" hidden></p>
+      </div>
+    </section>
+
+    <!-- ───── MULTI-CITY RESULTS (only in ?type=multicity mode) ───── -->
+    <section class="ranked-mixes ranked-mixes--multicity" id="multi-city-results" hidden aria-live="polite">
+      <header class="ranked-mixes__head">
+        <div>
+          <span class="ranked-mixes__eyebrow">LETTO MULTI-CITY</span>
+          <h2 class="ranked-mixes__title"><span data-en>Multi-city trips, ranked for you</span><span data-sr>Multi-city putovanja, rangirana za tebe</span></h2>
+          <p class="ranked-mixes__note"><span data-en>Origin → city A → city B → origin. Three independent one-way tickets plus a hotel in each city — every part is booked separately at partners, with no connection protection.</span><span data-sr>Polazni grad → grad A → grad B → nazad. Tri nezavisne karte u jednom smeru plus hotel u svakom gradu — svaki deo se rezerviše odvojeno kod partnera, bez zaštite konekcija.</span></p>
+          <p class="ranked-mixes__provider-note" id="multi-city-disclosure" hidden></p>
+        </div>
+      </header>
+      <div class="ranked-mixes__list" id="multi-city-list"></div>
+    </section>
+
+    <script>
+// ── MULTI-CITY MODE (?type=multicity) · FAZA 3b (2026-07-17) ─────────────
+// URL-driven: the toggle navigates, so a shared link restores the mode.
+// Round-trip flow is untouched when type ≠ multicity. Rendering never invents
+// inventory: only fields the API returns are shown, and the unprotected
+// independent-tickets disclosure is always visible.
+(function () {
+  'use strict';
+  var params = new URLSearchParams(window.location.search);
+  var isMc = params.get('type') === 'multicity';
+  var btnRound = document.getElementById('trip-type-round');
+  var btnMulti = document.getElementById('trip-type-multi');
+  var form = document.getElementById('multi-city-form');
+  var note = document.getElementById('mc-note');
+  var section = document.getElementById('multi-city-results');
+  var list = document.getElementById('multi-city-list');
+  if (!btnRound || !btnMulti || !form || !section || !list) return;
+
+  function curLang() { return document.body.classList.contains('lang-en') ? 'en' : 'sr'; }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function field(id) { return document.getElementById(id); }
+  function iata(v) { return String(v || '').trim().toUpperCase(); }
+  function validIata(v) { return /^[A-Z]{3}$/.test(v); }
+  function showNote(msg) { if (note) { note.textContent = msg || ''; note.hidden = !msg; } }
+
+  // Datalist: every known destination, value = IATA code.
+  (function fillDatalist() {
+    var dl = document.getElementById('mc-destinations');
+    var arr = window.LETTO_DESTINATIONS || [];
+    if (!dl || !arr.length) return;
+    dl.innerHTML = arr.map(function (d) {
+      var label = d.city && d.cityEn && d.city !== d.cityEn ? d.city + ' / ' + d.cityEn : (d.city || d.cityEn || '');
+      return '<option value="' + esc(d.iata) + '">' + esc(label) + '</option>';
+    }).join('');
+  })();
+
+  function currentInputs() {
+    return {
+      origin: iata(field('mc-origin') && field('mc-origin').value),
+      city1: iata(field('mc-city1') && field('mc-city1').value),
+      city2: iata(field('mc-city2') && field('mc-city2').value),
+      from: (field('mc-from') && field('mc-from').value) || '',
+      to: (field('mc-to') && field('mc-to').value) || '',
+      stay: (field('mc-stay') && field('mc-stay').value) || '',
+      pax: params.get('pax') || '2'
+    };
+  }
+
+  function mcUrl(v) {
+    var q = new URLSearchParams({ type: 'multicity', origin: v.origin, city1: v.city1, city2: v.city2, from: v.from, to: v.to, pax: v.pax });
+    if (v.stay) q.set('stayFirst', v.stay);
+    return '/results?' + q.toString();
+  }
+
+  function roundTripUrl(v) {
+    var q = new URLSearchParams({
+      origin_iata: v.origin || 'BEG', destination_iata: v.city1 || 'FCO',
+      depart_date: v.from, return_date: v.to, adults: v.pax || '2'
+    });
+    return '/results?' + q.toString();
+  }
+
+  btnMulti.addEventListener('click', function () { window.location.href = mcUrl(currentInputs()); });
+  btnRound.addEventListener('click', function () { window.location.href = roundTripUrl(currentInputs()); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = currentInputs();
+    // Client-side mirrors of the API validation — specific, truthful messages.
+    if (!validIata(v.origin) || !validIata(v.city1) || !validIata(v.city2)) {
+      return showNote(curLang() === 'en' ? 'Enter three-letter airport codes (e.g. BEG, FCO, BCN).' : 'Unesi troslovne šifre aerodroma (npr. BEG, FCO, BCN).');
+    }
+    if (v.city1 === v.city2 || v.city1 === v.origin || v.city2 === v.origin) {
+      return showNote(curLang() === 'en' ? 'Both cities must differ from each other and from the origin.' : 'Oba grada moraju biti različita i različita od polaznog grada.');
+    }
+    if (!v.from || !v.to || v.from >= v.to) {
+      return showNote(curLang() === 'en' ? 'Pick valid departure and return dates.' : 'Izaberi ispravne datume polaska i povratka.');
+    }
+    showNote('');
+    window.location.href = mcUrl(v);
+  });
+
+  if (!isMc) return; // Round-trip mode — nothing else to wire here.
+
+  // ── Multi-city mode is ON ──
+  document.body.classList.add('is-multicity');
+  btnMulti.setAttribute('aria-pressed', 'true');
+  btnRound.setAttribute('aria-pressed', 'false');
+  form.hidden = false;
+
+  var pre = {
+    origin: iata(params.get('origin')), city1: iata(params.get('city1')), city2: iata(params.get('city2')),
+    from: params.get('from') || '', to: params.get('to') || '', stay: params.get('stayFirst') || ''
+  };
+  if (field('mc-origin')) field('mc-origin').value = pre.origin;
+  if (field('mc-city1')) field('mc-city1').value = pre.city1;
+  if (field('mc-city2')) field('mc-city2').value = pre.city2;
+  if (field('mc-from')) field('mc-from').value = pre.from;
+  if (field('mc-to')) field('mc-to').value = pre.to;
+  if (field('mc-stay')) field('mc-stay').value = pre.stay;
+
+  var pax = Math.max(1, Math.min(7, parseInt(params.get('pax') || '2', 10) || 2));
+
+  function hotelLink(hotel, stay) {
+    var url = String((hotel && hotel.bookingUrl) || '');
+    if (!url) return '';
+    if (/booking\.com\/hotel\//i.test(url)) {
+      try {
+        var u = new URL(url);
+        if (stay && stay.checkIn) u.searchParams.set('checkin', stay.checkIn);
+        if (stay && stay.checkOut) u.searchParams.set('checkout', stay.checkOut);
+        u.searchParams.set('group_adults', String(pax));
+        u.searchParams.set('no_rooms', '1');
+        return u.toString();
+      } catch (e) { return url; }
+    }
+    return url;
+  }
+
+  function renderMcCard(item) {
+    var l = curLang();
+    var legs = Array.isArray(item.legs) ? item.legs : [];
+    var stops = Array.isArray(item.stops) ? item.stops : [];
+    var chain = legs.map(function (lg) { return lg.origin; })
+      .concat(legs.length ? [legs[legs.length - 1].destination] : []).join(' → ');
+    var legsHtml = legs.map(function (leg, i) {
+      var seg0 = leg.segment && Array.isArray(leg.segment.legs) ? leg.segment.legs[0] : null;
+      var times = seg0 && seg0.departureTime ? esc(seg0.departureTime) + '–' + esc(seg0.arrivalTime || '') : '';
+      return '<span class="mc-leg">' +
+        '<span class="mc-leg__route">' + (i + 1) + '. ' + esc(leg.origin) + ' → ' + esc(leg.destination) + ' · ' + esc(leg.depart || '') + '</span>' +
+        '<span class="mc-leg__info">' + esc(leg.airline || '') +
+          (leg.flightNumber ? ' · ' + esc(leg.flightNumber) : '') +
+          (times ? ' · ' + times : '') +
+          ' · €' + Math.round(Number(leg.totalPrice) || 0) + '</span>' +
+        (leg.bookingUrl ? '<a class="mc-link" href="' + esc(leg.bookingUrl) + '" target="_blank" rel="noopener">' +
+          (l === 'en' ? 'Book leg ' + (i + 1) : 'Rezerviši ' + (i + 1) + '. kartu') + ' →</a>' : '') +
+      '</span>';
+    }).join('');
+    var stopsHtml = stops.map(function (stop) {
+      var h = stop.hotel || {};
+      var link = hotelLink(h, stop.stay);
+      var review = Number(h.reviewScore || 0);
+      var nights = stop.stay ? Number(stop.stay.nights || 0) : 0;
+      return '<span class="mc-stop">' +
+        '<span class="mc-stop__city">⌂ ' + esc(stop.code || '') + ' · ' + nights + (l === 'en' ? ' nights' : ' noći') + '</span>' +
+        '<span class="mc-stop__hotel">' + esc(h.name || '') +
+          (review > 0 ? ' · ★ ' + esc(String(review)) : '') +
+          ' · €' + Math.round(Number(h.totalWithTaxes || h.totalPrice) || 0) + '</span>' +
+        (link ? '<a class="mc-link" href="' + esc(link) + '" target="_blank" rel="noopener">' +
+          (l === 'en' ? 'Book this hotel' : 'Rezerviši ovaj hotel') + ' →</a>' : '') +
+      '</span>';
+    }).join('');
+    var whyHtml = (Array.isArray(item.why) ? item.why : []).map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('');
+    var total = Math.round(Number(item.pricing && item.pricing.total) || 0);
+    return '<article class="ranked-card ranked-card--multicity">' +
+      '<div class="ranked-card__top"><span class="ranked-card__rank"><span class="mc-badge">MULTI-CITY</span></span>' +
+        '<span class="ranked-card__score">LETTO ' + Number(item.lettoScore || 0) + '/100</span></div>' +
+      '<h3>' + esc(chain) + '</h3>' +
+      '<div class="ranked-card__dates">' + esc(item.dates && item.dates.departure || '') + ' – ' + esc(item.dates && item.dates.return || '') +
+        ' · ' + Number(item.dates && item.dates.nights || 0) + (l === 'en' ? ' nights' : ' noći') + '</div>' +
+      '<div class="ranked-card__parts">' + legsHtml + stopsHtml + '</div>' +
+      (whyHtml ? '<ul class="ranked-card__why">' + whyHtml + '</ul>' : '') +
+      '<div class="ranked-card__price"><span>' + (l === 'en' ? 'Complete trip' : 'Kompletno putovanje') + '</span><strong>€' + total.toLocaleString('en-US') + '</strong></div>' +
+      '<div class="mc-warn">' + (l === 'en'
+        ? 'Three independent one-way tickets — each is booked separately at the partner. Missed connections are not protected; the final price is on the partner page.'
+        : 'Tri nezavisne karte — svaka se rezerviše posebno kod partnera. Propuštena konekcija nije zaštićena; konačna cena je na stranici partnera.') + '</div>' +
+      '<div class="ranked-card__verify">' + (l === 'en' ? 'All legs and hotels verified' : 'Sve noge i hoteli potvrđeni') + ' · 5 ' + (l === 'en' ? 'separate bookings' : 'odvojenih rezervacija') + '</div>' +
+    '</article>';
+  }
+
+  if (!(validIata(pre.origin) && validIata(pre.city1) && validIata(pre.city2) && pre.from && pre.to && pre.from < pre.to)) {
+    section.hidden = true;
+    return; // Incomplete deep link — show only the form.
+  }
+
+  section.hidden = false;
+  list.innerHTML = '<p class="ranked-mixes__note">' + (curLang() === 'en' ? 'Building multi-city trips…' : 'Sastavljamo multi-city putovanja…') + '</p>';
+  var qs = new URLSearchParams({ origin: pre.origin, cities: pre.city1 + ',' + pre.city2, from: pre.from, to: pre.to, pax: String(pax) });
+  if (pre.stay) qs.set('stayFirst', pre.stay);
+  fetch('/api/multi-city-search?' + qs.toString(), { headers: { Accept: 'application/json' } })
+    .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, status: r.status, body: body }; }); })
+    .then(function (result) {
+      if (!result.ok) {
+        list.innerHTML = '<p class="ranked-mixes__note">' + (result.status === 400
+          ? (curLang() === 'en' ? 'That multi-city search is not valid — check the cities and dates.' : 'Ta multi-city pretraga nije ispravna — proveri gradove i datume.')
+          : (curLang() === 'en' ? 'Multi-city search is temporarily unavailable. Please try again.' : 'Multi-city pretraga je trenutno nedostupna. Pokušaj ponovo.')) + '</p>';
+        return;
+      }
+      var items = Array.isArray(result.body.itineraries) ? result.body.itineraries : [];
+      if (!items.length) {
+        list.innerHTML = '<p class="ranked-mixes__note">' + (curLang() === 'en'
+          ? 'No complete multi-city trips for these dates. Try different dates or cities — we only show trips where every leg and both hotels are confirmed.'
+          : 'Nema kompletnih multi-city putovanja za ove datume. Probaj druge datume ili gradove — prikazujemo samo putovanja gde su sve noge i oba hotela potvrđeni.') + '</p>';
+        return;
+      }
+      list.innerHTML = items.map(renderMcCard).join('');
+      var disc = document.getElementById('multi-city-disclosure');
+      if (disc && result.body.disclosure) { disc.textContent = result.body.disclosure; disc.hidden = false; }
+    })
+    .catch(function () {
+      list.innerHTML = '<p class="ranked-mixes__note">' + (curLang() === 'en' ? 'Network error — please try again.' : 'Greška u mreži — pokušaj ponovo.') + '</p>';
+    });
+})();
+</script>
+
     <section class="ranked-mixes" id="ranked-mixes" hidden aria-live="polite">
       <header class="ranked-mixes__head">
         <div>
@@ -5428,6 +5715,9 @@ if (document.readyState === 'loading') {
   }
 
   function loadRankedMixes() {
+    // Multi-city mode (?type=multicity) has its own orchestrator — don't fire
+    // the round-trip live search underneath it.
+    if (new URLSearchParams(location.search).get('type') === 'multicity') return;
     var p = readUrlParams();
     var section = $('ranked-mixes');
     var mount = $('ranked-mixes-list');
@@ -5576,6 +5866,8 @@ if (document.readyState === 'loading') {
   }
 
   function loadAgencyPackages() {
+    // Multi-city mode (?type=multicity) shows only multi-city results.
+    if (new URLSearchParams(location.search).get('type') === 'multicity') return;
     var p = readUrlParams();
     var section = $('agency-offers');
     var mount = $('agency-offers-list');

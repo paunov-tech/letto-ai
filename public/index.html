@@ -70,7 +70,7 @@
   "@graph": [
     { "@type": "Organization", "@id": "https://letto.live/#organization", "name": "LETTO.LIVE", "alternateName": "LETTO", "url": "https://letto.live/", "logo": "https://letto.live/og-image.png", "description": "AI-curated travel deal service. We scan 12,000+ offers daily and send only the ones 30%+ below the 90-day median.", "founder": { "@type": "Person", "name": "Miroslav Paunov" }, "areaServed": [{ "@type": "Country", "name": "Serbia" }, { "@type": "Country", "name": "Croatia" }, { "@type": "Country", "name": "Bosnia and Herzegovina" }, { "@type": "Country", "name": "Montenegro" }, { "@type": "Country", "name": "North Macedonia" }, { "@type": "Country", "name": "Slovenia" }] },
     { "@type": "WebSite", "@id": "https://letto.live/#website", "url": "https://letto.live/", "name": "LETTO.LIVE", "description": "Travel more, for less money — AI-curated travel deals.", "publisher": { "@id": "https://letto.live/#organization" }, "inLanguage": ["en", "sr-Latn"] },
-    { "@type": "Service", "@id": "https://letto.live/#service", "name": "LETTO Premium", "provider": { "@id": "https://letto.live/#organization" }, "description": "AI-curated travel package alerts (flight + hotel + return). 30%+ below the 90-day price median, with direct booking links to airlines, hotels, and partners.", "areaServed": "Balkan region", "offers": { "@type": "Offer", "price": "29.00", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "29.00", "priceCurrency": "EUR", "billingDuration": "P3M", "billingIncrement": 1 }, "availability": "https://schema.org/InStock", "url": "https://letto.live/#pricing" } },
+    { "@type": "Service", "@id": "https://letto.live/#service", "name": "LETTO Premium", "provider": { "@id": "https://letto.live/#organization" }, "description": "AI-curated travel package alerts (flight + hotel + return). 30%+ below the 90-day price median, with direct booking links to airlines, hotels, and partners.", "areaServed": "Balkan region", "offers": { "@type": "Offer", "price": "9.99", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "9.99", "priceCurrency": "EUR", "billingDuration": "P1M", "billingIncrement": 1 }, "availability": "https://schema.org/InStock", "url": "https://letto.live/#pricing" } },
     { "@type": "FAQPage", "@id": "https://letto.live/#faq", "mainEntity": [
       { "@type": "Question", "name": "How are deals selected?", "acceptedAnswer": { "@type": "Answer", "text": "AI scans 50+ sources every 6 hours, calculates 90-day route median, flags anything ≥30% below. We then manually verify each before publishing." } },
       { "@type": "Question", "name": "Do you charge commission?", "acceptedAnswer": { "@type": "Answer", "text": "No. You book directly with the airline or hotel. We charge a flat subscription, never a per-booking fee." } },
@@ -116,7 +116,6 @@
 <script src="/gtm.js" defer></script>
 
 <link rel="alternate" hreflang="sr-Latn" href="https://letto.live/" />
-<link rel="alternate" hreflang="en" href="https://letto.live/?lang=en" />
 <link rel="alternate" hreflang="x-default" href="https://letto.live/" />
 
 <!-- ═══════════════════════════════════════════════════════════════════════
@@ -160,6 +159,9 @@
   .cat-chip:hover{border-color:var(--gold,#A17433);color:var(--gold-deep,#7C5B22)}
   .cat-chip.is-active{background:linear-gradient(135deg,#f0c674,#b8863b);color:#1f2226;border-color:transparent;font-weight:700;box-shadow:0 2px 8px #b8863b55}
   .deal-card.cat-hidden{display:none!important}
+  .chips-caption{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mid,#333840);align-self:center;margin-right:4px}
+  .cat-chips--origin{margin:-12px 0 24px}
+  .feed-empty{padding:32px;text-align:center;color:var(--ink-mid,#333840);font-size:15px;grid-column:1/-1}
   .full-deals-grid.is-filtered>.deal-card:nth-child(n+7){display:flex}
   /* v44 E4 tier icons */
   .tier-icon{width:14px;height:14px;display:inline-block;vertical-align:-2px;margin-right:5px}
@@ -941,7 +943,9 @@
             : '');
 
         return '' +
-          '<article class="' + articleClass + '" data-deal="' + esc(id) + '" data-category="' + esc(p.category || '') + '">' +
+          '<article class="' + articleClass + '" data-deal="' + esc(id) + '" data-category="' + esc(p.category || '') + '"' +
+            ' data-origin="' + oCode + '" data-dest="' + dCode + '"' +
+            ' data-departure="' + esc(p.dates && p.dates.departure || '') + '" data-nights="' + nights + '">' +
             '<div class="deal-photo">' +
               photoLayer +
               '<div class="gradient-overlay"></div>' +
@@ -1057,6 +1061,34 @@
           paintFullGrid();
           if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', paintFullGrid);
+          }
+
+          // F3b · origin (location) chips — built from whatever origins the
+          // catalog actually holds, so new matrix routes appear automatically.
+          // Same late-parse guard as the full grid above (#origin-chips is
+          // parsed after this inline script).
+          var originChipsPainted = false;
+          var paintOriginChips = function () {
+            if (originChipsPainted) return;
+            var ow = document.getElementById('origin-chips');
+            if (!ow) return;
+            var allChip = ow.querySelector('[data-origin=""]');
+            if (!allChip) return;
+            originChipsPainted = true;
+            var seenOrigins = [];
+            pkgs.forEach(function (p) {
+              var oc = p && p.origin && p.origin.code;
+              if (oc && seenOrigins.indexOf(oc) < 0) seenOrigins.push(oc);
+            });
+            seenOrigins.sort();
+            if (seenOrigins.length < 2) return; // one origin — no filter value
+            allChip.insertAdjacentHTML('afterend', seenOrigins.map(function (oc) {
+              return '<button type="button" class="cat-chip" data-origin="' + esc(oc) + '" aria-pressed="false">' + esc(oc) + '</button>';
+            }).join(''));
+          };
+          paintOriginChips();
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', paintOriginChips);
           }
 
           // Expose ALL packages for openDealModal lookups (carousel + grid).
@@ -1252,14 +1284,23 @@
         <span data-sr>Premium otključava svaki card. Try-it picks rotiraju svaki dan.</span>
       </p>
     </div>
-    <!-- v44-A.2 · M4 theme filter chips · client-side, maps to p.category -->
+    <!-- v44-A.2 · M4 theme filter chips · client-side, maps to p.category.
+         F3b (2026-07-17): + Vikend (čet/pet polazak, 2–4 noći) i Skriveni
+         dragulji (van mainstream destinacija) po tryp.com feed modelu,
+         + origin (lokacija) red — chips se pune iz dohvaćenih podataka. -->
     <div class="cat-chips" id="cat-chips" role="group" aria-label="Filter po temi">
       <button type="button" class="cat-chip is-active" data-cats="" aria-pressed="true"><span data-en>All</span><span data-sr>Sve</span></button>
+      <button type="button" class="cat-chip" data-special="weekend" aria-pressed="false"><span data-en>Weekend</span><span data-sr>Vikend</span></button>
       <button type="button" class="cat-chip" data-cats="beach" aria-pressed="false"><span data-en>Beach</span><span data-sr>Plaža</span></button>
       <button type="button" class="cat-chip" data-cats="cultural,architecture" aria-pressed="false"><span data-en>Culture</span><span data-sr>Kultura</span></button>
       <button type="button" class="cat-chip" data-cats="city" aria-pressed="false"><span data-en>City</span><span data-sr>City</span></button>
       <button type="button" class="cat-chip" data-cats="luxury" aria-pressed="false"><span data-en>Luxury</span><span data-sr>Luksuz</span></button>
       <button type="button" class="cat-chip" data-cats="romantic" aria-pressed="false"><span data-en>Romantic</span><span data-sr>Romantika</span></button>
+      <button type="button" class="cat-chip" data-special="gems" aria-pressed="false"><span data-en>Hidden gems</span><span data-sr>Skriveni dragulji</span></button>
+    </div>
+    <div class="cat-chips cat-chips--origin" id="origin-chips" role="group" aria-label="Filter po polasku">
+      <span class="chips-caption"><span data-en>From:</span><span data-sr>Polazak:</span></span>
+      <button type="button" class="cat-chip is-active" data-origin="" aria-pressed="true"><span data-en>All</span><span data-sr>Svi</span></button>
     </div>
     <div id="full-deals-grid" class="full-deals-grid"></div>
 
@@ -1331,29 +1372,87 @@
 // v44-A.2 · M4 theme filter · client-side, no reload. "Sve" restores the
 // paginated show-more; a theme filter shows all matching cards (bypasses the
 // mobile nth-child(n+7) hide via .is-filtered) and hides the show-more button.
+// F3b (2026-07-17) · tryp.com-style feed: special filters (weekend/gems) and
+// the origin row compose with the theme filter (AND). All state lives on the
+// active chips; cards carry data-origin/dest/departure/nights since F3b.
 (function () {
-  var chips = document.getElementById('cat-chips');
+  var themeChips = document.getElementById('cat-chips');
+  var originChips = document.getElementById('origin-chips');
   var grid = document.getElementById('full-deals-grid');
   var wrap = document.getElementById('showMoreWrap');
-  if (!chips || !grid) return;
-  chips.addEventListener('click', function (e) {
-    var btn = e.target.closest('.cat-chip');
-    if (!btn) return;
-    chips.querySelectorAll('.cat-chip').forEach(function (c) {
-      var on = c === btn;
-      c.classList.toggle('is-active', on);
-      c.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
-    var cats = (btn.getAttribute('data-cats') || '').split(',').filter(Boolean);
-    var showAll = cats.length === 0;
-    grid.classList.toggle('is-filtered', !showAll);
+  if (!themeChips || !grid) return;
+
+  // Mainstream destinations — anything outside this set is a "hidden gem".
+  var MAINSTREAM = ['FCO', 'CDG', 'BCN', 'LHR', 'IST', 'AMS', 'VIE', 'PRG', 'DXB'];
+
+  function activeChip(group) { return group ? group.querySelector('.cat-chip.is-active') : null; }
+
+  function matches(card) {
+    var themeBtn = activeChip(themeChips);
+    var special = themeBtn ? themeBtn.getAttribute('data-special') : null;
+    var cats = themeBtn ? (themeBtn.getAttribute('data-cats') || '').split(',').filter(Boolean) : [];
+    if (special === 'weekend') {
+      // Thursday/Friday departure, short 2–4 night stay.
+      var dep = card.getAttribute('data-departure') || '';
+      var day = dep ? new Date(dep + 'T00:00:00Z').getUTCDay() : -1;
+      var nights = parseInt(card.getAttribute('data-nights'), 10) || 0;
+      if (!(day === 4 || day === 5) || nights < 2 || nights > 4) return false;
+    } else if (special === 'gems') {
+      if (MAINSTREAM.indexOf(card.getAttribute('data-dest') || '') >= 0) return false;
+    } else if (cats.length) {
+      if (cats.indexOf(card.getAttribute('data-category') || '') < 0) return false;
+    }
+    var originBtn = activeChip(originChips);
+    var origin = originBtn ? (originBtn.getAttribute('data-origin') || '') : '';
+    if (origin && (card.getAttribute('data-origin') || '') !== origin) return false;
+    return true;
+  }
+
+  function apply() {
+    var themeBtn = activeChip(themeChips);
+    var originBtn = activeChip(originChips);
+    var themeDefault = !themeBtn || (!themeBtn.getAttribute('data-cats') && !themeBtn.getAttribute('data-special'));
+    var originDefault = !originBtn || !originBtn.getAttribute('data-origin');
+    var isDefault = themeDefault && originDefault;
+    var visible = 0;
+    grid.classList.toggle('is-filtered', !isDefault);
     grid.querySelectorAll('.deal-card').forEach(function (card) {
-      var cat = card.getAttribute('data-category') || '';
-      card.classList.toggle('cat-hidden', !showAll && cats.indexOf(cat) < 0);
+      var show = matches(card);
+      card.classList.toggle('cat-hidden', !show);
+      if (show) visible++;
     });
-    if (wrap) wrap.style.display = showAll ? '' : 'none';
-    if (showAll) window.dispatchEvent(new Event('resize')); // let show-more recompute
-  });
+    // Truthful empty state when a filter combination matches nothing.
+    var note = grid.querySelector('.feed-empty');
+    if (!visible && grid.querySelector('.deal-card')) {
+      if (!note) {
+        note = document.createElement('div');
+        note.className = 'feed-empty';
+        note.innerHTML = '<span data-en>No deals match this filter right now — try another one.</span>' +
+          '<span data-sr>Trenutno nema deal-ova za ovaj filter — probaj drugi.</span>';
+        grid.appendChild(note);
+      }
+    } else if (note) {
+      note.remove();
+    }
+    if (wrap) wrap.style.display = isDefault ? '' : 'none';
+    if (isDefault) window.dispatchEvent(new Event('resize')); // let show-more recompute
+  }
+
+  function wire(group) {
+    if (!group) return;
+    group.addEventListener('click', function (e) {
+      var btn = e.target.closest('.cat-chip');
+      if (!btn) return;
+      group.querySelectorAll('.cat-chip').forEach(function (c) {
+        var on = c === btn;
+        c.classList.toggle('is-active', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      apply();
+    });
+  }
+  wire(themeChips);
+  wire(originChips);
 })();
 </script>
 

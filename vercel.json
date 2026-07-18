@@ -6,6 +6,7 @@
   "functions": {
     "api/hotels-search.js": { "maxDuration": 40 },
     "api/live-mix-search.js": { "maxDuration": 60 },
+    "api/multi-city-search.js": { "maxDuration": 60 },
     "api/revalidate-mix.js": { "maxDuration": 60 },
     "api/hotel-stay-details.js": { "maxDuration": 60 },
     "api/price-alerts.js": { "maxDuration": 60 },
