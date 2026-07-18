@@ -472,3 +472,23 @@ v8's stripe-checkout.js included `customer_creation: 'always'` which Stripe reje
 - index.html: 3945 lines (vs 3759 v8)
 - about.html: 1000 lines (new)
 - Total inline payload still ~150KB target met
+
+---
+
+## 2026-07-17 · Faze 0–3 (tryp.com replikacija) · `vercel --prod`
+
+**Scope:** F0 ispravke (JSON-LD cena, hreflang, past-departure filteri, listing over-fetch) · F2 katalog (WF01 matrica 52 rute + auto-publish gate, WF08 baseline writer — n8n import ručno) · F3 multi-city (lib/multi-city-provider + contract + api/multi-city-search + UI u results.html) + feed filteri (Vikend / Skriveni dragulji / Polazak) na homepage-u.
+
+### Live verification
+| Check | Result |
+|---|---|
+| `vercel --prod` build + alias | ✅ https://letto.live |
+| `/api/health` | ✅ HTTP 200 |
+| Homepage feed chips (origin-chips / data-special) | ✅ prisutni |
+| `/api/multi-city-search` bez parametara | ✅ HTTP 400 (validacija) |
+| Duplirani gradovi → `invalid_plan` | ✅ JSON greška korektna |
+| `/results?type=multicity…` toggle markup | ✅ prisutan |
+| **E2E**: BEG, FCO+BCN, 15–22.10, 2 pax | ✅ 6 itinerara, svi `segment_confirmed`; oba redosleda evaluirana, jeftiniji označen (€262 vs €295 transport); 0 failed hotel searches |
+| Testovi pre deploy-a | ✅ 83/83 |
+
+**Ručni koraci koji ostaju:** n8n import izmenjenih WF01/WF02 i novog WF08 (workflow sync je ručni po konvenciji); browser smoke test multi-city UI-ja.
