@@ -31,20 +31,23 @@ const IP_HASH_SALT = process.env.LEAD_IP_HASH_SALT || 'letto-dev-only-not-prod';
 
 // letto_mix_state_v2 (flight.selected / hotel.selected / searchParams) → the
 // flat "trip" shape api/trip.js returns and trip.html renders. The only real
-// rename is flight.selected.ret → flight.return. Returns null if the mix is
-// incomplete (no selected flight OR no selected hotel).
+// rename is flight.selected.ret → flight.return. Hotel-only is a first-class
+// itinerary: it has a selected hotel, dates and a direct property handoff but
+// intentionally no flight.
 function toTripShape(state) {
   const fs = (state.flight && state.flight.selected) || null;
   const hs = (state.hotel && state.hotel.selected) || null;
-  if (!fs || !hs) return null;
+  const hotelOnly = state.mode === 'hotel-only' || state.searchParams?.no_flight === true;
+  if (!hs || (!fs && !hotelOnly)) return null;
   const sp = state.searchParams || {};
   return {
-    tier: (fs.tier === 'budget' || fs.tier === 'lux') ? fs.tier : 'value',
+    mode: hotelOnly ? 'hotel-only' : 'mix',
+    tier: (fs?.tier === 'budget' || fs?.tier === 'lux') ? fs.tier : 'value',
     route: {
-      origin: fs.origin || sp.origin_iata || '',
-      dest: fs.dest || sp.destination_iata || '',
+      origin: fs?.origin || sp.origin_iata || '',
+      dest: fs?.dest || sp.hotel_city || sp.destination_iata || '',
     },
-    flight: {
+    flight: fs ? {
       airline: fs.airline || '',
       flightNumber: fs.flightNumber || '',
       departureTime: fs.departureTime || '',
@@ -56,9 +59,11 @@ function toTripShape(state) {
       totalPrice: fs.totalPrice || 0,
       bookingPartner: fs.bookingPartner || '',
       bookingUrl: fs.bookingUrl || '',
-    },
+    } : null,
     hotel: {
       name: hs.name || '',
+      checkIn: sp.depart_date || fs?.depart || '',
+      checkOut: sp.return_date || fs?.ret || '',
       stars: hs.stars || 0,
       guestRating: hs.guestRating || null,
       neighborhood: hs.neighborhood || '',
@@ -74,8 +79,8 @@ function toTripShape(state) {
       children: Number(sp.children) || 0,
       infants: 0,
     },
-    currency: fs.currency || hs.currency || 'EUR',
-    grandTotal: Math.round((Number(fs.totalPrice) || 0) + (Number(hs.priceTotal) || 0)),
+    currency: fs?.currency || hs.currency || 'EUR',
+    grandTotal: Math.round((Number(fs?.totalPrice) || 0) + (Number(hs.priceTotal) || 0)),
   };
 }
 
@@ -104,7 +109,7 @@ async function handler(req, res) {
 
   const tripDoc = toTripShape(mix);
   if (!tripDoc) {
-    // A persistable Mix needs BOTH a selected flight and a selected hotel.
+    // A regular Mix needs both selections; hotel-only needs its hotel only.
     return res.status(400).json({ error: 'empty_mix' });
   }
 

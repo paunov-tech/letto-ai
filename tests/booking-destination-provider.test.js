@@ -4,6 +4,7 @@ import {
   getBookingHotelProperty,
   resolveAirportCity,
   resolveBookingHotelDestination,
+  searchBookingHotelDestinations,
   searchGlobalAirports
 } from '../lib/booking-destination-provider.js';
 
@@ -77,4 +78,20 @@ test('resolves a Booking hotel city id dynamically', async () => {
   });
   assert.equal(destination.destId, '20088325');
   assert.equal(destination.searchType, 'CITY');
+});
+
+test('keeps hotel destinations that have no airport', async () => {
+  const result = await searchBookingHotelDestinations('Vrnjacka Banja', {
+    key,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ data: [
+        { dest_id: '12345', search_type: 'city', city_name: 'Vrnjačka Banja', country: 'Serbia' },
+        { dest_id: '67890', search_type: 'landmark', name: 'Goč', country: 'Serbia' }
+      ] })
+    })
+  });
+  assert.equal(result.destinations.length, 2);
+  assert.equal(result.destinations[0].cityEn, 'Vrnjačka Banja');
+  assert.equal(result.destinations[0].searchType, 'CITY');
 });

@@ -94,8 +94,8 @@ function rapidHeaders() {
   };
 }
 
-async function searchBookingFallback({ destination, cityEn, checkIn, checkOut, adults, limit }) {
-  let destId = BOOKING_DEST_IDS[destination];
+async function searchBookingFallback({ destination, bookingDestinationId, cityEn, checkIn, checkOut, adults, limit }) {
+  let destId = bookingDestinationId || BOOKING_DEST_IDS[destination];
   let searchType = 'CITY';
   if (!destId && cityEn) {
     const resolved = await resolveBookingHotelDestination(cityEn);
@@ -169,8 +169,8 @@ async function searchBookingFallback({ destination, cityEn, checkIn, checkOut, a
 async function returnBookingFallback(res, ctx, primaryFailure, debug) {
   const fallback = await searchBookingFallback(ctx);
   if (!fallback.hotels.length) return false;
-  const destinationPayload = { iata: ctx.destination, cityEn: ctx.cityEn };
-  setCached(db, buildCacheKey(ctx), { hotels: fallback.hotels, destination: destinationPayload })
+  const destinationPayload = ctx.destinationPayload;
+  setCached(db, buildCacheKey({ ...ctx, destination: ctx.cacheDestination }), { hotels: fallback.hotels, destination: destinationPayload })
     .catch(e => console.warn('[hotels-search] fallback cache write failed:', e.message));
   if (ctx.fresh) {
     res.setHeader('CDN-Cache-Control', 'no-store');
@@ -444,6 +444,8 @@ async function handler(req, res) {
   // Validate
   const q = req.query || {};
   const destinationRaw = String(q.destination || '').trim().toUpperCase();
+  const hotelCity = String(q.city || '').trim().replace(/\s+/g, ' ');
+  const bookingDestinationId = String(q.bookingDestinationId || '').trim();
   const checkIn  = String(q.checkIn  || '').trim();
   const checkOut = String(q.checkOut || '').trim();
   const adults   = Math.min(Math.max(parseInt(q.adults, 10) || 2, 1), 7);
@@ -458,8 +460,14 @@ async function handler(req, res) {
   // ordinary UI discovery remains capped at 50 cards.
   const limit    = Math.min(Math.max(parseInt(q.limit, 10) || 20, 1), skipDetails ? 200 : 50);
 
-  if (!/^[A-Z]{3}$/.test(destinationRaw)) {
-    return res.status(400).json({ error: 'destination must be a 3-letter IATA code' });
+  const isAirportDestination = /^[A-Z]{3}$/.test(destinationRaw);
+  const isHotelCity = hotelCity.length >= 2 && hotelCity.length <= 100 &&
+    !/[<>\u0000-\u001f]/.test(hotelCity);
+  if (!isAirportDestination && !isHotelCity) {
+    return res.status(400).json({ error: 'destination must be an IATA code or hotel city' });
+  }
+  if (bookingDestinationId && !/^-?\d{1,16}$/.test(bookingDestinationId)) {
+    return res.status(400).json({ error: 'invalid_booking_destination_id' });
   }
   if (!isValidIso(checkIn) || !isValidIso(checkOut)) {
     return res.status(400).json({ error: 'checkIn and checkOut must be YYYY-MM-DD' });
@@ -467,8 +475,8 @@ async function handler(req, res) {
   if (new Date(checkIn) >= new Date(checkOut)) {
     return res.status(400).json({ error: 'checkOut must be after checkIn' });
   }
-  let cityEn = IATA_TO_CITY_EN[destinationRaw];
-  const dynamicallyResolved = !cityEn;
+  let cityEn = isHotelCity ? hotelCity : IATA_TO_CITY_EN[destinationRaw];
+  const dynamicallyResolved = isAirportDestination && !cityEn;
   if (!cityEn) {
     const dynamicDestination = await resolveAirportCity(destinationRaw);
     cityEn = dynamicDestination?.cityEn;
@@ -482,7 +490,18 @@ async function handler(req, res) {
 
   // Cache check — skip the entire RapidAPI pipeline if we have a fresh hit
   // for this destination + date + pax combo within the 6h TTL.
-  const cacheKey = buildCacheKey({ destination: destinationRaw, checkIn, checkOut, adults, children });
+  // Firestore document IDs cannot contain a slash. City names are kept in the
+  // response, while this opaque, deterministic key safely scopes their cache.
+  const cacheDestination = isAirportDestination
+    ? destinationRaw
+    : 'city_' + Buffer.from(cityEn, 'utf8').toString('base64url');
+  const cacheKey = buildCacheKey({ destination: cacheDestination, checkIn, checkOut, adults, children });
+  const destinationPayload = {
+    iata: isAirportDestination ? destinationRaw : null,
+    cityEn,
+    kind: isAirportDestination ? 'airport' : 'city',
+    bookingDestinationId: bookingDestinationId || null
+  };
   const cached = fresh ? null : await getCached(db, cacheKey);
   if (cached) {
     res.setHeader('CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
@@ -507,7 +526,8 @@ async function handler(req, res) {
   // Hotels.com region pipeline can exceed the serverless request window.
   if (dynamicallyResolved) {
     if (await returnBookingFallback(res, {
-      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit, fresh
+      destination: destinationRaw, bookingDestinationId, cityEn, checkIn, checkOut, adults, limit, fresh,
+      cacheDestination, destinationPayload
     }, { reason: 'dynamic_destination' }, debug)) return;
   }
 
@@ -515,14 +535,15 @@ async function handler(req, res) {
   const region = await searchRegion(cityEn);
   if (region.error) {
     if (await returnBookingFallback(res, {
-      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit, fresh
+      destination: destinationRaw, bookingDestinationId, cityEn, checkIn, checkOut, adults, limit, fresh,
+      cacheDestination, destinationPayload
     }, region, debug)) return;
     // Graceful partial result: the package and flight sources still work. A
     // provider outage must not turn the entire Mix page into an error state or
     // disguise a generic redirect as hotel availability.
     return res.status(200).json({
       hotels: [],
-      destination: { iata: destinationRaw, cityEn },
+      destination: destinationPayload,
       meta: { totalReturned: 0, providerUnavailable: true, failoverAttempted: true },
       ...(debug ? { debug: region } : {})
     });
@@ -538,11 +559,12 @@ async function handler(req, res) {
 
   if (propsResult.error) {
     if (await returnBookingFallback(res, {
-      destination: destinationRaw, cityEn, checkIn, checkOut, adults, limit, fresh
+      destination: destinationRaw, bookingDestinationId, cityEn, checkIn, checkOut, adults, limit, fresh,
+      cacheDestination, destinationPayload
     }, propsResult, debug)) return;
     return res.status(200).json({
       hotels: [],
-      destination: { iata: destinationRaw, cityEn, regionId: region.regionId },
+      destination: { ...destinationPayload, regionId: region.regionId },
       meta: { totalReturned: 0, providerUnavailable: true, failoverAttempted: true },
       ...(debug ? { debug: { region, props: propsResult } } : {})
     });
@@ -589,12 +611,8 @@ async function handler(req, res) {
     res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
   }
 
-  const destinationPayload = {
-    iata: destinationRaw,
-    cityEn,
-    regionId: region.regionId,
-    coords: region.coords
-  };
+  destinationPayload.regionId = region.regionId;
+  destinationPayload.coords = region.coords;
 
   // Persist to Firestore cache so subsequent searches for the same combo
   // skip the 27s pipeline. Fire-and-forget — never block the response.

@@ -410,10 +410,11 @@
     var route = trip.route || {};
     var f = trip.flight || {};
     var h = trip.hotel || {};
+    var hotelOnly = trip.mode === 'hotel-only';
     var pax = trip.pax || {};
-    var origin = route.origin || '?';
+    var origin = route.origin || '';
     var dest = route.dest || '?';
-    var dates = fmtRange(f.depart, f.return);
+    var dates = hotelOnly ? fmtRange(h.checkIn, h.checkOut) : fmtRange(f.depart, f.return);
     var stops = stopsLabel(f.stops);
     var stars = (h.stars > 0 && h.stars <= 5) ? ' ' + '★'.repeat(h.stars) : '';
     var paxParts = [];
@@ -422,25 +423,14 @@
     if (pax.infants) paxParts.push(pax.infants + ' bebe');
     var nights = h.nights ? (' · ' + h.nights + ' ' + (h.nights === 1 ? 'noć' : 'noći')) : '';
 
-    document.title = 'Letto Mix · ' + origin + ' → ' + dest;
+    document.title = hotelOnly ? ('Letto Hotel · ' + dest) : ('Letto Mix · ' + origin + ' → ' + dest);
 
     var flightMeta = [f.depart && fmtDate(f.depart), f.duration, stops].filter(Boolean).join('  ·  ');
     var flightTitle = [f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Let';
 
     var tier = (trip.tier === 'budget' || trip.tier === 'lux') ? trip.tier : 'value';
     var tierLabel = tier.toUpperCase();
-    document.getElementById('root').innerHTML =
-      '<div class="card">' +
-        '<div class="header">' +
-          '<div style="margin-bottom:14px;">' +
-            '<span class="tier-pill tier-pill--' + tier + '">' + tierLabel + '</span>' +
-            '<span class="header__eyebrow" style="margin-bottom:0;">Letto Mix · paid</span>' +
-          '</div>' +
-          '<div class="header__route">' + safe(origin) + ' → ' + safe(dest) + '</div>' +
-          (dates ? '<div class="header__sub">' + safe(dates) + '</div>' : '') +
-          '<div class="header__trip-id">tripId · ' + safe(trip.tripId) + '</div>' +
-        '</div>' +
-
+    var flightSection = hotelOnly ? '' :
         '<div class="section">' +
           '<div class="section__eyebrow">✈ Flight</div>' +
           '<div class="section__title">' + safe(flightTitle) + '</div>' +
@@ -452,7 +442,21 @@
           (f.bookingUrl
             ? '<a class="cta cta--primary" href="' + safe(f.bookingUrl) + '" target="_blank" rel="noopener">Rezerviši let →</a>'
             : '') +
+        '</div>';
+
+    document.getElementById('root').innerHTML =
+      '<div class="card">' +
+        '<div class="header">' +
+          '<div style="margin-bottom:14px;">' +
+            '<span class="tier-pill tier-pill--' + tier + '">' + tierLabel + '</span>' +
+            '<span class="header__eyebrow" style="margin-bottom:0;">' + (hotelOnly ? 'Letto Hotel' : 'Letto Mix') + ' · paid</span>' +
+          '</div>' +
+          '<div class="header__route">' + (hotelOnly ? safe(dest) : (safe(origin || '?') + ' → ' + safe(dest))) + '</div>' +
+          (dates ? '<div class="header__sub">' + safe(dates) + '</div>' : '') +
+          '<div class="header__trip-id">tripId · ' + safe(trip.tripId) + '</div>' +
         '</div>' +
+
+        flightSection +
 
         '<div class="section">' +
           '<div class="section__eyebrow">🏨 Stay</div>' +

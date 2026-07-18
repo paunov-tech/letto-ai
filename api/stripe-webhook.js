@@ -217,6 +217,7 @@ function fmtDateRangeForEmail(dep, ret) {
 function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
   const f = trip.flight || {};
   const h = trip.hotel || {};
+  const hotelOnly = trip.mode === 'hotel-only';
   const stars = (h.stars > 0 && h.stars <= 5) ? '★'.repeat(h.stars) : '';
   const flightLine = [f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Let';
   const stopsLabel = f.stops === 0 ? 'direktan'
@@ -225,23 +226,8 @@ function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
   const flightMeta = [f.depart, f.duration, stopsLabel].filter(Boolean).join(' · ');
   const safe = (s) => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
   const tCol = tierColors(trip.tier);
-
-  return `<!doctype html>
-<html><body style="margin:0;padding:0;background:#F5EFE0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1F2226;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5EFE0;padding:24px 12px;">
-  <tr><td align="center">
-    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FAF6EA;border:1px solid #E4D9BC;border-radius:14px;overflow:hidden;">
-
-      <!-- Header -->
-      <tr><td style="padding:32px 36px 22px;text-align:center;border-bottom:1px solid #E4D9BC;">
-        <div style="margin-bottom:10px;">
-          <span style="display:inline-block;padding:4px 12px;background:${tCol.bg};color:${tCol.fg};font-family:'Segoe UI',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;border-radius:99px;">${tCol.label}</span>
-          <span style="margin-left:6px;font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:#A17433;font-weight:600;vertical-align:middle;">Letto Mix · paid</span>
-        </div>
-        <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:28px;line-height:1.2;color:#1F2226;">${safe(originName)} → ${safe(destName)}</h1>
-        <p style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#5A4F3A;">${safe(dateRange)}</p>
-      </td></tr>
-
+  const routeTitle = hotelOnly ? safe(destName) : safe(originName) + ' → ' + safe(destName);
+  const flightCard = hotelOnly ? '' : `
       <!-- Flight card -->
       <tr><td style="padding:24px 36px 8px;">
         <div style="font-family:'Segoe UI',sans-serif;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:#A17433;font-weight:700;margin-bottom:6px;">✈ Flight</div>
@@ -257,7 +243,25 @@ function buildMixEmailHtml({ trip, originName, destName, dateRange }) {
             <a href="${safe(f.bookingUrl)}" style="display:inline-block;padding:12px 22px;color:#F5EFE0;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:600;text-decoration:none;">Rezerviši let →</a>
           </td></tr>
         </table>` : ''}
+      </td></tr>`;
+
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#F5EFE0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1F2226;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5EFE0;padding:24px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FAF6EA;border:1px solid #E4D9BC;border-radius:14px;overflow:hidden;">
+
+      <!-- Header -->
+      <tr><td style="padding:32px 36px 22px;text-align:center;border-bottom:1px solid #E4D9BC;">
+        <div style="margin-bottom:10px;">
+          <span style="display:inline-block;padding:4px 12px;background:${tCol.bg};color:${tCol.fg};font-family:'Segoe UI',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;border-radius:99px;">${tCol.label}</span>
+          <span style="margin-left:6px;font-family:Georgia,'Times New Roman',serif;font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:#A17433;font-weight:600;vertical-align:middle;">Letto ${hotelOnly ? 'Hotel' : 'Mix'} · paid</span>
+        </div>
+        <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:28px;line-height:1.2;color:#1F2226;">${routeTitle}</h1>
+        <p style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#5A4F3A;">${safe(dateRange)}</p>
       </td></tr>
+
+      ${flightCard}
 
       <!-- Hotel card -->
       <tr><td style="padding:18px 36px 8px;border-top:1px solid #E4D9BC;">
@@ -314,11 +318,12 @@ function buildMixPdfBuffer(trip, originName, destName, dateRange) {
     try {
       const f = trip.flight || {};
       const h = trip.hotel || {};
+      const hotelOnly = trip.mode === 'hotel-only';
       const doc = new PDFDocument({
         size: 'A4',
         margins: { top: 56, bottom: 56, left: 56, right: 56 },
         info: {
-          Title: `Letto Mix · ${trip.tripId}`,
+          Title: `Letto ${hotelOnly ? 'Hotel' : 'Mix'} · ${trip.tripId}`,
           Author: 'LETTO.LIVE · SIAL Consulting',
           Subject: `${originName} → ${destName} · ${dateRange}`,
           Producer: 'Letto Mix v1'
@@ -348,9 +353,9 @@ function buildMixPdfBuffer(trip, originName, destName, dateRange) {
       doc.roundedRect(doc.page.margins.left, 26, pillW, pillH, 8).fill(tCol.bg);
       doc.fillColor(tCol.fg).font('Helvetica-Bold').fontSize(8.5).text(tCol.label, doc.page.margins.left, 30, { width: pillW, align: 'center', characterSpacing: 1.6 });
       // "LETTO MIX · PAID" eyebrow next to pill
-      doc.fillColor(COL.goldBright).font('Helvetica-Bold').fontSize(10).text('LETTO MIX  ·  PAID', doc.page.margins.left + pillW + 10, 30, { characterSpacing: 2.4 });
+      doc.fillColor(COL.goldBright).font('Helvetica-Bold').fontSize(10).text(`LETTO ${hotelOnly ? 'HOTEL' : 'MIX'}  ·  PAID`, doc.page.margins.left + pillW + 10, 30, { characterSpacing: 2.4 });
 
-      doc.fillColor('#FAF6EA').font('Helvetica').fontSize(22).text(`${originName} ${ARR} ${destName}`, doc.page.margins.left, 52);
+      doc.fillColor('#FAF6EA').font('Helvetica').fontSize(22).text(hotelOnly ? destName : `${originName} ${ARR} ${destName}`, doc.page.margins.left, 52);
       doc.fillColor('#D9CFB4').fontSize(11).text(dateRange || '', doc.page.margins.left, 80);
       doc.fillColor(COL.goldBright).font('Helvetica').fontSize(9).text(`tripId: ${trip.tripId}`, doc.page.margins.left, 80, { width: W, align: 'right' });
 
@@ -358,29 +363,29 @@ function buildMixPdfBuffer(trip, originName, destName, dateRange) {
       doc.fillColor(COL.ink).font('Helvetica');
       doc.y = 134;
 
-      // Section: Flight
-      doc.fillColor(COL.gold).font('Helvetica-Bold').fontSize(9).text('FLIGHT', { characterSpacing: 2.4 });
-      doc.moveDown(0.4);
-      doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(15).text([f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Flight');
-      const flightMetaParts = [
-        f.depart || '',
-        f.duration || '',
-        f.stops === 0 ? 'non-stop' : f.stops === 1 ? '1 stop' : f.stops > 1 ? `${f.stops} stops` : ''
-      ].filter(Boolean);
-      doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(flightMetaParts.join('  ·  '));
-      doc.moveDown(0.3);
-      doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(20).text(`€${Math.round(f.totalPrice || 0)}`, { continued: true });
-      doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(`   ${f.bookingPartner || 'partner'}`);
-      if (f.bookingUrl) {
+      if (!hotelOnly) {
+        // Section: Flight
+        doc.fillColor(COL.gold).font('Helvetica-Bold').fontSize(9).text('FLIGHT', { characterSpacing: 2.4 });
+        doc.moveDown(0.4);
+        doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(15).text([f.airline, f.flightNumber].filter(Boolean).join(' ') || 'Flight');
+        const flightMetaParts = [
+          f.depart || '',
+          f.duration || '',
+          f.stops === 0 ? 'non-stop' : f.stops === 1 ? '1 stop' : f.stops > 1 ? `${f.stops} stops` : ''
+        ].filter(Boolean);
+        doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(flightMetaParts.join('  ·  '));
         doc.moveDown(0.3);
-        doc.fillColor(COL.gold).font('Helvetica').fontSize(9).text('Rezerviši: ' + f.bookingUrl, { link: f.bookingUrl, underline: true, lineBreak: true });
+        doc.fillColor(COL.ink).font('Helvetica-Bold').fontSize(20).text(`€${Math.round(f.totalPrice || 0)}`, { continued: true });
+        doc.fillColor(COL.muted).font('Helvetica').fontSize(10).text(`   ${f.bookingPartner || 'partner'}`);
+        if (f.bookingUrl) {
+          doc.moveDown(0.3);
+          doc.fillColor(COL.gold).font('Helvetica').fontSize(9).text('Rezerviši: ' + f.bookingUrl, { link: f.bookingUrl, underline: true, lineBreak: true });
+        }
+        doc.moveDown(0.8);
+        const dy = doc.y;
+        doc.strokeColor(COL.line).lineWidth(1).moveTo(doc.page.margins.left, dy).lineTo(doc.page.width - doc.page.margins.right, dy).stroke();
+        doc.moveDown(0.6);
       }
-
-      // Divider
-      doc.moveDown(0.8);
-      const dy = doc.y;
-      doc.strokeColor(COL.line).lineWidth(1).moveTo(doc.page.margins.left, dy).lineTo(doc.page.width - doc.page.margins.right, dy).stroke();
-      doc.moveDown(0.6);
 
       // Section: Hotel
       doc.fillColor(COL.gold).font('Helvetica-Bold').fontSize(9).text('STAY', { characterSpacing: 2.4 });
@@ -440,15 +445,18 @@ function buildMixEmailText(trip, originName, destName, dateRange) {
   const f = trip.flight || {};
   const h = trip.hotel || {};
   const lines = [];
-  lines.push(`Letto Mix · ${originName} → ${destName}`);
+  const hotelOnly = trip.mode === 'hotel-only';
+  lines.push(hotelOnly ? `Letto Hotel · ${destName}` : `Letto Mix · ${originName} → ${destName}`);
   lines.push(dateRange);
   lines.push('');
-  lines.push('FLIGHT');
-  lines.push(`  ${[f.airline, f.flightNumber].filter(Boolean).join(' ')}`);
-  if (f.depart) lines.push(`  ${f.depart} · ${f.duration || ''}`);
-  lines.push(`  €${Math.round(f.totalPrice || 0)} · ${f.bookingPartner || 'partner'}`);
-  if (f.bookingUrl) lines.push(`  Rezerviši: ${f.bookingUrl}`);
-  lines.push('');
+  if (!hotelOnly) {
+    lines.push('FLIGHT');
+    lines.push(`  ${[f.airline, f.flightNumber].filter(Boolean).join(' ')}`);
+    if (f.depart) lines.push(`  ${f.depart} · ${f.duration || ''}`);
+    lines.push(`  €${Math.round(f.totalPrice || 0)} · ${f.bookingPartner || 'partner'}`);
+    if (f.bookingUrl) lines.push(`  Rezerviši: ${f.bookingUrl}`);
+    lines.push('');
+  }
   lines.push('HOTEL');
   lines.push(`  ${h.name || ''} ${h.stars ? '★'.repeat(h.stars) : ''}`);
   if (h.neighborhood) lines.push(`  ${h.neighborhood}`);
@@ -474,11 +482,16 @@ async function buildMixEmailRequest(trip) {
   const sender = await resolveResendSender(apiKey);
   const f = trip.flight || {};
   const route = trip.route || {};
+  const hotelOnly = trip.mode === 'hotel-only';
   const origin = route.origin || '?';
   const dest = route.dest || '?';
-  const dateRange = fmtDateRangeForEmail(f.depart, f.return);
+  const dateRange = hotelOnly
+    ? fmtDateRangeForEmail(trip.hotel?.checkIn, trip.hotel?.checkOut)
+    : fmtDateRangeForEmail(f.depart, f.return);
   const tierLabel = trip.tier ? (trip.tier.charAt(0).toUpperCase() + trip.tier.slice(1)) : 'Mix';
-  const subj = `Tvoj Letto ${tierLabel} Mix · ${origin} → ${dest}${dateRange ? ' · ' + dateRange : ''}`;
+  const subj = hotelOnly
+    ? `Tvoj Letto Hotel · ${dest}${dateRange ? ' · ' + dateRange : ''}`
+    : `Tvoj Letto ${tierLabel} Mix · ${origin} → ${dest}${dateRange ? ' · ' + dateRange : ''}`;
 
   const html = buildMixEmailHtml({ trip, originName: origin, destName: dest, dateRange });
   const text = buildMixEmailText(trip, origin, dest, dateRange);

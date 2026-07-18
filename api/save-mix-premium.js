@@ -52,19 +52,22 @@ const MAX_MIX_BYTES = 50 * 1024;
 // flat "trip" shape api/trip.js + trip.html render. Mirrors toTripShape in
 // api/save-mix.js, plus a hotel.image passthrough for the Telegram sendPhoto
 // path. save-mix.js's copy is intentionally left untouched (non-premium path).
-// Returns null if the mix is incomplete (no selected flight OR hotel).
+// Returns null if the itinerary is incomplete. Hotel-only deliberately has
+// no flight, but is still delivered as a complete itinerary.
 function toTripShape(state) {
   const fs = (state.flight && state.flight.selected) || null;
   const hs = (state.hotel && state.hotel.selected) || null;
-  if (!fs || !hs) return null;
+  const hotelOnly = state.mode === 'hotel-only' || state.searchParams?.no_flight === true;
+  if (!hs || (!fs && !hotelOnly)) return null;
   const sp = state.searchParams || {};
   return {
-    tier: (fs.tier === 'budget' || fs.tier === 'lux') ? fs.tier : 'value',
+    mode: hotelOnly ? 'hotel-only' : 'mix',
+    tier: (fs?.tier === 'budget' || fs?.tier === 'lux') ? fs.tier : 'value',
     route: {
-      origin: fs.origin || sp.origin_iata || '',
-      dest: fs.dest || sp.destination_iata || '',
+      origin: fs?.origin || sp.origin_iata || '',
+      dest: fs?.dest || sp.hotel_city || sp.destination_iata || '',
     },
-    flight: {
+    flight: fs ? {
       airline: fs.airline || '',
       flightNumber: fs.flightNumber || '',
       departureTime: fs.departureTime || '',
@@ -76,9 +79,11 @@ function toTripShape(state) {
       totalPrice: fs.totalPrice || 0,
       bookingPartner: fs.bookingPartner || '',
       bookingUrl: fs.bookingUrl || '',
-    },
+    } : null,
     hotel: {
       name: hs.name || '',
+      checkIn: sp.depart_date || fs?.depart || '',
+      checkOut: sp.return_date || fs?.ret || '',
       stars: hs.stars || 0,
       guestRating: hs.guestRating || null,
       neighborhood: hs.neighborhood || '',
@@ -97,8 +102,8 @@ function toTripShape(state) {
       children: Number(sp.children) || 0,
       infants: 0,
     },
-    currency: fs.currency || hs.currency || 'EUR',
-    grandTotal: Math.round((Number(fs.totalPrice) || 0) + (Number(hs.priceTotal) || 0)),
+    currency: fs?.currency || hs.currency || 'EUR',
+    grandTotal: Math.round((Number(fs?.totalPrice) || 0) + (Number(hs.priceTotal) || 0)),
   };
 }
 

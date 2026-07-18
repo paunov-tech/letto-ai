@@ -2394,7 +2394,8 @@
     var DEFAULT_FROM = DESTS.find(function (d) { return d.iata === 'BEG'; }) || DESTS[0];
 
     function fmtLabel(d) {
-      if (!d || !d.iata) return '';
+      if (!d) return '';
+      if (!d.iata) return [d.city, d.country].filter(Boolean).join(', ');
       return d.iata + ' · ' + d.city + ', ' + d.country;
     }
     function normalize(s) {
@@ -2436,8 +2437,9 @@
         var html = '';
         for (var i = 0; i < results.length; i++) {
           var d = results[i];
-          html += '<div class="letto-combo__option" role="option" data-iata="' + escapeComboText(d.iata) + '" data-idx="' + i + '">'
-                + '<span class="letto-combo__iata">' + escapeComboText(d.iata) + '</span>'
+          var code = d.iata || 'HOTEL';
+          html += '<div class="letto-combo__option" role="option" data-idx="' + i + '">'
+                + '<span class="letto-combo__iata">' + escapeComboText(code) + '</span>'
                 + '<span class="letto-combo__city">' + escapeComboText(d.city) + '</span>'
                 + '<span class="letto-combo__country">' + escapeComboText(d.country) + '</span>'
                 + '</div>';
@@ -2456,12 +2458,30 @@
         if (value.length < 2) return;
         var seq = ++remoteSeq;
         remoteTimer = setTimeout(function () {
-          fetch('/api/destination-search?q=' + encodeURIComponent(value), {
+          var hotelMode = role === 'to' && activeMode() === 'hotel';
+          var endpoint = hotelMode ? '/api/hotel-destination-search' : '/api/destination-search';
+          fetch(endpoint + '?q=' + encodeURIComponent(value), {
             headers: { Accept: 'application/json' }
           }).then(function (response) {
-            return response.ok ? response.json() : { airports: [] };
+            return response.ok ? response.json() : (hotelMode ? { cities: [] } : { airports: [] });
           }).then(function (payload) {
             if (seq !== remoteSeq || input.value.trim() !== value) return;
+            if (hotelMode) {
+              var hotelCities = (payload.cities || []).map(function (city) {
+                return {
+                  city: city.cityEn || city.city || value,
+                  cityEn: city.cityEn || city.city || value,
+                  country: city.country || '',
+                  bookingDestinationId: city.destId || '',
+                  kind: 'hotel-city',
+                  dynamic: true
+                };
+              });
+              // Do not add non-airport towns to the global flight catalog.
+              // They are valid only for the hotel-only mode.
+              renderOptions(hotelCities);
+              return;
+            }
             var remote = (payload.airports || []).map(function (airport) {
               return {
                 iata: airport.iata,
@@ -2475,8 +2495,7 @@
             remote.forEach(function (item) {
               if (!matchByIata(item.iata)) DESTS.push(item);
             });
-            var merged = filterDests(value);
-            renderOptions(merged);
+            renderOptions(filterDests(value));
           }).catch(function () {
             // The static catalog remains usable during a provider outage.
           });
@@ -2488,9 +2507,12 @@
       }
       function pick(d) {
         if (!d) return;
-        hidden.value = d.iata;
+        hidden.value = d.iata || '';
         input.value = fmtLabel(d);
-        input.dataset.iata = d.iata;
+        input.dataset.iata = d.iata || '';
+        hidden.dataset.hotelCity = d.city || '';
+        hidden.dataset.bookingDestinationId = d.bookingDestinationId || '';
+        hidden.dataset.label = input.value;
         close();
       }
       function highlight(idx) {
@@ -2518,6 +2540,9 @@
       input.addEventListener('input', function () {
         // user typed — clear iata until they pick again
         hidden.value = '';
+        hidden.dataset.hotelCity = '';
+        hidden.dataset.bookingDestinationId = '';
+        hidden.dataset.label = '';
         open(input.value);
         discoverRemote(input.value);
       });
@@ -2543,7 +2568,7 @@
         var opt = e.target.closest('.letto-combo__option');
         if (!opt) return;
         e.preventDefault();
-        var d = matchByIata(opt.getAttribute('data-iata'));
+        var d = lastResults[parseInt(opt.getAttribute('data-idx'), 10)];
         pick(d);
       });
       input.addEventListener('blur', function () {
@@ -2551,6 +2576,13 @@
         setTimeout(function () {
           // If user typed something but didn't pick, restore last valid value or clear
           if (!hidden.value) {
+            // A selected hotel-city has no IATA by design; preserve its
+            // exact result instead of treating it as an incomplete airport.
+            if (activeMode() === 'hotel' && hidden.dataset.hotelCity &&
+                input.value === hidden.dataset.label) {
+              close();
+              return;
+            }
             // try to auto-match if exact text matches one option
             var v = input.value.trim().toUpperCase();
             var match = DESTS.find(function (d) { return d.iata === v || normalize(d.city) === normalize(input.value); });
@@ -2671,11 +2703,14 @@
 
       var origin = (form.from.value || 'BEG').toUpperCase();
       var dest = (form.to.value || '').toUpperCase();
+      var toField = form.querySelector('.letto-combo[data-combo="to"]');
+      var hotelCity = toField && toField.querySelector('input[type="hidden"]')?.dataset.hotelCity || '';
+      var bookingDestinationId = toField && toField.querySelector('input[type="hidden"]')?.dataset.bookingDestinationId || '';
       var dates = parseDateRange(form.dates.value);
       var pax = parseInt(form.pax.value, 10) || 2;
       var L = document.body.classList.contains('lang-en') ? 'en' : 'sr';
 
-      if (!/^[A-Z]{3}$/.test(dest)) {
+      if (__mixMode !== 'hotel' && !/^[A-Z]{3}$/.test(dest)) {
         showToast(L === 'en' ? 'Pick a destination from the list' : 'Izaberi odredište iz liste');
         form.querySelector('.letto-combo[data-combo="to"] .letto-combo__input').focus();
         return;
@@ -2703,6 +2738,16 @@
       });
       if (__mixMode === 'hotel') {
         params.set('no_flight', '1');
+        // A hotel stay may be in any city, resort or village. If the choice
+        // has an airport we retain its IATA too; otherwise city + Booking
+        // destination id drive the hotel provider directly.
+        if (!hotelCity) {
+          showToast(L === 'en' ? 'Pick a hotel destination from the list' : 'Izaberi grad za hotel iz liste');
+          form.querySelector('.letto-combo[data-combo="to"] .letto-combo__input').focus();
+          return;
+        }
+        params.set('hotel_city', hotelCity);
+        if (bookingDestinationId) params.set('booking_destination_id', bookingDestinationId);
       }
       if (typeof window.openResultsModal === 'function') {
         window.openResultsModal('/results?' + params.toString());

@@ -5072,6 +5072,8 @@ if (document.readyState === 'loading') {
     var p = new URLSearchParams(location.search);
     var origin   = (p.get('origin_iata') || '').toUpperCase();
     var dest     = (p.get('destination_iata') || '').toUpperCase();
+    var hotelCity = (p.get('hotel_city') || '').trim().replace(/\s+/g, ' ');
+    var bookingDestinationId = (p.get('booking_destination_id') || '').trim();
     var depart   = p.get('depart_date') || '';
     var ret      = p.get('return_date') || '';
     var adults   = parseInt(p.get('adults') || '0', 10) || 0;
@@ -5080,7 +5082,7 @@ if (document.readyState === 'loading') {
 
     // Fallback 1: TP white-label `flightSearch` format
     //   BEG2605ATH30052  =  origin DDMM dest DDMM paxCount
-    if (!dest) {
+    if (!dest && !hotelCity) {
       var fs = p.get('flightSearch') || '';
       var m = fs.match(/^([A-Z]{3})(\d{4})([A-Z]{3})(\d{4})(\d+)$/);
       if (m) {
@@ -5095,7 +5097,7 @@ if (document.readyState === 'loading') {
     }
 
     // Fallback 2: localStorage state (persisted on first load before TP redirect)
-    if (!dest) {
+    if (!dest && !hotelCity) {
       try {
         var raw = localStorage.getItem('letto_mix_state_v2');
         if (raw) {
@@ -5114,9 +5116,17 @@ if (document.readyState === 'loading') {
       } catch (e) { /* ignore */ }
     }
 
+    // Hotel-only searches may deliberately have no airport/IATA destination.
+    // Keep the display value in `dest` for legacy renderers, but expose the
+    // two concepts separately so /api/hotels-search can receive a city.
+    var destinationIata = dest;
+    if (window.LETTO_NO_FLIGHT && hotelCity) dest = hotelCity;
     return {
       origin:   origin,
       dest:     dest,
+      destinationIata: destinationIata,
+      hotelCity: hotelCity,
+      bookingDestinationId: bookingDestinationId,
       depart:   depart,
       ret:      ret,
       adults:   adults || 2,
@@ -5169,7 +5179,9 @@ if (document.readyState === 'loading') {
   function paintPaneHeaders() {
     var p = readUrlParams();
     var l = lang();
-    var route = (iataToCity(p.origin) || p.origin || '—') + ' → ' + (iataToCity(p.dest) || p.dest || '—');
+    var route = window.LETTO_NO_FLIGHT
+      ? (iataToCity(p.dest) || p.dest || '—')
+      : ((iataToCity(p.origin) || p.origin || '—') + ' → ' + (iataToCity(p.dest) || p.dest || '—'));
     var dateStr = fmtDateRange(p.depart, p.ret, l);
     var pax = paxLabel(p.adults, p.children, l);
 
@@ -5865,7 +5877,7 @@ if (document.readyState === 'loading') {
     retryCount = retryCount || 0;
     var p = readUrlParams();
     console.log('[mix-v2] loadHotels called · attempt=' + (retryCount + 1) + ' · params', p);
-    if (!p.dest || !p.depart || !p.ret) {
+    if ((!p.destinationIata && !p.hotelCity) || !p.depart || !p.ret) {
       console.warn('[mix-v2] loadHotels exiting early — missing URL params · dest=' + p.dest + ' depart=' + p.depart + ' ret=' + p.ret);
       renderEmpty();
       return;
@@ -5879,13 +5891,15 @@ if (document.readyState === 'loading') {
     showSkeletons();
 
     var qs = new URLSearchParams({
-      destination: p.dest,
       checkIn:     p.depart,
       checkOut:    p.ret,
       adults:      String(p.adults || 2),
       children:    String(p.children || 0),
       limit:       '20'
     });
+    if (p.destinationIata) qs.set('destination', p.destinationIata);
+    if (p.hotelCity) qs.set('city', p.hotelCity);
+    if (p.bookingDestinationId) qs.set('bookingDestinationId', p.bookingDestinationId);
     var url = '/api/hotels-search?' + qs.toString();
     console.log('[mix-v2] loadHotels · fetching ' + url);
     var ctrl = (window.AbortController ? new AbortController() : null);
@@ -6320,7 +6334,7 @@ if (document.readyState === 'loading') {
     // Catalog-pivot: auto-open Stage 3 if both flight + hotel are now selected
     var hasFlight = !!(state.flight && state.flight.selected);
     var hasHotel  = !!(state.hotel  && state.hotel.selected);
-    if (hasFlight && hasHotel) {
+    if ((hasFlight && hasHotel) || (window.LETTO_NO_FLIGHT && hasHotel)) {
       try { showStage3(); } catch (e) { console.error('[mix-v2] showStage3 after selectHotel failed:', e); }
       enrichSelectedHotelProperty(getState());
     }
@@ -6340,7 +6354,9 @@ if (document.readyState === 'loading') {
       version: 2,
       searchParams: {
         origin_iata: p.origin,
-        destination_iata: p.dest,
+        destination_iata: p.destinationIata || '',
+        hotel_city: p.hotelCity || '',
+        booking_destination_id: p.bookingDestinationId || '',
         depart_date: p.depart,
         return_date: p.ret,
         adults: p.adults,
@@ -6350,6 +6366,7 @@ if (document.readyState === 'loading') {
       hotel:  { selected: null, bookingClicked: false, bookingClickedAt: null,
                 deeplinkOpened: false, deeplinkOpenedAt: null },
       email:  null,
+      mode: window.LETTO_NO_FLIGHT ? 'hotel-only' : 'mix',
       meta:   { createdAt: now, updatedAt: now, expiresAt: now + STATE_TTL_MS }
     };
   }
@@ -6413,8 +6430,10 @@ if (document.readyState === 'loading') {
   function isObsolete(state, p) {
     if (!state || !state.searchParams) return true;
     var sp = state.searchParams;
-    return sp.destination_iata !== p.dest
+    return sp.destination_iata !== (p.destinationIata || '')
         || sp.origin_iata      !== p.origin
+        || (sp.hotel_city || '') !== (p.hotelCity || '')
+        || (sp.booking_destination_id || '') !== (p.bookingDestinationId || '')
         || sp.depart_date      !== p.depart
         || sp.return_date      !== p.ret;
   }
@@ -6511,7 +6530,7 @@ if (document.readyState === 'loading') {
     }
     var l = lang();
     var p = readUrlParams();
-    var dest = iataToCityEn(p.dest) || p.dest || '';
+    var dest = p.hotelCity || iataToCityEn(p.dest) || p.dest || '';
 
     var flightChip;
     if (window.LETTO_NO_FLIGHT) {
@@ -6680,7 +6699,9 @@ if (document.readyState === 'loading') {
       var hasFlight = flightIsSet(state);
       var hasHotel  = hotelIsSet(state);
       if (summary && (hasFlight || hasHotel)) summary.hidden = false;
-      var bothBooked = !!(state.flight.bookingClicked && state.hotel.bookingClicked);
+      var bothBooked = window.LETTO_NO_FLIGHT
+        ? !!state.hotel.bookingClicked
+        : !!(state.flight.bookingClicked && state.hotel.bookingClicked);
       updateStages(hasFlight, hasHotel, bothBooked);
     }
   }
@@ -7143,7 +7164,9 @@ if (document.readyState === 'loading') {
       ? 'Opening ' + partner + ' · "' + h.name + '"'
       : 'Otvaram ' + partner + ' · "' + h.name + '"', 4500);
     setTimeout(function () { window.open(url, '_blank', 'noopener'); }, 800);
-    var bothBooked = !!(state.flight.bookingClicked && state.hotel.bookingClicked);
+    var bothBooked = window.LETTO_NO_FLIGHT
+      ? !!state.hotel.bookingClicked
+      : !!(state.flight.bookingClicked && state.hotel.bookingClicked);
     updateStages(!!state.flight.selected, true, bothBooked);
   }
 
@@ -7162,11 +7185,12 @@ if (document.readyState === 'loading') {
       return;
     }
     var state = getState();
-    var complete = !!(state && state.flight && state.flight.selected &&
-                      state.hotel && state.hotel.selected);
+    var complete = !!(state && state.hotel && state.hotel.selected &&
+      (window.LETTO_NO_FLIGHT || (state.flight && state.flight.selected)));
     if (!complete) {
-      showToast(l === 'en' ? 'Pick a flight and a hotel first.'
-                           : 'Prvo izaberi let i hotel.', 3500);
+      showToast(window.LETTO_NO_FLIGHT
+        ? (l === 'en' ? 'Pick a hotel first.' : 'Prvo izaberi hotel.')
+        : (l === 'en' ? 'Pick a flight and a hotel first.' : 'Prvo izaberi let i hotel.'), 3500);
       return;
     }
     var session = '';
@@ -8046,8 +8070,9 @@ if (document.readyState === 'loading') {
       var raw = localStorage.getItem('letto_mix_state_v2');
       if (!raw) return null;
       var state = JSON.parse(raw);
-      var complete = !!(state && state.flight && state.flight.selected
-                        && state.hotel && state.hotel.selected);
+      var hotelOnly = state && state.mode === 'hotel-only';
+      var complete = !!(state && state.hotel && state.hotel.selected &&
+                        (hotelOnly || (state.flight && state.flight.selected)));
       if (!complete) return null;
       var resp = await fetch('/api/save-mix', {
         method: 'POST',

@@ -57,6 +57,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       tripId: d.tripId,
+      mode: d.mode || 'mix',
       tier: d.tier || 'value',
       route: d.route || null,
       paidAt: d.paidAt || null,
