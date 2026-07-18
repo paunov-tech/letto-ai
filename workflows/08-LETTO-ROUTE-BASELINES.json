@@ -1,0 +1,91 @@
+{
+  "name": "08-LETTO-ROUTE-BASELINES",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "17 4 * * 1" }] }
+      },
+      "id": "trigger-cron",
+      "name": "Trigger · weekly Mon 04:17",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Route matrix MIRRORS WF01 Stage A (FAZA 2, 2026-07-17) — keep in sync\n// manually (workflows sync to n8n by hand). BEG × 20 destinations +\n// ZAG/SJJ/SKP/INI × 8 core destinations = 52 routes.\n// Emits one item per (route × upcoming month): 52 × 3 = 156 TP calls, weekly.\nconst DESTS = ['IST','FCO','CDG','BCN','DXB','ATH','AMS','VIE','BUD','PRG','SKG','PMI','MLA','AYT','SPU','TIV','TLV','LHR','LIS','HKT'];\nconst CORE = ['IST','FCO','CDG','BCN','ATH','VIE','BUD','PRG'];\nconst ORIGIN_DESTS = { BEG: DESTS, ZAG: CORE, SJJ: CORE, SKP: CORE, INI: CORE };\nconst now = new Date();\nconst out = [];\nfor (const [origin, dests] of Object.entries(ORIGIN_DESTS)) {\n  for (const dest of dests) {\n    for (let m = 1; m <= 3; m++) {\n      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + m, 1));\n      out.push({ json: { origin, dest, month: d.toISOString().slice(0, 7) } });\n    }\n  }\n}\nreturn out;"
+      },
+      "id": "routes-months",
+      "name": "Routes × months",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "url": "https://api.travelpayouts.com/aviasales/v3/prices_for_dates",
+        "method": "GET",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "origin", "value": "={{$json.origin}}" },
+            { "name": "destination", "value": "={{$json.dest}}" },
+            { "name": "departure_date", "value": "={{$json.month}}" },
+            { "name": "currency", "value": "EUR" },
+            { "name": "sorting", "value": "price" },
+            { "name": "limit", "value": "30" },
+            { "name": "token", "value": "={{$env.TRAVELPAYOUTS_TOKEN}}" }
+          ]
+        },
+        "options": { "timeout": 12000, "response": { "response": { "neverError": true } } }
+      },
+      "id": "tp-month-prices",
+      "name": "TP month prices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 320],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate TP fares per route across the 3 sampled months, take the\n// median. TP returns cheapest-per-date fares; the median of ~90 daily\n// cheapest fares is the 'typical bookable price' WF01's deal gate\n// (flight <= 70% of medianFlightPrice) compares against.\n// Items flow 1:1 through the HTTP node, so index i matches request i.\nconst reqs = $('Routes × months').all();\nconst resps = $input.all();\nconst byRoute = {};\nfor (let i = 0; i < reqs.length; i++) {\n  const { origin, dest } = reqs[i].json;\n  const fares = (resps[i]?.json?.data || [])\n    .map(f => Number(f.value ?? f.price))\n    .filter(v => Number.isFinite(v) && v > 0);\n  const key = `${origin}_${dest}`;\n  (byRoute[key] ||= { origin, dest, values: [] }).values.push(...fares);\n}\nconst out = [];\nfor (const key of Object.keys(byRoute)) {\n  const { origin, dest, values } = byRoute[key];\n  if (values.length < 10) continue; // sample too thin to trust\n  values.sort((a, b) => a - b);\n  const median = Math.round(values[Math.floor(values.length / 2)]);\n  out.push({ json: { key, origin, dest, medianFlightPrice: median, sampleSize: values.length } });\n}\nreturn out;"
+      },
+      "id": "aggregate-median",
+      "name": "Aggregate + median",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 320]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/letto_route_baselines/{{$json.key}}?updateMask.fieldPaths=medianFlightPrice&updateMask.fieldPaths=sampleSize&updateMask.fieldPaths=computedAt",
+        "method": "PATCH",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"medianFlightPrice\": { \"integerValue\": \"{{$json.medianFlightPrice}}\" },\n    \"sampleSize\": { \"integerValue\": \"{{$json.sampleSize}}\" },\n    \"computedAt\": { \"timestampValue\": \"{{ new Date().toISOString() }}\" }\n  }\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "write-baseline",
+      "name": "Write baseline to Firestore",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 320],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Trigger · weekly Mon 04:17": { "main": [[{ "node": "Routes × months", "type": "main", "index": 0 }]] },
+    "Routes × months": { "main": [[{ "node": "TP month prices", "type": "main", "index": 0 }]] },
+    "TP month prices": { "main": [[{ "node": "Aggregate + median", "type": "main", "index": 0 }]] },
+    "Aggregate + median": { "main": [[{ "node": "Write baseline to Firestore", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "errorWorkflow": "wjvDlFRiG9vJhjHN" },
+  "tags": ["letto", "engine", "baselines"]
+}

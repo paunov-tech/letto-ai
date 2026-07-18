@@ -24,7 +24,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const routes = [\n  ['BEG','IST','TR','Istanbul','city','-755070'],\n  ['BEG','FCO','IT','Rome','cultural','-126693'],\n  ['BEG','CDG','FR','Paris','romantic','-1456928'],\n  ['BEG','BCN','ES','Barcelona','architecture','-372490'],\n  ['BEG','DXB','AE','Dubai','luxury','-782831'],\n  ['BEG','ATH','GR','Athens','cultural','-814876'],\n  ['BEG','AMS','NL','Amsterdam','city','-2140479'],\n  ['BEG','VIE','AT','Vienna','city','-1995499'],\n  ['BEG','BUD','HU','Budapest','city','-850553'],\n  ['BEG','PRG','CZ','Prague','city','-553173'],\n  ['BEG','SKG','GR','Thessaloniki','beach','-829252'],\n  ['BEG','PMI','ES','Palma','beach','-395224'],\n  ['BEG','MLA','MT','Valletta','beach','-19310'],\n  ['BEG','AYT','TR','Antalya','beach','-735347'],\n  ['BEG','SPU','HR','Split','beach','-96492'],\n  ['BEG','TIV','ME','Tivat','beach','-98296'],\n  ['ZAG','BCN','ES','Barcelona','architecture','-372490'],\n  ['ZAG','FCO','IT','Rome','cultural','-126693'],\n  ['SJJ','IST','TR','Istanbul','city','-755070'],\n  ['SKP','IST','TR','Istanbul','city','-755070'],\n  ['INI','IST','TR','Istanbul','city','-755070'],\n  ['BEG','TLV','IL','Tel Aviv','cultural','-781545'],\n  ['BEG','LHR','GB','London','city','-2601889'],\n  ['BEG','LIS','PT','Lisbon','city','-2167973'],\n  ['BEG','HKT','TH','Phuket','beach','-3253342']\n];\n\n// FAZA C1 · OOM mitigation. The downstream chain (Stage B → C → D → E → F)\n// accumulates per-route state for every item that flows through it. With 25\n// routes × kilobytes of TP flights + Booking hotels + Claude rating responses,\n// peak memory hit the 4GB V8 cap and crashed at Stage B.6 on 2026-05-08.\n//\n// Strategy: deterministic rotating slice. ROUTES_PER_RUN of the 25 are\n// processed each cron tick. Offset advances by 12 routes per 6h cron, so\n// the full catalog rotates every ~ROUTES_PER_RUN / 25 * 12h ≈ 5h-day cadence.\n// All 25 routes still get refreshed at least daily, peak memory is ~52% lower.\nconst ROUTES_PER_RUN = 12;\nconst runNumber = Math.floor(Date.now() / (6 * 3600 * 1000));\nconst offset = (runNumber * ROUTES_PER_RUN) % routes.length;\nconst selected = [];\nfor (let k = 0; k < ROUTES_PER_RUN; k++) {\n  selected.push(routes[(offset + k) % routes.length]);\n}\n\nconst now = new Date();\nconst probeDeparture = new Date(now.getTime() + 60*86400000).toISOString().slice(0,10);\nconst probeReturn = new Date(now.getTime() + 65*86400000).toISOString().slice(0,10);\nreturn selected.map(([origin, dest, country, city, category, destId], idx) => ({ json: { _idx: idx, origin, dest, country, city, category, destId, probeDeparture, probeReturn } }));"
+        "jsCode": "// Route matrix · FAZA 2 (2026-07-17). Replaces the 25 hardcoded routes:\n// BEG × all 20 wired destinations + ZAG/SJJ/SKP/INI × 8 core destinations\n// = 52 routes. Destination metadata (country/city/category/bookingDestId)\n// is shared per destination, reused from the original route list.\n// KEEP IN SYNC with workflows/08-LETTO-ROUTE-BASELINES.json (same matrix).\nconst DESTS = {\n  IST: ['TR','Istanbul','city','-755070'],\n  FCO: ['IT','Rome','cultural','-126693'],\n  CDG: ['FR','Paris','romantic','-1456928'],\n  BCN: ['ES','Barcelona','architecture','-372490'],\n  DXB: ['AE','Dubai','luxury','-782831'],\n  ATH: ['GR','Athens','cultural','-814876'],\n  AMS: ['NL','Amsterdam','city','-2140479'],\n  VIE: ['AT','Vienna','city','-1995499'],\n  BUD: ['HU','Budapest','city','-850553'],\n  PRG: ['CZ','Prague','city','-553173'],\n  SKG: ['GR','Thessaloniki','beach','-829252'],\n  PMI: ['ES','Palma','beach','-395224'],\n  MLA: ['MT','Valletta','beach','-19310'],\n  AYT: ['TR','Antalya','beach','-735347'],\n  SPU: ['HR','Split','beach','-96492'],\n  TIV: ['ME','Tivat','beach','-98296'],\n  TLV: ['IL','Tel Aviv','cultural','-781545'],\n  LHR: ['GB','London','city','-2601889'],\n  LIS: ['PT','Lisbon','city','-2167973'],\n  HKT: ['TH','Phuket','beach','-3253342']\n};\nconst ORIGIN_DESTS = {\n  BEG: ['IST','FCO','CDG','BCN','DXB','ATH','AMS','VIE','BUD','PRG','SKG','PMI','MLA','AYT','SPU','TIV','TLV','LHR','LIS','HKT'],\n  ZAG: ['IST','FCO','CDG','BCN','ATH','VIE','BUD','PRG'],\n  SJJ: ['IST','FCO','CDG','BCN','ATH','VIE','BUD','PRG'],\n  SKP: ['IST','FCO','CDG','BCN','ATH','VIE','BUD','PRG'],\n  INI: ['IST','FCO','CDG','BCN','ATH','VIE','BUD','PRG']\n};\nconst routes = [];\nfor (const [origin, dests] of Object.entries(ORIGIN_DESTS)) {\n  for (const dest of dests) routes.push([origin, dest, ...DESTS[dest]]);\n}\n\n// FAZA C1 · OOM mitigation. The downstream chain (Stage B → C → D → E → F)\n// accumulates per-route state for every item that flows through it. With the\n// expanded matrix × kilobytes of TP flights + Booking hotels + Claude rating\n// responses, peak memory can hit the 4GB V8 cap (crash at Stage B.6 on\n// 2026-05-08, with 25 routes).\n//\n// Strategy: deterministic rotating slice. ROUTES_PER_RUN of the 52 are\n// processed each cron tick. Offset advances by 12 routes per 6h cron; a full\n// catalog sweep takes ceil(52/12) × 6h ≈ 30h (was ~12h with 25 routes).\n// ROUTES_PER_RUN is deliberately NOT raised — see the 2026-05-08 crash note.\nconst ROUTES_PER_RUN = 12;\nconst runNumber = Math.floor(Date.now() / (6 * 3600 * 1000));\nconst offset = (runNumber * ROUTES_PER_RUN) % routes.length;\nconst selected = [];\nfor (let k = 0; k < ROUTES_PER_RUN; k++) {\n  selected.push(routes[(offset + k) % routes.length]);\n}\n\nconst now = new Date();\nconst probeDeparture = new Date(now.getTime() + 60*86400000).toISOString().slice(0,10);\nconst probeReturn = new Date(now.getTime() + 65*86400000).toISOString().slice(0,10);\nreturn selected.map(([origin, dest, country, city, category, destId], idx) => ({ json: { _idx: idx, origin, dest, country, city, category, destId, probeDeparture, probeReturn } }));"
       },
       "id": "stage-a-routes",
       "name": "Stage A · Routes",
@@ -617,6 +617,90 @@
         2880,
         220
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Stage E.1 · Auto-publish gate (FAZA 2, 2026-07-17). Catalog growth no longer\n// stalls when Telegram approvals idle: a NEW package that clears a strict\n// quality bar goes live without human review; everything else keeps the DM.\n// Bar (ALL required): top-deal ratio <= 0.65, hotel review >= 8.0 with\n// >= 50 reviews, sane total (99-2000), departure >= 7 days out.\n// Refreshes of already-published docs never re-enter approval (unchanged).\nconst stageE = $json;\nconst existingStatus = stageE?.fields?.status?.stringValue;\nlet auto = false;\nlet pkgId = null;\nif (!existingStatus || existingStatus === 'pending_review') {\n  const pkg = $('Stage D.3 · Attach image').itemMatching($itemIndex).json;\n  pkgId = pkg?.id || null;\n  const ratio = Number(pkg?.deal?.flightDealRatio);\n  const review = Number(pkg?.hotel?.reviewScore || 0);\n  const reviewCount = Number(pkg?.hotel?.reviewCount || 0);\n  const total = Number(pkg?.pricing?.total || 0);\n  const departure = String(pkg?.dates?.departure || '');\n  const daysOut = /^\\d{4}-\\d{2}-\\d{2}$/.test(departure)\n    ? Math.round((Date.parse(departure + 'T00:00:00Z') - Date.now()) / 86400000)\n    : -1;\n  auto = ratio > 0 && ratio <= 0.65 && review >= 8 && reviewCount >= 50 &&\n    total >= 99 && total <= 2000 && daysOut >= 7;\n}\nreturn { ...stageE, _autoPublish: auto ? 'yes' : 'no', _pkgId: pkgId };"
+      },
+      "id": "stage-e1-auto-publish-gate",
+      "name": "Stage E.1 · Auto-publish gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2660,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "auto-publish-check",
+              "leftValue": "={{$json._autoPublish}}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-auto-publish",
+      "name": "If auto-publish",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://firestore.googleapis.com/v1/projects/letto-ai/databases/(default)/documents/letto_packages/{{$json._pkgId}}?updateMask.fieldPaths=status",
+        "method": "PATCH",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.FIREBASE_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"status\": { \"stringValue\": \"published_public\" }\n  }\n}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "stage-e2-auto-publish-status",
+      "name": "Stage E.2 · Auto-publish status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3100,
+        120
+      ]
     }
   ],
   "connections": {
@@ -735,7 +819,7 @@
       "main": [
         [
           {
-            "node": "If approval needed",
+            "node": "Stage E.1 · Auto-publish gate",
             "type": "main",
             "index": 0
           }
@@ -842,6 +926,46 @@
         [
           {
             "node": "Notify · package mined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage E.1 · Auto-publish gate": {
+      "main": [
+        [
+          {
+            "node": "If auto-publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If auto-publish": {
+      "main": [
+        [
+          {
+            "node": "Stage E.2 · Auto-publish status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If approval needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage E.2 · Auto-publish status": {
+      "main": [
+        [
+          {
+            "node": "If approval needed",
             "type": "main",
             "index": 0
           }
