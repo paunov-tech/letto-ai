@@ -2606,7 +2606,12 @@
       }
       function pick(d) {
         if (!d) return;
-        hidden.value = d.iata || '';
+        // The generic combo blur guard historically considers an empty hidden
+        // field an unfinished selection. A hotel-only city has no IATA, so
+        // retain an explicit internal marker while the human-facing city and
+        // provider destination id stay in data attributes below.
+        var cityOnly = role === 'to' && activeMode() === 'hotel' && !d.iata;
+        hidden.value = d.iata || (cityOnly ? 'CITY' : '');
         input.value = fmtLabel(d);
         input.dataset.iata = d.iata || '';
         hidden.dataset.hotelCity = d.city || '';
@@ -2827,7 +2832,9 @@
 
       var params = new URLSearchParams({
         origin_iata: origin,
-        destination_iata: dest,
+        // CITY is an internal combo marker only; city-only hotel searches
+        // must not leak it into the IATA parameter.
+        destination_iata: /^[A-Z]{3}$/.test(dest) ? dest : '',
         depart_date: dates[0],
         return_date: dates[1],
         adults: String(pax),
