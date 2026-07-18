@@ -52,7 +52,11 @@ async function handler(req, res) {
       .where('destination.code', '==', dest)
       .limit(100)
       .get();
-    const packages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Never rank packages whose departure date has already passed — they
+    // can't be booked. WF02 sweeps them to `expired`; this is the read guard.
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const packages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(pkg => typeof pkg?.dates?.departure !== 'string' || pkg.dates.departure >= todayISO);
     for (const pkg of packages) {
       if (!pkg.flight) pkg.flight = {};
       pkg.flight.bookingUrl = pkg.flight.bookingUrl

@@ -205,8 +205,12 @@ async function handler(req, res) {
     if (priceTier) q = q.where('tier', '==', priceTier);
 
     if (!isSearch) {
-      // Listing mode — newest first.
-      q = q.orderBy('metadata.createdAt', 'desc').limit(limit);
+      // Listing mode — newest first. Over-fetch to 50 because the
+      // metadata.source === 'mixing_engine_v4' filter below runs in memory:
+      // fetching exactly `limit` lets non-engine docs starve the homepage
+      // grid even when eligible stock exists. Sliced back to `limit` after
+      // the tier sort. No new composite index needed.
+      q = q.orderBy('metadata.createdAt', 'desc').limit(50);
     } else {
       // Search mode — over-fetch then filter/sort in memory.
       // Firestore limits us to 1 inequality per query, so we apply date window
@@ -216,6 +220,13 @@ async function handler(req, res) {
 
     const snap = await q.get();
     let packages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Never serve packages whose departure date has already passed — they
+    // can't be booked and only erode trust. WF02 sweeps them to `expired`;
+    // this is the read-side guard. Packages missing dates keep existing
+    // behaviour (itineraryContract marks them incomplete downstream).
+    const todayISO = new Date().toISOString().slice(0, 10);
+    packages = packages.filter(p => typeof p?.dates?.departure !== 'string' || p.dates.departure >= todayISO);
 
     if (isSearch) {
       // Catalog is sparse — instead of strict date filtering (which often
@@ -280,6 +291,8 @@ async function handler(req, res) {
         const bCr = b?.metadata?.createdAt?._seconds ?? 0;
         return bCr - aCr;
       });
+      // Trim the 50-doc over-fetch back to the requested page size.
+      packages = packages.slice(0, limit);
     }
 
     // P0 fix · normalize the bookingUrl shipped to the frontend. Two cases:
